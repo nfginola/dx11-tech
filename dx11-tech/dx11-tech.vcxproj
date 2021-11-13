@@ -149,6 +149,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Graphics\dx.cpp" />
+    <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\Graphics\DXDevice.cpp" />
@@ -159,14 +161,18 @@
     </ClCompile>
     <ClCompile Include="src\Utilities.cpp" />
     <ClCompile Include="src\Window.cpp" />
+    <ClCompile Include="src\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="inc\Graphics\dx.h" />
+    <ClInclude Include="inc\Camera.h" />
     <ClInclude Include="inc\Application.h" />
     <ClInclude Include="inc\Graphics\DXDevice.h" />
     <ClInclude Include="inc\pch.h" />
     <ClInclude Include="inc\Utilities.h" />
     <ClInclude Include="inc\Window.h" />
     <ClInclude Include="inc\Input.h" />
+    <ClInclude Include="inc\Timer.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\DirectXTK\DirectXTK_Desktop_2019_Win10.vcxproj">

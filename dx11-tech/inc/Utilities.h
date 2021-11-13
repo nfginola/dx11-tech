@@ -1,6 +1,6 @@
 #pragma once
 
-namespace Utils
+namespace utils
 {
 	std::string to_str(std::wstring str);
 	std::wstring to_wstr(std::string str);

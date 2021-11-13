@@ -7,9 +7,9 @@ Window::Window(HINSTANCE hInstance, std::function<LRESULT(HWND, UINT, WPARAM, LP
 	m_title(title),
 	m_client_width(client_width),
 	m_client_height(client_height),
-	m_is_alive(true),
-	m_is_fullscreen(false),
-	m_style(WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX),
+	m_alive(true),
+	m_fullscreen(false),
+	m_style(WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX /* | WS_MAXIMIZEBOX*/ | WS_SIZEBOX),
 	m_ex_style(0),
 	m_screenTransitionDetails(ScreenTransitionDetails{ 0, 0, 0, 0 }),
 	m_custom_proc(winProc)
@@ -27,7 +27,7 @@ Window::Window(HINSTANCE hInstance, std::function<LRESULT(HWND, UINT, WPARAM, LP
 Window::~Window()
 {
 	DestroyWindow(m_hwnd);
-	UnregisterClass(Utils::to_wstr(m_id).c_str(), m_hInstance);
+	UnregisterClass(utils::to_wstr(m_id).c_str(), m_hInstance);
 }
 
 void Window::pump_messages() const
@@ -42,12 +42,12 @@ void Window::pump_messages() const
 
 bool Window::is_alive() const
 {
-	return m_is_alive;
+	return m_alive;
 }
 
 void Window::register_window()
 {
-	std::wstring classID = Utils::to_wstr(m_id);
+	std::wstring classID = utils::to_wstr(m_id);
 
 	WNDCLASS wc = { 0 };
 	wc.lpfnWndProc = window_proc;												
@@ -62,8 +62,8 @@ void Window::register_window()
 
 void Window::make_window()
 {
-	std::wstring classID = Utils::to_wstr(m_id);
-	std::wstring title = Utils::to_wstr(m_title);
+	std::wstring classID = utils::to_wstr(m_id);
+	std::wstring title = utils::to_wstr(m_title);
 
 	m_hwnd = CreateWindowEx(
 		0,								// Default behaviour (optionals)
@@ -112,7 +112,7 @@ void Window::fit_to_client_dim()
 
 void Window::set_fullscreen(bool fullscreenState)
 {
-	m_is_fullscreen = fullscreenState;
+	m_fullscreen = fullscreenState;
 	int& prev_x = m_screenTransitionDetails.prev_x;
 	int& prev_y = m_screenTransitionDetails.prev_y;
 	int& prev_width = m_screenTransitionDetails.prev_width;
@@ -121,8 +121,8 @@ void Window::set_fullscreen(bool fullscreenState)
 	if (!fullscreenState)	// Go to windowed mode
 	{
 		// Set back to windowed
-		SetWindowLongPtr(m_hwnd, GWL_STYLE, WS_OVERLAPPEDWINDOW);
-		SetWindowLongPtr(m_hwnd, GWL_EXSTYLE, 0);
+		SetWindowLongPtr(m_hwnd, GWL_STYLE, m_style);
+		SetWindowLongPtr(m_hwnd, GWL_EXSTYLE, m_ex_style);
 
 		ShowWindow(m_hwnd, SW_SHOWNORMAL);
 
@@ -156,7 +156,7 @@ void Window::set_fullscreen(bool fullscreenState)
 
 bool Window::is_fullscreen() const
 {
-	return m_is_fullscreen;
+	return m_fullscreen;
 }
 
 HWND Window::get_hwnd() const
@@ -199,7 +199,7 @@ LRESULT Window::handle_proc(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_CLOSE:
 	{
 		//DestroyWindow(m_hwnd);	// Window destructor cleans up hwnd
-		m_is_alive = false;
+		m_alive = false;
 		break;
 	}
 	case WM_PAINT:

@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Utilities.h"
 
-namespace Utils
+namespace utils
 {
 	std::string to_str(std::wstring wstr)
 	{

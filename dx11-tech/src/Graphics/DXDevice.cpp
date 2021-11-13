@@ -195,7 +195,7 @@ const DeviceContext1Ptr& DXDevice::get_context() const
 	return m_context_1;
 }
 
-const SwapChainPtr& DXDevice::get_swapchain() const
+const SwapChainPtr& DXDevice::get_sc() const
 {
 	return m_sc;
 }
@@ -215,7 +215,7 @@ const D3D11_VIEWPORT& DXDevice::get_bb_viewport() const
 	return m_bbViewport;
 }
 
-const DXGI_SWAP_CHAIN_DESC& DXDevice::get_swapchainDesc() const
+const DXGI_SWAP_CHAIN_DESC& DXDevice::get_sc_desc() const
 {
 	return m_sc_desc;
 }

@@ -36,8 +36,8 @@ private:
 	std::string m_id;
 	int m_client_width;
 	int m_client_height;
-	bool m_is_alive;
-	bool m_is_fullscreen;
+	bool m_alive;
+	bool m_fullscreen;
 	DWORD m_style;
 	DWORD m_ex_style;
 	

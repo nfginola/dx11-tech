@@ -2,36 +2,50 @@
 #include "Application.h"
 #include "Window.h"
 
+#include "Graphics/dx.h"
 #include "Graphics/DXDevice.h"
 #include "Input.h"
+#include "Timer.h"
 
 Application::Application()
 {
+	// Window and input
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
 	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc);
-
-	m_dx_device = make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height());
 	m_input = make_unique<Input>(m_win->get_hwnd());
 
+	// DX API
+	m_dx_device = make_shared<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height());
+	dx::init(m_dx_device);
+
+	dx::get()->create_vertex_buffer();
+	dx::get()->create_index_buffer();
+	dx::get()->create_buffer();
+	dx::get()->create_texture();
 }
 
 Application::~Application()
 {
+	dx::shutdown();
 }
 
 void Application::run()
 {
 	while (m_win->is_alive())
 	{
+		while (m_paused);
+
+		Timer frame_timer;
 		m_win->pump_messages();
 		m_input->begin();
 
-		if (m_input->lmb_down() && m_input->key_down(Keys::E))
-		{
-			std::cout << "(" << m_input->get_mouse_dt().first << ", " << m_input->get_mouse_dt().second << ")" << std::endl;
-		}
+		m_dx_device->get_context()->ClearRenderTargetView(m_dx_device->get_bb_target().Get(), DirectX::Colors::BurlyWood);
+		m_dx_device->get_sc()->Present(1, 0);
 
 		m_input->end();
+
+		auto sec_elapsed = frame_timer.elapsed();
+		std::cout << "fps: " << 1.0 / sec_elapsed << " s" << std::endl;
 	}
 }
 
@@ -45,6 +59,7 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	//		imGuiFunc(hwnd, uMsg, wParam, lParam);
 	//	}
 	//}
+
 	switch (uMsg)
 	{
 		// DirectXTK Mouse and Keyboard (Input)
@@ -118,12 +133,20 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 		// We want to hook this to ImGui viewport later
 		//if (m_resizeCallback)
 		//	m_resizeCallback(LOWORD(lParam), HIWORD(lParam));
+		//std::cout << "should resize\n";
+		// dont resize here (a lot of calls)
 		break;
 	}
-
+	case WM_ENTERSIZEMOVE:
+	{
+		std::cout << "should pause to prep for resize\n";
+		m_paused = true;
+		break;
+	}
 	case WM_EXITSIZEMOVE:
 	{
-		//std::cout << "Should resize\n";
+		std::cout << "should resize\n";
+		m_paused = false;
 		break;
 	}
 
@@ -135,6 +158,7 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 			// Custom Alt + Enter to toggle windowed borderless
 			m_win->set_fullscreen(!m_win->is_fullscreen());
 			// Resizing will be handled through WM_SIZE through a subsequent WM
+			std::cout << "should resize\n";
 		}
 		break;
 	}

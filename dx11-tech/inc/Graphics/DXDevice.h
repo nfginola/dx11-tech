@@ -2,6 +2,7 @@
 
 #include <d3d11_1.h>
 #include <DirectXMath.h>
+#include <DirectXColors.h>
 #include <dxgi.h>
 #include <d3dcompiler.h>
 #include <assert.h>
@@ -49,6 +50,8 @@ bool HRCHECK(HRESULT hr);
 
 class DXDevice
 {
+
+
 public:
 	DXDevice(HWND hwnd, int bbWidth, int bbHeight);
 	~DXDevice();
@@ -64,8 +67,8 @@ public:
 	const Device1Ptr& get_device() const;
 	const DeviceContext1Ptr& get_context() const;
 	
-	const SwapChainPtr& get_swapchain() const;
-	const DXGI_SWAP_CHAIN_DESC& get_swapchainDesc() const;
+	const SwapChainPtr& get_sc() const;
+	const DXGI_SWAP_CHAIN_DESC& get_sc_desc() const;
 	
 	const Tex2DPtr& get_bb_texture() const;
 	const RtvPtr& get_bb_target() const;
