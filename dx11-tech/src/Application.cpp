@@ -18,10 +18,15 @@ Application::Application()
 	m_dx_device = make_shared<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height());
 	dx::init(m_dx_device);
 
-	dx::get()->create_vertex_buffer();
-	dx::get()->create_index_buffer();
-	dx::get()->create_buffer();
-	dx::get()->create_texture();
+	auto vb = dx::get()->create_vertex_buffer();
+	auto ib = dx::get()->create_index_buffer();
+	auto b = dx::get()->create_buffer();
+	auto tex = dx::get()->create_texture();
+
+	dx::get()->bind_buf(vb);
+	dx::get()->bind_buf(ib);
+	dx::get()->bind_buf(b);
+	dx::get()->bind_tex(tex);
 }
 
 Application::~Application()
@@ -45,7 +50,7 @@ void Application::run()
 		m_input->end();
 
 		auto sec_elapsed = frame_timer.elapsed();
-		std::cout << "fps: " << 1.0 / sec_elapsed << " s" << std::endl;
+		//std::cout << "fps: " << 1.0 / sec_elapsed << " s" << std::endl;
 	}
 }
 

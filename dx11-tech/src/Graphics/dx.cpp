@@ -27,23 +27,37 @@ dx* dx::get()
 	return s_self;
 }
 
-void dx::create_vertex_buffer()
+BufferID dx::create_vertex_buffer()
 {
 	std::cout << "creating vb\n";
+	return { (uint64_t)rand() };
 }
 
-void dx::create_index_buffer()
+BufferID dx::create_index_buffer()
 {
 	std::cout << "creating ib\n";
+	return { (uint64_t)rand() };
 
 }
 
-void dx::create_buffer()
+BufferID dx::create_buffer()
 {
 	std::cout << "create generic buffer\n";
+	return { (uint64_t)rand() };
 }
 
-void dx::create_texture()
+TextureID dx::create_texture()
 {
 	std::cout << "create generic texture\n";
+	return { (uint64_t)rand() };
+}
+
+void dx::bind_buf(BufferID id)
+{
+	std::cout << "bound buffer " << id << std::endl;
+}
+
+void dx::bind_tex(TextureID id)
+{
+	std::cout << "bound texture " << id << std::endl;
 }
