@@ -9,24 +9,74 @@
 
 Application::Application()
 {
-	// Window and input
+	// Window and Input
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
-	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc);
+	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, 1920, 1080);
 	m_input = make_unique<Input>(m_win->get_hwnd());
 
 	// DX API
-	m_dx_device = make_shared<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height());
-	dx::init(m_dx_device);
+	dx::init(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
+
+	/*
+	
+		We want at some point in the future to encapsulate this into an Engine.
+		The Engine would consist of:
+			- Window
+			- Input
+			- SceneManager
+				- Scene (Application provides)
+					- Composition based Entities
+
+			- Renderer (Provides App with higher level constructs)
+					- dx (Graphics API backend)
+				- Camera
+				- Mesh
+				- Material
+				- Shader
+				- Light
+			- Physics (Provides App with higher level constructs)
+					- BulletPhysics (Physics API backend)
+				- Colllision boxes
+				- Physics simulation (e.g gravity)
+
+		Application is required to do (every frame):
+			engine->start_frame();
+			scene->run();
+			engine->end_frame();
+	
+	
+	*/
 
 	auto vb = dx::get()->create_vertex_buffer();
 	auto ib = dx::get()->create_index_buffer();
 	auto b = dx::get()->create_buffer();
 	auto tex = dx::get()->create_texture();
+	auto shader = dx::get()->create_shader("a.hlsl", "a.hlsl");
 
-	dx::get()->bind_buf(vb);
-	dx::get()->bind_buf(ib);
-	dx::get()->bind_buf(b);
-	dx::get()->bind_tex(tex);
+	dx::get()->bind_vertex_buffer(vb);
+	dx::get()->bind_index_buffer(ib);
+	dx::get()->upload_to_buffer((void*)m_win.get(), 512, b);
+	dx::get()->bind_buffer(0, ShaderStage::Hull, b);
+	dx::get()->bind_buffer(1, ShaderStage::Geometry, b);
+	dx::get()->bind_buffer(2, ShaderStage::Pixel, b);
+	dx::get()->bind_texture(0, ShaderStage::Pixel, tex);
+
+	/*
+	
+	struct PipelineDescriptor
+	{
+		Various Descriptors..
+		ShaderProgram
+	}
+	
+	dx::get()->create_pipeline(PipelineDescriptor* pd = nullptr)							// ptr to allow for nullptr --> default
+	dx::get()->create_from_pipeline(PipelineStateID id, PipelineDescriptor* overwrites);	// allow to create new pipeline from existing
+	
+	dx::get()->free_buffer(id)
+	dx::get()->free_texture(id)
+	dx::get()->free_shader(id)
+	
+	*/
 }
 
 Application::~Application()
@@ -44,13 +94,22 @@ void Application::run()
 		m_win->pump_messages();
 		m_input->begin();
 
-		m_dx_device->get_context()->ClearRenderTargetView(m_dx_device->get_bb_target().Get(), DirectX::Colors::BurlyWood);
-		m_dx_device->get_sc()->Present(1, 0);
+		if (m_input->lmb_down())
+		{
+			std::cout << m_input->get_mouse_position().first << ", " << m_input->get_mouse_position().second << std::endl;
+		}
+		if (m_input->key_pressed(Keys::R))
+		{
+			std::cout << "reload shader\n";
+		}
+		
+		dx::get()->clear_backbuffer(DirectX::Colors::BurlyWood);
+		dx::get()->present();
 
 		m_input->end();
 
 		auto sec_elapsed = frame_timer.elapsed();
-		//std::cout << "fps: " << 1.0 / sec_elapsed << " s" << std::endl;
+		//std::cout << "fps: " << 1.f / sec_elapsed << std::endl;
 	}
 }
 

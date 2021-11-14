@@ -2,6 +2,8 @@
 
 struct BufferID;
 struct TextureID;
+struct ShaderID;
+enum class ShaderStage;
 
 /*
 
@@ -11,6 +13,9 @@ struct TextureID;
 class dx
 {
 private:
+	// friend class PipelineState
+	// We let PipelineState get access to privates so that it can use resource defaults on creation
+
 	/*
 		friend class Application;
 	
@@ -19,24 +24,27 @@ private:
 	*/
 
 	static dx* s_self;
-	shared_ptr<class DXDevice> m_dev;
+	unique_ptr<class DXDevice> m_dev;
 
 	/*
 	
 	// ID is literally the index into the vector.
 	// free slots in queue lets use re-use slots that have been freed
 
-	std::vector<std::pair<BufferID, Buffer>> m_buffers;
-	std::vector<std::pair<TextureID, Texture>> m_textures;
+	std::vector<std::pair<BufferID, DXBuffer>> m_buffers;
+	std::vector<std::pair<TextureID, DXTexture>> m_textures;
+	std::vector<std::pair<TextureID, DXShader>> m_shaders;
 
 	std::queue<BufferID> m_free_buffer_slots;
 	std::queue<BufferID> m_free_texture_slots;
+
+	PipelineState* m_bound_state;	// used so we can do member-wise comparison to avoid binding already bound state
 
 	
 	*/
 
 public:
-	dx(shared_ptr<DXDevice> dev);
+	dx(unique_ptr<DXDevice> dev);
 	~dx() = default;
 
 	dx& operator=(const dx&) = delete;
@@ -44,9 +52,12 @@ public:
 
 //private:
 public:
-	static void init(shared_ptr<DXDevice> dev);
+	static void init(unique_ptr<DXDevice> dev);
 	static void shutdown();
 	static dx* get();
+
+	void clear_backbuffer(DirectX::XMVECTORF32 color);
+	void present(bool vsync = true);
 
 	// Resource creation
 	/*
@@ -70,38 +81,91 @@ public:
 	BufferID create_index_buffer();
 	BufferID create_buffer();
 	TextureID create_texture();
+	ShaderID create_shader(
+		const std::filesystem::path& vs_path,
+		const std::filesystem::path& ps_path,
+		const std::filesystem::path& hs_path = "",
+		const std::filesystem::path& ds_path = "",
+		const std::filesystem::path& gs_path = "");
 
-	void bind_buf(BufferID id);
-	void bind_tex(TextureID id);
+	/* we should replace with a generic upload_res */
+	void upload_to_buffer(void* data, uint64_t size, BufferID id);
 
+	// Resource destruction
 	/*
-	void release_buffer(BufferID);
-	void release_texture(TextureID);
-	
+	void release_buffer(BufferID id);
+	void release_texture(TextureID id);
 	*/
 
+	/*
+	* 
+	Buffer* get_buffer(BufferID id);
+	Texture* get_texture(TextureID id);
+	
+	*/
+	
+	// Resource binding
+	void bind_buffer(uint8_t slot, ShaderStage stage, BufferID id);
+	void bind_vertex_buffer(BufferID id);
+	void bind_index_buffer(BufferID id);
+	void bind_texture(uint8_t slot, ShaderStage stage, TextureID id);
 
-
-	// State setting and submission
+	
+	// Pipeline state setting
 	/*
 	
 		Do we want to mimic D3D11 state machine interface?
 		Or do we want to abstract to sending in a State struct? (essentially just like a PipelineState or something similar which has all state info?)
-	
+
+		struct PipelineState
+		{
+			// IA
+			Topology [1]						(VkPipelineInputAssembly)
+			Input Layout [1]					(VkPipelineVertexInputState)
+
+			// RS
+			RS Viewport and RS Scissors [0, n]
+			Rasterizer State [1]
+
+			// OM
+			Depth Stencil State [1]
+			Blend State [1]
+			
+			// Shader Program
+			DXShaderID [1]
+		}
+
+		---- example code (deferred), but lets implement Forward+!
+		Framebuffer fbo;
+		
+		bind_fbo_output(fbo);
+		for each single_draw_call:					(no need to sort for now)
+			set_pipeline(pipeline);
+			draw geometry to gbuffer
+		for each instanced_draw_call:
+			set_pipeline(pipeline)
+			draw geometry to gbuffer
+		unbind_fbo_output(fbo);
+
+		bind_fbo_input(fbo);
+		set_pipeline(pipeline2);
+		draw fullscreen quad
+		unbind_fbo_input(fbo);
+
+
+		
+		struct DrawCall
+		{
+			BuffferID vb
+			BufferID ib
+			PipelineStateID pipeline
+		}
+
+		void submit_draw(DrawCall);
 	*/
-
-	/*
-	struct PipelineState
-	{
-		ShaderProgram
-		... read vulkan
-
-
-	}
 	
 	
-	
-	*/
+
 
 };
 
@@ -119,5 +183,11 @@ struct TextureID
 	uint64_t id;
 	operator uint64_t() { return id; }
 
+};
+
+struct ShaderID
+{
+	uint64_t id;
+	operator uint64_t() { return id; }
 };
 

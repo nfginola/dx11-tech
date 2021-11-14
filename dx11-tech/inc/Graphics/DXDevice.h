@@ -46,6 +46,17 @@ using GsPtr = ComPtr<ID3D11GeometryShader>;
 using PsPtr = ComPtr<ID3D11PixelShader>;
 using CsPtr = ComPtr<ID3D11ComputeShader>;
 
+enum class ShaderStage
+{
+	Vertex,
+	Hull,
+	Domain,
+	Geometry,
+	Pixel,
+	Compute
+};
+
+
 bool HRCHECK(HRESULT hr);
 
 class DXDevice

@@ -6,10 +6,10 @@ Timer::Timer()
 	m_start = std::chrono::high_resolution_clock::now();
 }
 
-double Timer::elapsed(Unit unit) const
+float Timer::elapsed(Unit unit) const
 {
 	auto end = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double, std::milli> diff = end - m_start;	
+	std::chrono::duration<float, std::milli> diff = end - m_start;	
 
 	switch (unit)
 	{
