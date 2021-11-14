@@ -159,6 +159,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Graphics\DXPipelineState.cpp" />
     <ClCompile Include="src\Graphics\DXShader.cpp" />
     <ClCompile Include="src\Graphics\dx.cpp" />
     <ClCompile Include="src\Camera.cpp" />
@@ -187,6 +188,8 @@
     <ClInclude Include="inc\Input.h" />
     <ClInclude Include="inc\Timer.h" />
     <ClInclude Include="inc\Graphics\DXShader.h" />
+    <ClInclude Include="inc\Graphics\DXPipelineState.h" />
+    <ClInclude Include="inc\Graphics\DXCommon.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\DirectXTK\DirectXTK_Desktop_2019_Win10.vcxproj">

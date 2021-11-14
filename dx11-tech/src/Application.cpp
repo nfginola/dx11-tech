@@ -52,6 +52,7 @@ Application::Application()
 	auto b = dx::get()->create_buffer();
 	auto tex = dx::get()->create_texture();
 	auto shader = dx::get()->create_shader("a.hlsl", "a.hlsl");
+	auto p = dx::get()->create_pipeline();
 
 	dx::get()->bind_vertex_buffer(vb);
 	dx::get()->bind_index_buffer(ib);
@@ -60,7 +61,9 @@ Application::Application()
 	dx::get()->bind_buffer(1, ShaderStage::Geometry, b);
 	dx::get()->bind_buffer(2, ShaderStage::Pixel, b);
 	dx::get()->bind_texture(0, ShaderStage::Pixel, tex);
+	dx::get()->bind_pipeline(p);
 
+	dx::get()->draw_fullscreen_quad();
 	/*
 	
 	struct PipelineDescriptor
@@ -100,7 +103,7 @@ void Application::run()
 		}
 		if (m_input->key_pressed(Keys::R))
 		{
-			std::cout << "reload shader\n";
+			dx::get()->hot_reload_shader({ 35 });
 		}
 		
 		dx::get()->clear_backbuffer(DirectX::Colors::BurlyWood);

@@ -1,14 +1,20 @@
 #include "pch.h"
-#include "Graphics/DXDevice.h"
 #include "Graphics/dx.h"
+#include "Graphics/DXDevice.h"
 #include "Graphics/DXShader.h"
+#include "Graphics/DXPipelineState.h"
 
 dx* dx::s_self = nullptr;
 
 dx::dx(unique_ptr<DXDevice> dev) :
 	m_dev(std::move(dev))
 {
+	create_default_resources();
+}
 
+dx::~dx()
+{
+	/* clear all resources */
 }
 
 void dx::init(unique_ptr<DXDevice> dev)
@@ -69,6 +75,19 @@ ShaderID dx::create_shader(const std::filesystem::path& vs_path, const std::file
 	DXShader shader(m_dev.get(), vs_path, ps_path, gs_path, hs_path, ds_path);
 
 	return { (uint64_t)rand() };
+}
+
+PipelineStateID dx::create_pipeline()
+{
+	DXPipelineState pipeline;
+
+
+	return { (uint64_t)rand() };
+}
+
+void dx::hot_reload_shader(ShaderID id)
+{
+	std::cout << "hot reloading shader (" << id << ")\n";
 }
 
 void dx::upload_to_buffer(void* data, uint64_t size, BufferID id)
@@ -149,4 +168,22 @@ void dx::bind_texture(uint8_t slot, ShaderStage stage, TextureID id)
 		std::cout << "bound texture (" << id << ") at slot (" << std::to_string(slot) << ") for Compute Shader" << std::endl;
 		break;
 	}
+}
+
+void dx::draw_fullscreen_quad()
+{
+	std::cout << "draws fullscreen screenspace quad with an internally created VB\n";
+}
+
+void dx::bind_pipeline(PipelineStateID id)
+{
+	std::cout << "binding pipeline (" << id << ")\n";
+}
+
+void dx::create_default_resources()
+{
+	std::cout << "make sure to create default resources\n";
+
+	// m_def_pipeline = ...
+
 }

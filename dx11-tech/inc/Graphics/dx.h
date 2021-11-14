@@ -1,9 +1,5 @@
 #pragma once
-
-struct BufferID;
-struct TextureID;
-struct ShaderID;
-enum class ShaderStage;
+#include "Graphics/DXCommon.h"
 
 /*
 
@@ -26,6 +22,9 @@ private:
 	static dx* s_self;
 	unique_ptr<class DXDevice> m_dev;
 
+	PipelineStateID m_def_pipeline;
+
+
 	/*
 	
 	// ID is literally the index into the vector.
@@ -45,7 +44,7 @@ private:
 
 public:
 	dx(unique_ptr<DXDevice> dev);
-	~dx() = default;
+	~dx();
 
 	dx& operator=(const dx&) = delete;
 	dx(const dx&) = delete;
@@ -58,6 +57,9 @@ public:
 
 	void clear_backbuffer(DirectX::XMVECTORF32 color);
 	void present(bool vsync = true);
+	/*
+	void clear_fbo(...)
+	*/
 
 	// Resource creation
 	/*
@@ -88,7 +90,34 @@ public:
 		const std::filesystem::path& ds_path = "",
 		const std::filesystem::path& gs_path = "");
 
-	/* we should replace with a generic upload_res */
+	PipelineStateID create_pipeline();
+
+	/*
+	
+	// getters so we can query data
+	// such as buffer size, element size, texture dims/settings, etc.
+	// idea here is to have it easily replaceable with some Buffer/Texture abstraction that is common
+	// across many APIs, but here, we will only use DX11.
+	// but add this LATER IF we do see the need to use it (dont expose API prematurely)
+	// why? because at the place where 
+
+	DXBuffer* get_buffer(id);
+	DXTexture* get_texture(id);
+	
+	*/
+
+	void hot_reload_shader(ShaderID id);
+
+	/* we should internally use a generic upload_res */
+	// at the interface level, we can have two different:
+	/*
+		- we should somehow figure out when to choose map/unmap or updatesubres accordingly
+			- maybe let the user assign some "Frequency" enum: 
+				- e.g "UpdateFrequency::Often" or "UpdateFrequency::Sometimes" 
+				- there are also other factors, like the fact that Texture will always use UpdateSubresource (has box rect and all that stuff)
+		upload_to_buffer
+		upload_to_texture
+	*/
 	void upload_to_buffer(void* data, uint64_t size, BufferID id);
 
 	// Resource destruction
@@ -109,7 +138,10 @@ public:
 	void bind_vertex_buffer(BufferID id);
 	void bind_index_buffer(BufferID id);
 	void bind_texture(uint8_t slot, ShaderStage stage, TextureID id);
+	void bind_pipeline(PipelineStateID id);
 
+
+	void draw_fullscreen_quad();
 	
 	// Pipeline state setting
 	/*
@@ -164,30 +196,13 @@ public:
 		void submit_draw(DrawCall);
 	*/
 	
+private:
+	void create_default_resources();
+
 	
 
 
 };
 
-/*
-	Strongly typed IDs for safety
-*/
-struct BufferID
-{
-	uint64_t id;
-	operator uint64_t() { return id; }
-};
 
-struct TextureID
-{
-	uint64_t id;
-	operator uint64_t() { return id; }
-
-};
-
-struct ShaderID
-{
-	uint64_t id;
-	operator uint64_t() { return id; }
-};
 
