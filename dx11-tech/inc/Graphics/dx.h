@@ -89,7 +89,10 @@ public:
 	*/
 	BufferHandle create_vertex_buffer();
 	BufferHandle create_index_buffer();
+
+
 	BufferHandle create_buffer();
+
 	TextureHandle create_texture();
 	ShaderHandle create_shader(
 		const std::filesystem::path& vs_path,
@@ -121,8 +124,9 @@ public:
 	/*
 		- we should somehow figure out when to choose map/unmap or updatesubres accordingly
 			- maybe let the user assign some "Frequency" enum: 
-				- e.g "UpdateFrequency::Often" or "UpdateFrequency::Sometimes" 
 				- there are also other factors, like the fact that Texture will always use UpdateSubresource (has box rect and all that stuff)
+				- e.g "UpdateFrequency::Often" or "UpdateFrequency::Sometimes" 
+
 		upload_to_buffer
 		upload_to_texture
 	*/

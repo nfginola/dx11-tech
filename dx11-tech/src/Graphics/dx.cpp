@@ -58,17 +58,7 @@ BufferHandle dx::create_index_buffer()
 
 }
 
-BufferHandle dx::create_buffer()
-{
-	std::cout << "create generic buffer\n";
-	return { (uint64_t)rand() };
-}
 
-TextureHandle dx::create_texture()
-{
-	std::cout << "create generic texture\n";
-	return { (uint64_t)rand() };
-}
 
 ShaderHandle dx::create_shader(const std::filesystem::path& vs_path, const std::filesystem::path& ps_path, const std::filesystem::path& hs_path, const std::filesystem::path& ds_path, const std::filesystem::path& gs_path)
 {
@@ -82,6 +72,18 @@ PipelineStateHandle dx::create_pipeline()
 	DXPipelineState pipeline;
 
 
+	return { (uint64_t)rand() };
+}
+
+BufferHandle dx::create_buffer()
+{
+	std::cout << "create generic buffer\n";
+	return { (uint64_t)rand() };
+}
+
+TextureHandle dx::create_texture()
+{
+	std::cout << "create generic texture\n";
 	return { (uint64_t)rand() };
 }
 

@@ -91,10 +91,10 @@ void Window::make_window()
 void Window::fit_to_client_dim()
 {
 	// Store previous window position
-	RECT oldRect{};
-	GetWindowRect(m_hwnd, &oldRect);
-	LONG prev_x = oldRect.left;
-	LONG prev_y = oldRect.top;
+	RECT old_rect{};
+	GetWindowRect(m_hwnd, &old_rect);
+	LONG prev_x = old_rect.left;
+	LONG prev_y = old_rect.top;
 
 	// We pass a rect with desired client dim
 	// Rect is modified with dimensions for the Window that accomodates the client dimensions
