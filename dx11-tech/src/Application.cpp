@@ -58,8 +58,8 @@ Application::Application()
 	dx::get()->bind_index_buffer(ib);
 	dx::get()->upload_to_buffer((void*)m_win.get(), 512, b);
 	dx::get()->bind_buffer(0, ShaderStage::Hull, b);
-	dx::get()->bind_buffer(1, ShaderStage::Geometry, b);
-	dx::get()->bind_buffer(2, ShaderStage::Pixel, b);
+	dx::get()->bind_buffer(1, ShaderStage::Geometry, b);		// we somehow need to handle UAV bound to some other stage --> binding as SRV problem
+	dx::get()->bind_buffer(2, ShaderStage::Pixel, b);			// solve this problem when we implement something with UAV
 	dx::get()->bind_texture(0, ShaderStage::Pixel, tex);
 	dx::get()->bind_pipeline(p);
 	dx::get()->bind_shader(shader);
@@ -74,7 +74,7 @@ Application::Application()
 	}
 	
 	dx::get()->create_pipeline(PipelineDescriptor* pd = nullptr)							// ptr to allow for nullptr --> default
-	dx::get()->create_from_pipeline(PipelineStateHandle handle, PipelineDescriptor* overwrites);	// allow to create new pipeline from existing
+	dx::get()->create_pipeline_from(PipelineStateHandle handle, PipelineDescriptor* overwrites);	// allow to create new pipeline from existing
 	
 	dx::get()->free_buffer(id)
 	dx::get()->free_texture(id)
@@ -100,15 +100,15 @@ void Application::run()
 
 		if (m_input->lmb_down())
 		{
-			//std::cout << m_input->get_mouse_position().first << ", " << m_input->get_mouse_position().second << std::endl;
-			std::cout << m_input->get_mouse_dt().first << ", " << m_input->get_mouse_dt().second << std::endl;
+			std::cout << m_input->get_mouse_position().first << ", " << m_input->get_mouse_position().second << std::endl;
+			//std::cout << m_input->get_mouse_dt().first << ", " << m_input->get_mouse_dt().second << std::endl;
 		}
 		if (m_input->key_pressed(Keys::R))
 		{
 			dx::get()->hot_reload_shader({ 35 });
 		}
 		
-		dx::get()->clear_backbuffer(DirectX::Colors::BurlyWood);
+		dx::get()->clear_backbuffer(DirectX::Colors::MediumSeaGreen);
 		dx::get()->present();
 
 		m_input->end();
@@ -120,6 +120,14 @@ void Application::run()
 
 LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	/*
+	
+		We may want to consider having an Engine custom_win_proc which have defaults
+		and the application win_proc can extend it. 
+		Essentailly the same method as we are doing with the Window and Application
+	
+	*/
+
 	//if (m_appIsAlive && m_engine)
 	//{
 	//	auto imGuiFunc = m_engine->GetImGuiHook();
@@ -185,9 +193,11 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 			m_input->process_keyboard(uMsg, wParam, lParam);
 		break;
 
-		// Universal quit message
+	
+		// Only called on pressing "X"
 	case WM_CLOSE:
 	{
+		//std::cout << "what\n";
 		//KillApp();
 		break;
 	}
@@ -224,7 +234,7 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 		if (wParam == VK_RETURN && (lParam & 0x60000000) == 0x20000000)
 		{
 			// Custom Alt + Enter to toggle windowed borderless
-			m_win->set_fullscreen(!m_win->is_fullscreen());
+			// m_win->set_fullscreen(!m_win->is_fullscreen());
 			// Resizing will be handled through WM_SIZE through a subsequent WM
 			std::cout << "should resize\n";
 		}

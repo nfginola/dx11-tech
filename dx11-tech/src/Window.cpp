@@ -131,13 +131,14 @@ void Window::set_fullscreen(bool fullscreenState)
 	}
 	else  // Go to fullscreen mode
 	{
+		std::cout << "lol\n";
 		// Save windowed window dimensions
-		RECT oldRect{};
-		GetWindowRect(m_hwnd, &oldRect);
-		prev_x = oldRect.left;
-		prev_y = oldRect.top;
-		prev_width = oldRect.right - oldRect.left;
-		prev_height = oldRect.bottom - oldRect.top;
+		RECT old_rect{};
+		GetWindowRect(m_hwnd, &old_rect);
+		prev_x = old_rect.left;
+		prev_y = old_rect.top;
+		prev_width = old_rect.right - old_rect.left;
+		prev_height = old_rect.bottom - old_rect.top;
 
 		// Set fake fullscreen
 		SetWindowLongPtr(m_hwnd, GWL_STYLE, WS_POPUP);
@@ -145,10 +146,10 @@ void Window::set_fullscreen(bool fullscreenState)
 
 		SetWindowPos(m_hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
-		RECT currRect{};
-		GetWindowRect(m_hwnd, &currRect);
-		m_client_width = currRect.right - currRect.left;
-		m_client_height = currRect.bottom - currRect.top;
+		RECT curr_rect{};
+		GetWindowRect(m_hwnd, &curr_rect);
+		m_client_width = curr_rect.right - curr_rect.left;
+		m_client_height = curr_rect.bottom - curr_rect.top;
 
 		ShowWindow(m_hwnd, SW_SHOWMAXIMIZED);
 	}

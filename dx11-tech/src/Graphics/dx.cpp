@@ -48,14 +48,13 @@ void dx::present(bool vsync)
 BufferHandle dx::create_vertex_buffer()
 {
 	std::cout << "creating vb\n";
-	return { (uint64_t)rand() };
+	return BufferHandle(rand());
 }
 
 BufferHandle dx::create_index_buffer()
 {
 	std::cout << "creating ib\n";
-	return { (uint64_t)rand() };
-
+	return BufferHandle(rand());
 }
 
 
@@ -64,27 +63,26 @@ ShaderHandle dx::create_shader(const std::filesystem::path& vs_path, const std::
 {
 	DXShader shader(m_dev.get(), vs_path, ps_path, gs_path, hs_path, ds_path);
 
-	return { (uint64_t)rand() };
+	return ShaderHandle(rand());
 }
 
 PipelineStateHandle dx::create_pipeline()
 {
 	DXPipelineState pipeline;
 
-
-	return { (uint64_t)rand() };
+	return PipelineStateHandle(rand());
 }
 
 BufferHandle dx::create_buffer()
 {
 	std::cout << "create generic buffer\n";
-	return { (uint64_t)rand() };
+	return BufferHandle(rand());
 }
 
 TextureHandle dx::create_texture()
 {
 	std::cout << "create generic texture\n";
-	return { (uint64_t)rand() };
+	return TextureHandle(rand());
 }
 
 void dx::hot_reload_shader(ShaderHandle handle)

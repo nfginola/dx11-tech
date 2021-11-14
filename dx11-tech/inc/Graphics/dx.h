@@ -3,21 +3,12 @@
 
 /*
 
-	Singleton API for Direct3D11 for ease of use
+	Singleton D3D11 API for ease of use
 
 */
 class dx
 {
 private:
-	// friend class PipelineState
-	// We let PipelineState get access to privates so that it can use resource defaults on creation
-
-	/*
-		friend class Application;
-	
-		We can limit the availability of this singleton through friends so that it
-		is not accidentally accessed in other parts of the program where we dont want
-	*/
 
 	static dx* s_self;
 	unique_ptr<class DXDevice> m_dev;

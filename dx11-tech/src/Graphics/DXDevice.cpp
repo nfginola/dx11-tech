@@ -4,6 +4,7 @@
 // Lets us print some debug messages sent to the queue
 // Currently responsible for printing WARNING debug messages to cout
 ComPtr<ID3D11InfoQueue> s_info_queue;
+
 bool HRCHECK(HRESULT hr)
 {
 	bool passed = SUCCEEDED(hr);
@@ -50,7 +51,8 @@ DXDevice::DXDevice(HWND hwnd, int bbWidth, int bbHeight) :
 	create_bb_target();
 
 	// Prevent DXGI from responding to Mode Changes and Alt + Enter (We will handle this ourselves)
-	m_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER);
+	m_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER);		// orig
+	//m_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES);
 }
 
 DXDevice::~DXDevice()
@@ -128,7 +130,8 @@ void DXDevice::create_swapchain(HWND hwnd, int bbWidth, int bbHeight)
 	m_sc_desc.BufferDesc.Height = bbHeight;
 	m_sc_desc.BufferDesc.RefreshRate.Numerator = bestMode.RefreshRate.Numerator;
 	m_sc_desc.BufferDesc.RefreshRate.Denominator = bestMode.RefreshRate.Denominator;
-	m_sc_desc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+	//m_sc_desc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+	m_sc_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	m_sc_desc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
 	m_sc_desc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 
