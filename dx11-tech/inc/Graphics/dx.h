@@ -198,6 +198,7 @@ public:
 			draw geometry to gbuffer
 		for each instanced_draw_call:
 			set_pipeline(pipeline)
+			--> here we set a predefined buffer for instance data with a defined max size and reuse it
 			draw geometry to gbuffer
 		unbind_fbo_output(fbo);
 
@@ -212,11 +213,6 @@ public:
 		Sorting should be done on a higher level (Materials, Transparency, etc.)
 		--> On that higher level, if for example sorted by Materials..
 			--> on set_pipeline, the API will see that stuff is already bound, hence less GPU binds!
-
-
-
-
-
 
 	*/
 	

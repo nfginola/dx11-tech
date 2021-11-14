@@ -66,6 +66,8 @@ private:
 	void uncenter_cursor();
 
 private:
+	static LPBYTE s_raw_input_data;
+	static uint32_t s_raw_input_data_size;
 	HWND m_hwnd;
 
 	std::unique_ptr<DirectX::Keyboard> m_kb;

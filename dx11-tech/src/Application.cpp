@@ -100,7 +100,8 @@ void Application::run()
 
 		if (m_input->lmb_down())
 		{
-			std::cout << m_input->get_mouse_position().first << ", " << m_input->get_mouse_position().second << std::endl;
+			//std::cout << m_input->get_mouse_position().first << ", " << m_input->get_mouse_position().second << std::endl;
+			std::cout << m_input->get_mouse_dt().first << ", " << m_input->get_mouse_dt().second << std::endl;
 		}
 		if (m_input->key_pressed(Keys::R))
 		{
