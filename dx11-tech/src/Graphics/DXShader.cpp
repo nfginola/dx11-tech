@@ -41,14 +41,30 @@ void DXShader::bind(DXDevice* dev)
 {
 	if (m_vs)
 		dev->get_context()->VSSetShader(m_vs.Get(), NULL, 0);
+	else
+		dev->get_context()->VSSetShader(nullptr, NULL, 0);
+
 	if (m_ps)
 		dev->get_context()->PSSetShader(m_ps.Get(), NULL, 0);
+	else
+		dev->get_context()->PSSetShader(nullptr, NULL, 0);
+
 	if (m_gs)
 		dev->get_context()->GSSetShader(m_gs.Get(), NULL, 0);
+	else
+		dev->get_context()->GSSetShader(nullptr, NULL, 0);
+
 	if (m_ds)
 		dev->get_context()->DSSetShader(m_ds.Get(), NULL, 0);
+	else
+		dev->get_context()->DSSetShader(nullptr, NULL, 0);
+
 	if (m_hs)
 		dev->get_context()->HSSetShader(m_hs.Get(), NULL, 0);
+	else
+		dev->get_context()->HSSetShader(nullptr, NULL, 0);
+
+
 	if (m_cs)
 		dev->get_context()->CSSetShader(m_cs.Get(), NULL, 0);
 }

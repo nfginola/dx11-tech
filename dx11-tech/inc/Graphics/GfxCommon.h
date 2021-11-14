@@ -9,10 +9,10 @@ struct InternalID
 /*
 	Strongly typed IDs for safety
 */
-struct BufferID : public InternalID {};
-struct TextureID : public InternalID {};
-struct ShaderID : public InternalID {};
-struct PipelineStateID : public InternalID {};
+struct BufferHandle : public InternalID {};
+struct TextureHandle : public InternalID {};
+struct ShaderHandle : public InternalID {};
+struct PipelineStateHandle : public InternalID {};
 
 enum class ShaderStage
 {

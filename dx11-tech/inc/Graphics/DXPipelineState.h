@@ -1,6 +1,6 @@
 #pragma once
 #include "DXDevice.h"
-#include "DXCommon.h"
+#include "GfxCommon.h"
 
 struct DXPipelineState
 {
@@ -14,5 +14,5 @@ struct DXPipelineState
 	DepthStencilStatePtr depth_stencil;
 	BlendStatePtr blend;
 
-	ShaderID shader_program = { 0 };	// 0 should be an invalid shader for defaults
+	ShaderHandle shader_program = { 0 };	// 0 should be an invalid shader for defaults
 };

@@ -86,7 +86,7 @@
     <ClInclude Include="inc\Graphics\DXPipelineState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\DXCommon.h">
+    <ClInclude Include="inc\Graphics\GfxCommon.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

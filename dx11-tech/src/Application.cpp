@@ -62,6 +62,7 @@ Application::Application()
 	dx::get()->bind_buffer(2, ShaderStage::Pixel, b);
 	dx::get()->bind_texture(0, ShaderStage::Pixel, tex);
 	dx::get()->bind_pipeline(p);
+	dx::get()->bind_shader(shader);
 
 	dx::get()->draw_fullscreen_quad();
 	/*
@@ -73,7 +74,7 @@ Application::Application()
 	}
 	
 	dx::get()->create_pipeline(PipelineDescriptor* pd = nullptr)							// ptr to allow for nullptr --> default
-	dx::get()->create_from_pipeline(PipelineStateID id, PipelineDescriptor* overwrites);	// allow to create new pipeline from existing
+	dx::get()->create_from_pipeline(PipelineStateHandle handle, PipelineDescriptor* overwrites);	// allow to create new pipeline from existing
 	
 	dx::get()->free_buffer(id)
 	dx::get()->free_texture(id)
@@ -89,7 +90,7 @@ Application::~Application()
 
 void Application::run()
 {
-	while (m_win->is_alive())
+	while (m_win->is_alive() && m_app_alive)
 	{
 		while (m_paused);
 
@@ -171,8 +172,7 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	case WM_KEYDOWN:
 		if (wParam == VK_ESCAPE)
 		{
-			//KillApp();
-			break;
+			m_app_alive = false;
 		}
 	case WM_KEYUP:
 	case WM_SYSKEYUP:

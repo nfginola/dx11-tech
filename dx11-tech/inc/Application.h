@@ -12,6 +12,7 @@ public:
 
 private:
 	bool m_paused = false;
+	bool m_app_alive = true;
 
 	unique_ptr<class Window> m_win;
 	//shared_ptr<class DXDevice> m_dx_device;

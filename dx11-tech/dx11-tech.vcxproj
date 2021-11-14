@@ -189,7 +189,7 @@
     <ClInclude Include="inc\Timer.h" />
     <ClInclude Include="inc\Graphics\DXShader.h" />
     <ClInclude Include="inc\Graphics\DXPipelineState.h" />
-    <ClInclude Include="inc\Graphics\DXCommon.h" />
+    <ClInclude Include="inc\Graphics\GfxCommon.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\DirectXTK\DirectXTK_Desktop_2019_Win10.vcxproj">
