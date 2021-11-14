@@ -61,10 +61,13 @@ void DXShader::recompile(DXDevice* dev)
 		assert(false);
 	}
 
+#ifdef SHADER_DEBUG_NO_FILE
+#else
 	for (auto& mod : m_modules)
 		mod.code = utils::read_file(mod.uncompiled_path);
 
 	create(dev);
+#endif
 }
 
 void DXShader::create(DXDevice* dev)

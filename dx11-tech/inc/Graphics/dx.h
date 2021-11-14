@@ -49,6 +49,14 @@ public:
 	dx& operator=(const dx&) = delete;
 	dx(const dx&) = delete;
 
+	/* 
+		Static defaults for each PipelineDescriptor member
+
+		dx::def_topology()
+		dx::def_rasterizer()
+		dx::def_...
+	*/
+
 //private:
 public:
 	static void init(unique_ptr<DXDevice> dev);

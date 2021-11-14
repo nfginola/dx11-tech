@@ -2,6 +2,7 @@
 #include "Graphics/DXCommon.h"
 #include <unordered_map>
 
+// Turn off this define if we want to use the shader for real purposes
 #define SHADER_DEBUG_NO_FILE
 
 class DXShader
@@ -30,6 +31,17 @@ public:
 
 	void bind(DXDevice* dev);
 	void recompile(DXDevice* dev);
+
+	/*
+		IF we implement Reflection..:
+			We want to expose a function that returns a Reflection API for the DX API to use
+				auto reflection = DXShader::reflect()
+
+			so that the DX API can make appropriate resource bindings/mapping for that specific ShaderID
+			(e.g have per ShaderID map to change cbuffer variables)
+				--> If we do it in DX API, we have the freedom to re-route identical cbuffers that exists across multiple shaders into exactly ONE cbuffer (GPU)
+				--> we probably want to have a CPU local cbuffer and a dirty bit to update
+	*/
 
 private:
 	static bool s_lookup_initialized;
