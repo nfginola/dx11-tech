@@ -19,6 +19,8 @@ dx::~dx()
 
 void dx::init(unique_ptr<DXDevice> dev)
 {
+	if (s_self)
+		assert(false);
 	s_self = new dx(std::move(dev));
 }
 
@@ -35,24 +37,75 @@ dx* dx::get()
 	return s_self;
 }
 
+void dx::begin_work()
+{
+	if (m_work_allowed)
+		assert(false);		// please close the previous begin scope
+	m_work_allowed = true;
+
+
+}
+
+void dx::end_work()
+{
+	if (!m_work_allowed)
+		assert(false);		// please begin a scope
+	m_work_allowed = false;
+	
+	// just unbind rtvs and dsv
+	if (m_bound_RW.empty())
+		unbind_writes_no_uav();
+
+	// unbind uavs (and rtvs and dsv: D3D11 only allows us to do it this way)
+	while (!m_bound_RW.empty())
+	{
+		auto data = m_bound_RW.front();
+		unbind_writes_with_uav(data.first, data.second);
+		m_bound_RW.pop();
+	}
+}
+
 void dx::clear_backbuffer(DirectX::XMVECTORF32 color)
 {
+	validate_scope();
+
 	m_dev->get_context()->ClearRenderTargetView(m_dev->get_bb_target().Get(), color);
 }
 
 void dx::present(bool vsync)
 {
+	validate_scope();
+
 	m_dev->get_sc()->Present(vsync ? 1 : 0, 0);
+}
+
+void dx::start_frame()
+{
+	ID3D11ShaderResourceView* null_srvs[D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT] = { NULL };
+
+	m_dev->get_context()->VSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT, null_srvs);
+	m_dev->get_context()->HSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT, null_srvs);
+	m_dev->get_context()->DSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT, null_srvs);
+	m_dev->get_context()->GSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT, null_srvs);
+	m_dev->get_context()->PSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT, null_srvs);
+	m_dev->get_context()->CSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT, null_srvs);
+}
+
+void dx::end_frame()
+{
+
 }
 
 BufferHandle dx::create_vertex_buffer()
 {
+
 	std::cout << "creating vb\n";
 	return BufferHandle(rand());
 }
 
 BufferHandle dx::create_index_buffer()
 {
+
 	std::cout << "creating ib\n";
 	return BufferHandle(rand());
 }
@@ -61,6 +114,7 @@ BufferHandle dx::create_index_buffer()
 
 ShaderHandle dx::create_shader(const std::filesystem::path& vs_path, const std::filesystem::path& ps_path, const std::filesystem::path& hs_path, const std::filesystem::path& ds_path, const std::filesystem::path& gs_path)
 {
+
 	DXShader shader(m_dev.get(), vs_path, ps_path, gs_path, hs_path, ds_path);
 
 	return ShaderHandle(rand());
@@ -68,6 +122,7 @@ ShaderHandle dx::create_shader(const std::filesystem::path& vs_path, const std::
 
 PipelineStateHandle dx::create_pipeline()
 {
+
 	DXPipelineState pipeline;
 
 	return PipelineStateHandle(rand());
@@ -75,12 +130,14 @@ PipelineStateHandle dx::create_pipeline()
 
 BufferHandle dx::create_buffer()
 {
+
 	std::cout << "create generic buffer\n";
 	return BufferHandle(rand());
 }
 
 TextureHandle dx::create_texture()
 {
+
 	std::cout << "create generic texture\n";
 	return TextureHandle(rand());
 }
@@ -92,6 +149,8 @@ void dx::hot_reload_shader(ShaderHandle handle)
 
 void dx::upload_to_buffer(void* data, uint64_t size, BufferHandle handle)
 {
+	validate_scope();
+
 	std::cout << "uploading data from (0x" << std::hex << data << std::dec << ") with size " << size << " to buffer (" << handle << ")" << std::endl;
 
 	/*
@@ -108,6 +167,7 @@ void dx::upload_to_buffer(void* data, uint64_t size, BufferHandle handle)
 
 void dx::bind_buffer(uint8_t slot, ShaderStage stage, BufferHandle handle)
 {
+	validate_scope();
 
 	switch (stage)
 	{
@@ -135,18 +195,22 @@ void dx::bind_buffer(uint8_t slot, ShaderStage stage, BufferHandle handle)
 
 void dx::bind_vertex_buffer(BufferHandle handle)
 {
+	validate_scope();
+
 	std::cout << "bound vertex buffer " << handle << std::endl;
 
 }
 
 void dx::bind_index_buffer(BufferHandle handle)
 {
+	validate_scope();
 	std::cout << "bound index buffer " << handle << std::endl;
 
 }
 
 void dx::bind_texture(uint8_t slot, ShaderStage stage, TextureHandle handle)
 {
+	validate_scope();
 	switch (stage)
 	{
 	case ShaderStage::Vertex:
@@ -172,16 +236,19 @@ void dx::bind_texture(uint8_t slot, ShaderStage stage, TextureHandle handle)
 
 void dx::draw_fullscreen_quad()
 {
+	validate_scope();
 	std::cout << "draws fullscreen screenspace quad with an internally created VB\n";
 }
 
 void dx::bind_pipeline(PipelineStateHandle handle)
 {
+	validate_scope();
 	std::cout << "binding pipeline (" << handle << ")\n";
 }
 
 void dx::bind_shader(ShaderHandle handle)
 {
+	validate_scope();
 	std::cout << "binding shader (" << handle << ")\n";
 }
 
@@ -190,5 +257,101 @@ void dx::create_default_resources()
 	std::cout << "make sure to create default resources\n";
 
 	// m_def_pipeline = ...
+
+}
+
+void dx::validate_scope()
+{
+	if (!m_work_allowed)
+	{
+		std::cout << "\n\n(GFX ERROR): API Command is not done within a scope!\n\n";
+		assert(false);
+	}
+}
+
+void dx::unbind_writes_with_uav(ShaderStage stage, uint64_t slot)
+{
+	ID3D11UnorderedAccessView* null_uav[] = { NULL };
+	UINT initial_count = 0;
+
+	ID3D11RenderTargetView* null_rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = { NULL };
+
+	switch (stage)
+	{
+	case ShaderStage::Vertex:
+		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
+			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
+			null_rtvs,
+			nullptr,
+			slot,
+			1,
+			null_uav,
+			&initial_count
+			);
+		break;
+	case ShaderStage::Pixel:
+		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
+			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
+			null_rtvs,
+			nullptr,
+			slot,
+			1,
+			null_uav,
+			&initial_count
+		);
+		break;
+	case ShaderStage::Geometry:
+		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
+			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
+			null_rtvs,
+			nullptr,
+			slot,
+			1,
+			null_uav,
+			&initial_count
+		);
+		break;
+	case ShaderStage::Hull:
+		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
+			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
+			null_rtvs,
+			nullptr,
+			slot,
+			1,
+			null_uav,
+			&initial_count
+		);
+		break;
+	case ShaderStage::Domain:
+		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
+			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
+			null_rtvs,
+			nullptr,
+			slot,
+			1,
+			null_uav,
+			&initial_count
+		);
+		break;
+	case ShaderStage::Compute:
+		m_dev->get_context()->OMSetRenderTargets(
+			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
+			null_rtvs,
+			nullptr
+		);
+		m_dev->get_context()->CSSetUnorderedAccessViews(slot, 1, null_uav, &initial_count);
+		break;
+	}
+
+}
+
+void dx::unbind_writes_no_uav()
+{
+	ID3D11RenderTargetView* null_rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = { NULL };
+	m_dev->get_context()->OMSetRenderTargets(
+		D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
+		null_rtvs,
+		nullptr
+	);
 
 }

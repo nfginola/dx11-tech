@@ -1,5 +1,6 @@
 #pragma once
 #include "Graphics/GfxCommon.h"
+#include <queue>
 
 /*
 
@@ -14,7 +15,12 @@ private:
 	unique_ptr<class DXDevice> m_dev;
 
 	PipelineStateHandle m_def_pipeline;
+	
 
+	bool m_work_allowed = false;
+
+
+	std::queue<std::pair<ShaderStage, uint64_t>> m_bound_RW;
 
 	/*
 	
@@ -53,6 +59,12 @@ public:
 	static void init(unique_ptr<DXDevice> dev);
 	static void shutdown();
 	static dx* get();
+
+	void start_frame();
+	void end_frame();
+
+	void begin_work();
+	void end_work();
 
 	void clear_backbuffer(DirectX::XMVECTORF32 color);
 	void present(bool vsync = true);
@@ -209,6 +221,10 @@ public:
 	
 private:
 	void create_default_resources();
+
+	void validate_scope();
+	void unbind_writes_with_uav(ShaderStage stage, uint64_t slot);
+	void unbind_writes_no_uav();
 
 	
 
