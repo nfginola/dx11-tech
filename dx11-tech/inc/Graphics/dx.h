@@ -20,7 +20,7 @@ private:
 	bool m_work_allowed = false;
 
 
-	std::queue<std::pair<ShaderStage, uint64_t>> m_bound_RW;
+	std::queue<std::pair<ShaderStage, uint32_t>> m_bound_RW;
 
 	/*
 	
@@ -223,7 +223,7 @@ private:
 	void create_default_resources();
 
 	void validate_scope();
-	void unbind_writes_with_uav(ShaderStage stage, uint64_t slot);
+	void unbind_writes_with_uav(ShaderStage stage, uint32_t slot);
 	void unbind_writes_no_uav();
 
 	

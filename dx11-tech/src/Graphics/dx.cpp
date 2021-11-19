@@ -6,6 +6,13 @@
 
 dx* dx::s_self = nullptr;
 
+namespace dx_null_views
+{
+	ID3D11ShaderResourceView* srvs[D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT] = { NULL };
+	ID3D11RenderTargetView* rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = { NULL };
+
+}
+
 dx::dx(unique_ptr<DXDevice> dev) :
 	m_dev(std::move(dev))
 {
@@ -57,6 +64,7 @@ void dx::end_work()
 		unbind_writes_no_uav();
 
 	// unbind uavs (and rtvs and dsv: D3D11 only allows us to do it this way)
+	// we do single unbinds because we will allow flexible non contiguous slots for binding
 	while (!m_bound_RW.empty())
 	{
 		auto data = m_bound_RW.front();
@@ -69,6 +77,7 @@ void dx::clear_backbuffer(DirectX::XMVECTORF32 color)
 {
 	validate_scope();
 
+	//m_dev->get_context()->ClearView(m_dev->get_bb_target().Get(), color, NULL, 0);
 	m_dev->get_context()->ClearRenderTargetView(m_dev->get_bb_target().Get(), color);
 }
 
@@ -81,14 +90,14 @@ void dx::present(bool vsync)
 
 void dx::start_frame()
 {
-	ID3D11ShaderResourceView* null_srvs[D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT] = { NULL };
 
-	m_dev->get_context()->VSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT, null_srvs);
-	m_dev->get_context()->HSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT, null_srvs);
-	m_dev->get_context()->DSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT, null_srvs);
-	m_dev->get_context()->GSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT, null_srvs);
-	m_dev->get_context()->PSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT, null_srvs);
-	m_dev->get_context()->CSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT, null_srvs);
+	// clean all previous frames bound read resources to avoid any RW bind conflicts
+	m_dev->get_context()->VSSetShaderResources(0, _countof(dx_null_views::srvs), dx_null_views::srvs);
+	m_dev->get_context()->HSSetShaderResources(0, _countof(dx_null_views::srvs), dx_null_views::srvs);
+	m_dev->get_context()->DSSetShaderResources(0, _countof(dx_null_views::srvs), dx_null_views::srvs);
+	m_dev->get_context()->GSSetShaderResources(0, _countof(dx_null_views::srvs), dx_null_views::srvs);
+	m_dev->get_context()->PSSetShaderResources(0, _countof(dx_null_views::srvs), dx_null_views::srvs);
+	m_dev->get_context()->CSSetShaderResources(0, _countof(dx_null_views::srvs), dx_null_views::srvs);
 }
 
 void dx::end_frame()
@@ -252,6 +261,8 @@ void dx::bind_shader(ShaderHandle handle)
 	std::cout << "binding shader (" << handle << ")\n";
 }
 
+
+
 void dx::create_default_resources()
 {
 	std::cout << "make sure to create default resources\n";
@@ -269,19 +280,17 @@ void dx::validate_scope()
 	}
 }
 
-void dx::unbind_writes_with_uav(ShaderStage stage, uint64_t slot)
+void dx::unbind_writes_with_uav(ShaderStage stage, uint32_t slot)
 {
 	ID3D11UnorderedAccessView* null_uav[] = { NULL };
 	UINT initial_count = 0;
-
-	ID3D11RenderTargetView* null_rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = { NULL };
 
 	switch (stage)
 	{
 	case ShaderStage::Vertex:
 		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
-			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
-			null_rtvs,
+			_countof(dx_null_views::rtvs),
+			dx_null_views::rtvs,
 			nullptr,
 			slot,
 			1,
@@ -291,8 +300,8 @@ void dx::unbind_writes_with_uav(ShaderStage stage, uint64_t slot)
 		break;
 	case ShaderStage::Pixel:
 		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
-			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
-			null_rtvs,
+			_countof(dx_null_views::rtvs),
+			dx_null_views::rtvs,
 			nullptr,
 			slot,
 			1,
@@ -302,8 +311,8 @@ void dx::unbind_writes_with_uav(ShaderStage stage, uint64_t slot)
 		break;
 	case ShaderStage::Geometry:
 		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
-			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
-			null_rtvs,
+			_countof(dx_null_views::rtvs),
+			dx_null_views::rtvs,
 			nullptr,
 			slot,
 			1,
@@ -313,8 +322,8 @@ void dx::unbind_writes_with_uav(ShaderStage stage, uint64_t slot)
 		break;
 	case ShaderStage::Hull:
 		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
-			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
-			null_rtvs,
+			_countof(dx_null_views::rtvs),
+			dx_null_views::rtvs,
 			nullptr,
 			slot,
 			1,
@@ -324,8 +333,8 @@ void dx::unbind_writes_with_uav(ShaderStage stage, uint64_t slot)
 		break;
 	case ShaderStage::Domain:
 		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
-			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
-			null_rtvs,
+			_countof(dx_null_views::rtvs),
+			dx_null_views::rtvs,
 			nullptr,
 			slot,
 			1,
@@ -335,8 +344,8 @@ void dx::unbind_writes_with_uav(ShaderStage stage, uint64_t slot)
 		break;
 	case ShaderStage::Compute:
 		m_dev->get_context()->OMSetRenderTargets(
-			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
-			null_rtvs,
+			_countof(dx_null_views::rtvs),
+			dx_null_views::rtvs,
 			nullptr
 		);
 		m_dev->get_context()->CSSetUnorderedAccessViews(slot, 1, null_uav, &initial_count);
@@ -353,5 +362,4 @@ void dx::unbind_writes_no_uav()
 		null_rtvs,
 		nullptr
 	);
-
 }

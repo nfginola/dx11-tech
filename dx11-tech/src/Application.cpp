@@ -68,7 +68,9 @@ Application::Application()
 
 	dx::get()->begin_work();
 	dx::get()->bind_pipeline(p);
-	dx::get()->bind_shader(shader);
+
+	// should not be a public function: ShaderHandle is passed to a PipelineDescriptor
+	//dx::get()->bind_shader(shader);
 
 	dx::get()->draw_fullscreen_quad();
 	dx::get()->end_work();
