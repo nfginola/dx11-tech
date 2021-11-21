@@ -25,6 +25,7 @@ using Tex2DPtr = ComPtr<ID3D11Texture2D>;
 using Tex3DPtr = ComPtr<ID3D11Texture3D>;
 using BufferPtr = ComPtr<ID3D11Buffer>;
 using BlendStatePtr = ComPtr<ID3D11BlendState>;
+using BlendState1Ptr = ComPtr<ID3D11BlendState1>;
 using SamplerStatePtr = ComPtr<ID3D11SamplerState>;
 using DepthStencilStatePtr = ComPtr<ID3D11DepthStencilState>;
 using InputLayoutPtr = ComPtr<ID3D11InputLayout>;

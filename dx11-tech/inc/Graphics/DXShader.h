@@ -10,7 +10,7 @@ class DXShader
 public:
 	struct Module
 	{
-		ShaderStage stage = ShaderStage::Invalid;
+		ShaderStage stage = ShaderStage::eInvalid;
 		std::filesystem::path uncompiled_path = "";
 		std::vector<uint8_t> code;
 		std::function<void(const DevicePtr&, const std::vector<uint8_t>&)> create_func;
@@ -31,6 +31,8 @@ public:
 
 	void bind(DXDevice* dev);
 	void recompile(DXDevice* dev);
+
+	InputLayoutPtr reflect_input_layout(DXDevice* dev);
 
 	/*
 		IF we implement Reflection..:

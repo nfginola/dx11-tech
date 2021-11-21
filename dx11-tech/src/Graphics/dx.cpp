@@ -10,6 +10,7 @@ namespace dx_null_views
 {
 	ID3D11ShaderResourceView* srvs[D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT] = { NULL };
 	ID3D11RenderTargetView* rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = { NULL };
+	ID3D11UnorderedAccessView* uavs[D3D11_PS_CS_UAV_REGISTER_COUNT] = { NULL };
 
 }
 
@@ -23,6 +24,11 @@ dx::~dx()
 {
 	/* clear all resources */
 }
+
+
+
+
+
 
 void dx::init(unique_ptr<DXDevice> dev)
 {
@@ -59,16 +65,15 @@ void dx::end_work()
 		assert(false);		// please begin a scope
 	m_work_allowed = false;
 	
-	// just unbind rtvs and dsv
-	if (m_bound_RW.empty())
-		unbind_writes_no_uav();
+	unbind_rtvs_dsv();
 
-	// unbind uavs (and rtvs and dsv: D3D11 only allows us to do it this way)
-	// we do single unbinds because we will allow flexible non contiguous slots for binding
+	// unbind uavs from cs
 	while (!m_bound_RW.empty())
 	{
 		auto data = m_bound_RW.front();
-		unbind_writes_with_uav(data.first, data.second);
+		UINT initial_count = 0;
+		assert(data.first == ShaderStage::eCompute);
+		m_dev->get_context()->CSSetUnorderedAccessViews(data.second, 1, dx_null_views::uavs, &initial_count);
 		m_bound_RW.pop();
 	}
 }
@@ -90,7 +95,6 @@ void dx::present(bool vsync)
 
 void dx::start_frame()
 {
-
 	// clean all previous frames bound read resources to avoid any RW bind conflicts
 	m_dev->get_context()->VSSetShaderResources(0, _countof(dx_null_views::srvs), dx_null_views::srvs);
 	m_dev->get_context()->HSSetShaderResources(0, _countof(dx_null_views::srvs), dx_null_views::srvs);
@@ -107,6 +111,17 @@ void dx::end_frame()
 
 BufferHandle dx::create_vertex_buffer()
 {
+	BufferPtr b;
+
+	D3D11_BUFFER_DESC b_d{};
+	//b_d.ByteWidth = static_cast<UINT>(desc.total_size);
+	//b_d.Usage = D3D11_USAGE_IMMUTABLE;
+	//b_d.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+	D3D11_SUBRESOURCE_DATA vb_d{};
+	//vb_d.pSysMem = desc.data;
+	//vb_d.SysMemPitch = desc.ByteWidth;
+	//HRCHECK(m_dev->get_device()->CreateBuffer(&b_d, &vb_d, b.GetAddressOf()));
 
 	std::cout << "creating vb\n";
 	return BufferHandle(rand());
@@ -129,12 +144,19 @@ ShaderHandle dx::create_shader(const std::filesystem::path& vs_path, const std::
 	return ShaderHandle(rand());
 }
 
-PipelineStateHandle dx::create_pipeline()
+ShaderHandle dx::create_compute_shader(const std::filesystem::path& cs_path)
+{
+	assert(false);
+	// to implement
+	return ShaderHandle();
+}
+
+PipelineHandle dx::create_pipeline()
 {
 
 	DXPipelineState pipeline;
 
-	return PipelineStateHandle(rand());
+	return PipelineHandle(rand());
 }
 
 BufferHandle dx::create_buffer()
@@ -174,28 +196,41 @@ void dx::upload_to_buffer(void* data, uint64_t size, BufferHandle handle)
 		*/
 }
 
-void dx::bind_buffer(uint8_t slot, ShaderStage stage, BufferHandle handle)
+void dx::bind_buffer(uint8_t slot, BAccess mode, ShaderStage stage, BufferHandle handle)
 {
 	validate_scope();
 
+	if (stage == ShaderStage::eCompute)
+	{
+		if (mode == BAccess::eReadWrite)
+			m_bound_RW.push({ stage, slot });
+		else
+		{
+			std::cout << "(GFX ERROR): ReadWrite is not supported for any other stages than Compute stage\n";
+			assert(false);
+		}
+	}
+
 	switch (stage)
 	{
-	case ShaderStage::Vertex:
+	case ShaderStage::eVertex:
 		std::cout << "bound buffer (" << handle << ") at slot (" << std::to_string(slot) << ") for Vertex Shader" << std::endl;
 		break;
-	case ShaderStage::Pixel:
+	case ShaderStage::ePixel:
 		std::cout << "bound buffer (" << handle << ") at slot (" << std::to_string(slot) << ") for Pixel Shader" << std::endl;
 		break;
-	case ShaderStage::Geometry:
+	case ShaderStage::eGeometry:
 		std::cout << "bound buffer (" << handle << ") at slot (" << std::to_string(slot) << ") for Geometry Shader" << std::endl;
 		break;
-	case ShaderStage::Hull:
+	case ShaderStage::eHull:
 		std::cout << "bound buffer (" << handle << ") at slot (" << std::to_string(slot) << ") for Hull Shader" << std::endl;
 		break;
-	case ShaderStage::Domain:
+	case ShaderStage::eDomain:
 		std::cout << "bound buffer (" << handle << ") at slot (" << std::to_string(slot) << ") for Domain Shader" << std::endl;
 		break;
-	case ShaderStage::Compute:
+	case ShaderStage::eCompute:
+
+
 		std::cout << "bound buffer (" << handle << ") at slot (" << std::to_string(slot) << ") for Compute Shader" << std::endl;
 		break;
 	}
@@ -217,27 +252,39 @@ void dx::bind_index_buffer(BufferHandle handle)
 
 }
 
-void dx::bind_texture(uint8_t slot, ShaderStage stage, TextureHandle handle)
+void dx::bind_texture(uint8_t slot, TAccess mode, ShaderStage stage, TextureHandle handle)
 {
 	validate_scope();
+
+	if (mode == TAccess::eReadWrite)
+	{
+		if (stage == ShaderStage::eCompute)
+			m_bound_RW.push({ stage, slot });
+		else
+		{
+			std::cout << "(GFX ERROR): ReadWrite is not supported for any other stages than Compute stage\n";
+			assert(false);
+		}
+	}
+
 	switch (stage)
 	{
-	case ShaderStage::Vertex:
+	case ShaderStage::eVertex:
 		std::cout << "bound texture (" << handle << ") at slot (" << std::to_string(slot) << ") for Vertex Shader" << std::endl;
 		break;
-	case ShaderStage::Pixel:
+	case ShaderStage::ePixel:
 		std::cout << "bound texture (" << handle << ") at slot (" << std::to_string(slot) << ") for Pixel Shader" << std::endl;
 		break;
-	case ShaderStage::Geometry:
+	case ShaderStage::eGeometry:
 		std::cout << "bound texture (" << handle << ") at slot (" << std::to_string(slot) << ") for Geometry Shader" << std::endl;
 		break;
-	case ShaderStage::Hull:
+	case ShaderStage::eHull:
 		std::cout << "bound texture (" << handle << ") at slot (" << std::to_string(slot) << ") for Hull Shader" << std::endl;
 		break;
-	case ShaderStage::Domain:
+	case ShaderStage::eDomain:
 		std::cout << "bound texture (" << handle << ") at slot (" << std::to_string(slot) << ") for Domain Shader" << std::endl;
 		break;
-	case ShaderStage::Compute:
+	case ShaderStage::eCompute:
 		std::cout << "bound texture (" << handle << ") at slot (" << std::to_string(slot) << ") for Compute Shader" << std::endl;
 		break;
 	}
@@ -249,7 +296,7 @@ void dx::draw_fullscreen_quad()
 	std::cout << "draws fullscreen screenspace quad with an internally created VB\n";
 }
 
-void dx::bind_pipeline(PipelineStateHandle handle)
+void dx::bind_pipeline(PipelineHandle handle)
 {
 	validate_scope();
 	std::cout << "binding pipeline (" << handle << ")\n";
@@ -282,79 +329,78 @@ void dx::validate_scope()
 
 void dx::unbind_writes_with_uav(ShaderStage stage, uint32_t slot)
 {
-	ID3D11UnorderedAccessView* null_uav[] = { NULL };
 	UINT initial_count = 0;
 
 	switch (stage)
 	{
-	case ShaderStage::Vertex:
+	case ShaderStage::eVertex:
 		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
-			_countof(dx_null_views::rtvs),
+			1,
 			dx_null_views::rtvs,
 			nullptr,
 			slot,
 			1,
-			null_uav,
+			dx_null_views::uavs,
 			&initial_count
 			);
 		break;
-	case ShaderStage::Pixel:
+	case ShaderStage::ePixel:
 		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
-			_countof(dx_null_views::rtvs),
+			1,
+			dx_null_views::rtvs,
+			nullptr,
+			0,
+			1,
+			dx_null_views::uavs,
+			&initial_count
+		);
+		break;
+	case ShaderStage::eGeometry:
+		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
+			0,
 			dx_null_views::rtvs,
 			nullptr,
 			slot,
 			1,
-			null_uav,
+			dx_null_views::uavs,
 			&initial_count
 		);
 		break;
-	case ShaderStage::Geometry:
+	case ShaderStage::eHull:
 		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
-			_countof(dx_null_views::rtvs),
+			0,
 			dx_null_views::rtvs,
 			nullptr,
 			slot,
 			1,
-			null_uav,
+			dx_null_views::uavs,
 			&initial_count
 		);
 		break;
-	case ShaderStage::Hull:
+	case ShaderStage::eDomain:
 		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
-			_countof(dx_null_views::rtvs),
+			0,
 			dx_null_views::rtvs,
 			nullptr,
 			slot,
 			1,
-			null_uav,
+			dx_null_views::uavs,
 			&initial_count
 		);
 		break;
-	case ShaderStage::Domain:
-		m_dev->get_context()->OMSetRenderTargetsAndUnorderedAccessViews(
-			_countof(dx_null_views::rtvs),
-			dx_null_views::rtvs,
-			nullptr,
-			slot,
-			1,
-			null_uav,
-			&initial_count
-		);
-		break;
-	case ShaderStage::Compute:
+	case ShaderStage::eCompute:
 		m_dev->get_context()->OMSetRenderTargets(
-			_countof(dx_null_views::rtvs),
+			0,
 			dx_null_views::rtvs,
 			nullptr
 		);
-		m_dev->get_context()->CSSetUnorderedAccessViews(slot, 1, null_uav, &initial_count);
+		m_dev->get_context()->CSSetUnorderedAccessViews(slot, 1, dx_null_views::uavs, &initial_count);
 		break;
 	}
 
 }
 
-void dx::unbind_writes_no_uav()
+void dx::unbind_rtvs_dsv()
 {
 	ID3D11RenderTargetView* null_rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = { NULL };
 	m_dev->get_context()->OMSetRenderTargets(

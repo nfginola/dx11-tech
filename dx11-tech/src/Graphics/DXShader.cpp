@@ -17,11 +17,11 @@ DXShader::DXShader(DXDevice* dev,
 	m_recompilation_allowed = sanitize(vs_path, ps_path, gs_path, hs_path, ds_path);
 	
 	// Prepare modules
-	if (!vs_path.empty())	m_modules.push_back(prepare_module(vs_path, ShaderStage::Vertex));
-	if (!ps_path.empty())	m_modules.push_back(prepare_module(ps_path, ShaderStage::Pixel));
-	if (!gs_path.empty())	m_modules.push_back(prepare_module(gs_path, ShaderStage::Geometry));
-	if (!hs_path.empty())	m_modules.push_back(prepare_module(hs_path, ShaderStage::Hull));
-	if (!ds_path.empty())	m_modules.push_back(prepare_module(ds_path, ShaderStage::Domain));
+	if (!vs_path.empty())	m_modules.push_back(prepare_module(vs_path, ShaderStage::eVertex));
+	if (!ps_path.empty())	m_modules.push_back(prepare_module(ps_path, ShaderStage::ePixel));
+	if (!gs_path.empty())	m_modules.push_back(prepare_module(gs_path, ShaderStage::eGeometry));
+	if (!hs_path.empty())	m_modules.push_back(prepare_module(hs_path, ShaderStage::eHull));
+	if (!ds_path.empty())	m_modules.push_back(prepare_module(ds_path, ShaderStage::eDomain));
 
 #ifdef SHADER_DEBUG_NO_FILE
 	std::cout << "SHADER: Running Test Version: No files read\n";
@@ -86,6 +86,13 @@ void DXShader::recompile(DXDevice* dev)
 #endif
 }
 
+InputLayoutPtr DXShader::reflect_input_layout(DXDevice* dev)
+{
+	assert(false);
+	// to implement
+	return nullptr;
+}
+
 void DXShader::create(DXDevice* dev)
 {
 	for (const auto& mod : m_modules)
@@ -130,12 +137,12 @@ void DXShader::init_lookup()
 {
 	if (!s_lookup_initialized)
 	{
-		s_hlsl_compile_lookup.insert({ ShaderStage::Vertex, { "vs_5_0", "VS_MAIN" } });
-		s_hlsl_compile_lookup.insert({ ShaderStage::Pixel, { "ps_5_0", "PS_MAIN" } });
-		s_hlsl_compile_lookup.insert({ ShaderStage::Geometry, { "gs_5_0", "GS_MAIN" } });
-		s_hlsl_compile_lookup.insert({ ShaderStage::Hull, { "hs_5_0", "HS_MAIN"} });
-		s_hlsl_compile_lookup.insert({ ShaderStage::Domain, { "ds_5_0", "DS_MAIN"} });
-		s_hlsl_compile_lookup.insert({ ShaderStage::Compute, { "cs_5_0", "CS_MAIN"} });
+		s_hlsl_compile_lookup.insert({ ShaderStage::eVertex, { "vs_5_0", "VS_MAIN" } });
+		s_hlsl_compile_lookup.insert({ ShaderStage::ePixel, { "ps_5_0", "PS_MAIN" } });
+		s_hlsl_compile_lookup.insert({ ShaderStage::eGeometry, { "gs_5_0", "GS_MAIN" } });
+		s_hlsl_compile_lookup.insert({ ShaderStage::eHull, { "hs_5_0", "HS_MAIN"} });
+		s_hlsl_compile_lookup.insert({ ShaderStage::eDomain, { "ds_5_0", "DS_MAIN"} });
+		s_hlsl_compile_lookup.insert({ ShaderStage::eCompute, { "cs_5_0", "CS_MAIN"} });
 		s_lookup_initialized = true;
 	}
 }
@@ -196,37 +203,37 @@ DXShader::Module DXShader::prepare_module(const std::filesystem::path& path, Sha
 
 	switch (stage)
 	{
-	case ShaderStage::Vertex:
+	case ShaderStage::eVertex:
 		mod.create_func = [this](const DevicePtr& dev, const std::vector<uint8_t>& code)
 		{
 			dev->CreateVertexShader(code.data(), code.size(), nullptr, this->m_vs.GetAddressOf());
 		};
 		break;
-	case ShaderStage::Pixel:
+	case ShaderStage::ePixel:
 		mod.create_func = [this](const DevicePtr& dev, const std::vector<uint8_t>& code)
 		{
 			dev->CreatePixelShader(code.data(), code.size(), nullptr, this->m_ps.GetAddressOf());
 		};
 		break;
-	case ShaderStage::Geometry:
+	case ShaderStage::eGeometry:
 		mod.create_func = [this](const DevicePtr& dev, const std::vector<uint8_t>& code)
 		{
 			dev->CreateGeometryShader(code.data(), code.size(), nullptr, this->m_gs.GetAddressOf());
 		};
 		break;
-	case ShaderStage::Hull:
+	case ShaderStage::eHull:
 		mod.create_func = [this](const DevicePtr& dev, const std::vector<uint8_t>& code)
 		{
 			dev->CreateHullShader(code.data(), code.size(), nullptr, this->m_hs.GetAddressOf());
 		};
 		break;
-	case ShaderStage::Domain:
+	case ShaderStage::eDomain:
 		mod.create_func = [this](const DevicePtr& dev, const std::vector<uint8_t>& code)
 		{
 			dev->CreateDomainShader(code.data(), code.size(), nullptr, this->m_ds.GetAddressOf());
 		};
 		break;
-	case ShaderStage::Compute:
+	case ShaderStage::eCompute:
 		mod.create_func = [this](const DevicePtr& dev, const std::vector<uint8_t>& code)
 		{
 			dev->CreateComputeShader(code.data(), code.size(), nullptr, this->m_cs.GetAddressOf());

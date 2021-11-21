@@ -3,7 +3,6 @@
 #include "Window.h"
 
 #include "Graphics/dx.h"
-#include "Graphics/DXDevice.h"
 #include "Input.h"
 #include "Timer.h"
 
@@ -60,10 +59,10 @@ Application::Application()
 	dx::get()->upload_to_buffer((void*)m_win.get(), 512, b);
 
 	// we should be able to bind buffer and texture as Read or ReadWrite
-	dx::get()->bind_buffer(0, ShaderStage::Hull, b);
-	dx::get()->bind_buffer(1, ShaderStage::Geometry, b);		// we somehow need to handle UAV bound to some other stage --> binding as SRV problem
-	dx::get()->bind_buffer(2, ShaderStage::Pixel, b);			// solve this problem when we implement something with UAV
-	dx::get()->bind_texture(0, ShaderStage::Pixel, tex);
+	dx::get()->bind_buffer(0, BAccess::eConstant, ShaderStage::eHull, b);
+	dx::get()->bind_buffer(1, BAccess::eConstant, ShaderStage::eGeometry, b);		// we somehow need to handle UAV bound to some other stage --> binding as SRV problem
+	dx::get()->bind_buffer(2, BAccess::eConstant, ShaderStage::ePixel, b);			// solve this problem when we implement something with UAV
+	dx::get()->bind_texture(0, TAccess::eRead, ShaderStage::ePixel, tex);
 	dx::get()->end_work();
 
 	dx::get()->begin_work();
@@ -74,22 +73,17 @@ Application::Application()
 
 	dx::get()->draw_fullscreen_quad();
 	dx::get()->end_work();
-	/*
-	
-	struct PipelineDescriptor
-	{
-		Various Descriptors..
-		ShaderProgram
-	}
-	
-	dx::get()->create_pipeline(PipelineDescriptor* pd = nullptr)							// ptr to allow for nullptr --> default
-	dx::get()->create_pipeline_from(PipelineStateHandle handle, PipelineDescriptor* overwrites);	// allow to create new pipeline from existing
-	
-	dx::get()->free_buffer(id)
-	dx::get()->free_texture(id)
-	dx::get()->free_shader(id)
-	
-	*/
+
+
+
+	auto b_desc = BufferDesc::make_constant(32);
+	auto t_desc = TextureDesc::make_2d(nullptr, 0, 1920, 1080, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_IMMUTABLE, D3D11_BIND_SHADER_RESOURCE);
+	auto p_desc = PipelineDesc::make(shader);
+
+	// Viewport and Scissors will be kept Dynamic
+
+	std::cout << "init\n";
+
 }
 
 Application::~Application()

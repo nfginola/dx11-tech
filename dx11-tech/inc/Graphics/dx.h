@@ -2,23 +2,15 @@
 #include "Graphics/GfxCommon.h"
 #include <queue>
 
-/*
-
-	Singleton D3D11 API for ease of use
-
-*/
 class dx
 {
 private:
-
 	static dx* s_self;
 	unique_ptr<class DXDevice> m_dev;
 
-	PipelineStateHandle m_def_pipeline;
+	PipelineHandle m_def_pipeline;
 	
-
 	bool m_work_allowed = false;
-
 
 	std::queue<std::pair<ShaderStage, uint32_t>> m_bound_RW;
 
@@ -36,7 +28,6 @@ private:
 
 	PipelineState* m_bound_state;	// used so we can do member-wise comparison to avoid binding already bound state
 
-	
 	*/
 
 public:
@@ -46,15 +37,6 @@ public:
 	dx& operator=(const dx&) = delete;
 	dx(const dx&) = delete;
 
-	/* 
-		Static default DESCRIPTORS for each PipelineDescriptor member
-
-		dx::def_topology_desc()
-		dx::def_rasterizer_desc()
-		dx::def_...
-	*/
-
-//private:
 public:
 	static void init(unique_ptr<DXDevice> dev);
 	static void shutdown();
@@ -71,29 +53,10 @@ public:
 	/*
 	void clear_fbo(...)
 	*/
-
-	// Resource creation
-	/*
-	
-		we could just mimic D3D11 API or make functions that make creation explicit
-
-		e.g create_texture1d/2d/3d (manual structs) vs create_texture(d3d11 structs)
-	
-		easiest would be to mimic d3d11 desc but for most learning, we would want to have explicit:
-			- create_rw_buffer();
-
-			- create_shader_prog(vs, ps, gs, hs, ds);
-			- create_shader_compute(..)
-	
-		should we try using std::unordered_map and return IDs instead? :)
-
-		shaderProgram can use filepaths to hash 
-
-	*/
 	BufferHandle create_vertex_buffer();
 	BufferHandle create_index_buffer();
 
-
+	
 	BufferHandle create_buffer();
 
 	TextureHandle create_texture();
@@ -104,21 +67,10 @@ public:
 		const std::filesystem::path& ds_path = "",
 		const std::filesystem::path& gs_path = "");
 
-	PipelineStateHandle create_pipeline();
+	ShaderHandle create_compute_shader(const std::filesystem::path& cs_path);
 
-	/*
-	
-	// getters so we can query data
-	// such as buffer size, element size, texture dims/settings, etc.
-	// idea here is to have it easily replaceable with some Buffer/Texture abstraction that is common
-	// across many APIs, but here, we will only use DX11.
-	// but add this LATER IF we do see the need to use it (dont expose API prematurely)
-	// this lookup is meant to be constant time, so it should not be a performance issue
+	PipelineHandle create_pipeline();
 
-	DXBuffer* get_buffer(id);
-	DXTexture* get_texture(id);
-	
-	*/
 
 	void hot_reload_shader(ShaderHandle handle);
 
@@ -135,25 +87,15 @@ public:
 	*/
 	void upload_to_buffer(void* data, uint64_t size, BufferHandle handle);
 
-	// Resource destruction
-	/*
-	void release_buffer(BufferHandle handle);
-	void release_texture(TextureHandle handle);
-	*/
 
-	/*
-	* 
-	Buffer* get_buffer(BufferHandle handle);
-	Texture* get_texture(TextureHandle handle);
-	
-	*/
+
 	
 	// Resource binding
-	void bind_buffer(uint8_t slot, ShaderStage stage, BufferHandle handle);
+	void bind_buffer(uint8_t slot, BAccess mode, ShaderStage stage, BufferHandle handle);
 	void bind_vertex_buffer(BufferHandle handle);
 	void bind_index_buffer(BufferHandle handle);
-	void bind_texture(uint8_t slot, ShaderStage stage, TextureHandle handle);
-	void bind_pipeline(PipelineStateHandle handle);
+	void bind_texture(uint8_t slot, TAccess mode, ShaderStage stage, TextureHandle handle);
+	void bind_pipeline(PipelineHandle handle);
 	void bind_shader(ShaderHandle handle);
 
 	/*
@@ -164,7 +106,6 @@ public:
 			- draw_common(CommonGeometry::Plane);
 			- draw_common(CommonGeometry::Cube);
 			- draw_common(CommonGeometry::Sphere);	// We can try our hands at Compute Shader generated Sphere through polar coordinates
-
 	*/
 	void draw_fullscreen_quad();
 	
@@ -224,7 +165,7 @@ private:
 
 	void validate_scope();
 	void unbind_writes_with_uav(ShaderStage stage, uint32_t slot);
-	void unbind_writes_no_uav();
+	void unbind_rtvs_dsv();
 
 	
 
