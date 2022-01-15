@@ -53,27 +53,21 @@ Application::Application()
 	auto shader = dx::get()->create_shader("a.hlsl", "a.hlsl");
 	auto p = dx::get()->create_pipeline();
 
-	dx::get()->begin_work();
 	dx::get()->bind_vertex_buffer(vb);
 	dx::get()->bind_index_buffer(ib);
 	dx::get()->upload_to_buffer((void*)m_win.get(), 512, b);
 
-	// we should be able to bind buffer and texture as Read or ReadWrite
 	dx::get()->bind_buffer(0, BAccess::eConstant, ShaderStage::eHull, b);
 	dx::get()->bind_buffer(1, BAccess::eConstant, ShaderStage::eGeometry, b);		// we somehow need to handle UAV bound to some other stage --> binding as SRV problem
 	dx::get()->bind_buffer(2, BAccess::eConstant, ShaderStage::ePixel, b);			// solve this problem when we implement something with UAV
 	dx::get()->bind_texture(0, TAccess::eRead, ShaderStage::ePixel, tex);
-	dx::get()->end_work();
 
-	dx::get()->begin_work();
 	dx::get()->bind_pipeline(p);
 
 	// should not be a public function: ShaderHandle is passed to a PipelineDescriptor
 	//dx::get()->bind_shader(shader);
 
 	dx::get()->draw_fullscreen_quad();
-	dx::get()->end_work();
-
 
 
 	auto b_desc = BufferDesc::make_constant(32);
@@ -112,10 +106,8 @@ void Application::run()
 			dx::get()->hot_reload_shader({ 35 });
 		}
 		
-		dx::get()->begin_work();
 		dx::get()->clear_backbuffer(DirectX::Colors::MediumSeaGreen);
 		dx::get()->present(false);
-		dx::get()->end_work();
 		dx::get()->end_frame();
 
 		m_input->end();

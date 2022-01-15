@@ -3,6 +3,7 @@
 #include "Graphics/DXDevice.h"
 #include "Graphics/DXShader.h"
 #include "Graphics/DXPipelineState.h"
+#include "Graphics/DXTexture.h"
 
 dx* dx::s_self = nullptr;
 
@@ -50,37 +51,8 @@ dx* dx::get()
 	return s_self;
 }
 
-void dx::begin_work()
-{
-	if (m_work_allowed)
-		assert(false);		// please close the previous begin scope
-	m_work_allowed = true;
-
-
-}
-
-void dx::end_work()
-{
-	if (!m_work_allowed)
-		assert(false);		// please begin a scope
-	m_work_allowed = false;
-	
-	unbind_rtvs_dsv();
-
-	// unbind uavs from cs
-	while (!m_bound_RW.empty())
-	{
-		auto data = m_bound_RW.front();
-		UINT initial_count = 0;
-		assert(data.first == ShaderStage::eCompute);
-		m_dev->get_context()->CSSetUnorderedAccessViews(data.second, 1, dx_null_views::uavs, &initial_count);
-		m_bound_RW.pop();
-	}
-}
-
 void dx::clear_backbuffer(DirectX::XMVECTORF32 color)
 {
-	validate_scope();
 
 	//m_dev->get_context()->ClearView(m_dev->get_bb_target().Get(), color, NULL, 0);
 	m_dev->get_context()->ClearRenderTargetView(m_dev->get_bb_target().Get(), color);
@@ -88,7 +60,6 @@ void dx::clear_backbuffer(DirectX::XMVECTORF32 color)
 
 void dx::present(bool vsync)
 {
-	validate_scope();
 
 	m_dev->get_sc()->Present(vsync ? 1 : 0, 0);
 }
@@ -168,7 +139,6 @@ BufferHandle dx::create_buffer()
 
 TextureHandle dx::create_texture()
 {
-
 	std::cout << "create generic texture\n";
 	return TextureHandle(rand());
 }
@@ -180,8 +150,6 @@ void dx::hot_reload_shader(ShaderHandle handle)
 
 void dx::upload_to_buffer(void* data, uint64_t size, BufferHandle handle)
 {
-	validate_scope();
-
 	std::cout << "uploading data from (0x" << std::hex << data << std::dec << ") with size " << size << " to buffer (" << handle << ")" << std::endl;
 
 	/*
@@ -198,18 +166,17 @@ void dx::upload_to_buffer(void* data, uint64_t size, BufferHandle handle)
 
 void dx::bind_buffer(uint8_t slot, BAccess mode, ShaderStage stage, BufferHandle handle)
 {
-	validate_scope();
 
-	if (stage == ShaderStage::eCompute)
-	{
-		if (mode == BAccess::eReadWrite)
-			m_bound_RW.push({ stage, slot });
-		else
-		{
-			std::cout << "(GFX ERROR): ReadWrite is not supported for any other stages than Compute stage\n";
-			assert(false);
-		}
-	}
+	//if (stage == ShaderStage::eCompute)
+	//{
+	//	if (mode == BAccess::eReadWrite)
+	//		m_bound_RW.push({ stage, slot });
+	//	else
+	//	{
+	//		std::cout << "(GFX ERROR): ReadWrite is not supported for any other stages than Compute stage\n";
+	//		assert(false);
+	//	}
+	//}
 
 	switch (stage)
 	{
@@ -239,7 +206,6 @@ void dx::bind_buffer(uint8_t slot, BAccess mode, ShaderStage stage, BufferHandle
 
 void dx::bind_vertex_buffer(BufferHandle handle)
 {
-	validate_scope();
 
 	std::cout << "bound vertex buffer " << handle << std::endl;
 
@@ -247,24 +213,22 @@ void dx::bind_vertex_buffer(BufferHandle handle)
 
 void dx::bind_index_buffer(BufferHandle handle)
 {
-	validate_scope();
 	std::cout << "bound index buffer " << handle << std::endl;
 
 }
 
 void dx::bind_texture(uint8_t slot, TAccess mode, ShaderStage stage, TextureHandle handle)
 {
-	validate_scope();
 
 	if (mode == TAccess::eReadWrite)
 	{
-		if (stage == ShaderStage::eCompute)
-			m_bound_RW.push({ stage, slot });
-		else
-		{
-			std::cout << "(GFX ERROR): ReadWrite is not supported for any other stages than Compute stage\n";
-			assert(false);
-		}
+		//if (stage == ShaderStage::eCompute)
+		//	m_bound_RW.push({ stage, slot });
+		//else
+		//{
+		//	std::cout << "(GFX ERROR): ReadWrite is not supported for any other stages than Compute stage\n";
+		//	assert(false);
+		//}
 	}
 
 	switch (stage)
@@ -292,19 +256,16 @@ void dx::bind_texture(uint8_t slot, TAccess mode, ShaderStage stage, TextureHand
 
 void dx::draw_fullscreen_quad()
 {
-	validate_scope();
 	std::cout << "draws fullscreen screenspace quad with an internally created VB\n";
 }
 
 void dx::bind_pipeline(PipelineHandle handle)
 {
-	validate_scope();
 	std::cout << "binding pipeline (" << handle << ")\n";
 }
 
 void dx::bind_shader(ShaderHandle handle)
 {
-	validate_scope();
 	std::cout << "binding shader (" << handle << ")\n";
 }
 
@@ -318,14 +279,6 @@ void dx::create_default_resources()
 
 }
 
-void dx::validate_scope()
-{
-	if (!m_work_allowed)
-	{
-		std::cout << "\n\n(GFX ERROR): API Command is not done within a scope!\n\n";
-		assert(false);
-	}
-}
 
 void dx::unbind_writes_with_uav(ShaderStage stage, uint32_t slot)
 {

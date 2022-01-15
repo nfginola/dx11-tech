@@ -19,16 +19,19 @@ struct BufferHandle : public InternalID
 	BufferHandle() = default;
 	BufferHandle(uint64_t new_id) : InternalID(new_id) {}
 };
+
 struct TextureHandle : public InternalID 
 {
 	TextureHandle() = default;
 	TextureHandle(uint64_t new_id) : InternalID(new_id) {} 
 };
+
 struct ShaderHandle : public InternalID 
 { 
 	ShaderHandle() = default;
 	ShaderHandle(uint64_t new_id) : InternalID(new_id) {} 
 };
+
 struct PipelineHandle : public InternalID 
 {
 	PipelineHandle() = default;
@@ -57,7 +60,8 @@ enum class BAccess
 enum class TAccess
 {
 	eRead,				// SRV
-	eReadWrite			// UAV
+	eReadWrite,			// UAV
+	eWrite				// RTV
 };
 
 enum class TextureType

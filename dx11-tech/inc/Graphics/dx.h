@@ -9,10 +9,6 @@ private:
 	unique_ptr<class DXDevice> m_dev;
 
 	PipelineHandle m_def_pipeline;
-	
-	bool m_work_allowed = false;
-
-	std::queue<std::pair<ShaderStage, uint32_t>> m_bound_RW;
 
 	/*
 	
@@ -45,8 +41,6 @@ public:
 	void start_frame();
 	void end_frame();
 
-	void begin_work();
-	void end_work();
 
 	void clear_backbuffer(DirectX::XMVECTORF32 color);
 	void present(bool vsync = true);
@@ -163,7 +157,6 @@ public:
 private:
 	void create_default_resources();
 
-	void validate_scope();
 	void unbind_writes_with_uav(ShaderStage stage, uint32_t slot);
 	void unbind_rtvs_dsv();
 

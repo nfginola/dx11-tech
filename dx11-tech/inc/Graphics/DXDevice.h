@@ -33,6 +33,7 @@ using RasterizerStatePtr = ComPtr<ID3D11RasterizerState>;
 using RasterizerState1Ptr = ComPtr<ID3D11RasterizerState1>;
 
 // Views
+using ViewPtr = ComPtr<ID3D11View>;
 using SrvPtr = ComPtr<ID3D11ShaderResourceView>;
 using RtvPtr = ComPtr<ID3D11RenderTargetView>;
 using UavPtr = ComPtr<ID3D11UnorderedAccessView>;
