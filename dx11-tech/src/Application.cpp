@@ -80,8 +80,10 @@ Application::Application()
 	// til next time: Work on creating DXBuffers 
 	DXTexture my_tex(m_dx_device.get(), TextureDesc::make_2d(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 800, 600)));
 	my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture2D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE2D); });
+	//my_tex.create_uav_ext(m_dx_device.get(), [](ID3D11Texture2D* tex) { return CD3D11_UNORDERED_ACCESS_VIEW_DESC(tex, D3D11_UAV_DIMENSION_TEXTURE2D); });
 
 	// Example mistakes, which are guarded against!
+	// Same mistakes are guarded against for create_uav and create_rtv.
 	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture2D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE1D); });
 	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture1D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE2D); });
 

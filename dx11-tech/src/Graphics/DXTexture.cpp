@@ -133,24 +133,26 @@ void DXTexture::create_srv_ext(DXDevice* dev, std::variant<
 	std::function<D3D11_SHADER_RESOURCE_VIEW_DESC(ID3D11Texture2D*)>,
 	std::function<D3D11_SHADER_RESOURCE_VIEW_DESC(ID3D11Texture3D*)>> extended_desc)
 {
-	// 1D
-	if (extended_desc.index() == 0)
-	{
-		auto fn = std::get<0>(extended_desc);
-		create_srv(dev, fn(get_1d()));
-	}
-	// 2D
-	else if (extended_desc.index() == 1)
-	{
-		auto fn = std::get<1>(extended_desc);
-		create_srv(dev, fn(get_2d()));
-	}
-	// 3D
-	else if (extended_desc.index() == 2)
-	{
-		auto fn = std::get<2>(extended_desc);
-		create_srv(dev, fn(get_3d()));
-	}
+	std::function<void(DXDevice*, const D3D11_SHADER_RESOURCE_VIEW_DESC&)> creator = [&](DXDevice* dev, const D3D11_SHADER_RESOURCE_VIEW_DESC& desc) { create_srv(dev, desc); };
+	create_view_ext(dev, extended_desc, creator);
+}
+
+void DXTexture::create_uav_ext(DXDevice* dev, std::variant<
+	std::function<D3D11_UNORDERED_ACCESS_VIEW_DESC(ID3D11Texture1D*)>, 
+	std::function<D3D11_UNORDERED_ACCESS_VIEW_DESC(ID3D11Texture2D*)>, 
+	std::function<D3D11_UNORDERED_ACCESS_VIEW_DESC(ID3D11Texture3D*)>> extended_desc)
+{
+	std::function<void(DXDevice*, const D3D11_UNORDERED_ACCESS_VIEW_DESC&)> creator = [&](DXDevice* dev, const D3D11_UNORDERED_ACCESS_VIEW_DESC& desc) { create_uav(dev, desc); };
+	create_view_ext(dev, extended_desc, creator);
+}
+
+void DXTexture::create_rtv_ext(DXDevice* dev, std::variant<
+	std::function<D3D11_RENDER_TARGET_VIEW_DESC(ID3D11Texture1D*)>, 
+	std::function<D3D11_RENDER_TARGET_VIEW_DESC(ID3D11Texture2D*)>, 
+	std::function<D3D11_RENDER_TARGET_VIEW_DESC(ID3D11Texture3D*)>> extended_desc)
+{
+	std::function<void(DXDevice*, const D3D11_RENDER_TARGET_VIEW_DESC&)> creator = [&](DXDevice* dev, const D3D11_RENDER_TARGET_VIEW_DESC& desc) { create_rtv(dev, desc); };
+	create_view_ext(dev, extended_desc, creator);
 }
 
 const RtvPtr& DXTexture::get_rtv() const
