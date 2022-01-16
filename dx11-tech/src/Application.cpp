@@ -79,7 +79,14 @@ Application::Application()
 
 	// til next time: Work on creating DXBuffers 
 	DXTexture my_tex(m_dx_device.get(), TextureDesc::make_2d(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 800, 600)));
-	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture2D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE2D); });
+	my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture2D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE2D); });
+
+	// Example mistakes, which are guarded against!
+	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture2D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE1D); });
+	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture1D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE2D); });
+
+
+	//my_tex.create_srv(m_dx_device.get(), D3D11_SHADER_RESOURCE_VIEW_DESC{});
 	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture1D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE1D); });
 	
 	DXShader shader(m_dx_device.get(), "a.hlsl", "b.hlsl");

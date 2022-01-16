@@ -66,32 +66,6 @@ void DXTexture::create_rtv(DXDevice* dev, const D3D11_RENDER_TARGET_VIEW_DESC& d
 	HRCHECK(dev->get_device()->CreateRenderTargetView(m_res.Get(), &desc, m_rtv.GetAddressOf()));
 }
 
-void DXTexture::create_srv_ext(DXDevice* dev, std::variant<
-	std::function<D3D11_SHADER_RESOURCE_VIEW_DESC(ID3D11Texture1D*)>, 
-	std::function<D3D11_SHADER_RESOURCE_VIEW_DESC(ID3D11Texture2D*)>,
-	std::function<D3D11_SHADER_RESOURCE_VIEW_DESC(ID3D11Texture3D*)>> extended_desc)
-{
-	// 1D
-	if (extended_desc.index() == 0)
-	{
-		auto fn = std::get<0>(extended_desc);
-		fn(*this);
-	}
-	// 2D
-	else if (extended_desc.index() == 1)
-	{
-		auto fn = std::get<0>(extended_desc);
-		fn(*this);
-	}
-	// 3D
-	else if (extended_desc.index() == 2)
-	{
-		auto fn = std::get<0>(extended_desc);
-		fn(*this);
-	}
-
-}
-
 void DXTexture::create_uav(DXDevice* dev, const D3D11_UNORDERED_ACCESS_VIEW_DESC& desc)
 {
 	switch (m_desc.type)
@@ -154,25 +128,30 @@ void DXTexture::create_srv(DXDevice* dev, const D3D11_SHADER_RESOURCE_VIEW_DESC&
 	HRCHECK(dev->get_device()->CreateShaderResourceView(m_res.Get(), &desc, m_srv.GetAddressOf()));
 }
 
-void DXTexture::create_srv_ext(DXDevice* dev, std::function<D3D11_SHADER_RESOURCE_VIEW_DESC(ID3D11Texture1D*)> extended_desc)
+void DXTexture::create_srv_ext(DXDevice* dev, std::variant<
+	std::function<D3D11_SHADER_RESOURCE_VIEW_DESC(ID3D11Texture1D*)>,
+	std::function<D3D11_SHADER_RESOURCE_VIEW_DESC(ID3D11Texture2D*)>,
+	std::function<D3D11_SHADER_RESOURCE_VIEW_DESC(ID3D11Texture3D*)>> extended_desc)
 {
-	auto desc = extended_desc(*this);
-	create_srv(dev, desc);
+	// 1D
+	if (extended_desc.index() == 0)
+	{
+		auto fn = std::get<0>(extended_desc);
+		create_srv(dev, fn(get_1d()));
+	}
+	// 2D
+	else if (extended_desc.index() == 1)
+	{
+		auto fn = std::get<1>(extended_desc);
+		create_srv(dev, fn(get_2d()));
+	}
+	// 3D
+	else if (extended_desc.index() == 2)
+	{
+		auto fn = std::get<2>(extended_desc);
+		create_srv(dev, fn(get_3d()));
+	}
 }
-
-void DXTexture::create_srv_ext(DXDevice* dev, std::function<D3D11_SHADER_RESOURCE_VIEW_DESC(ID3D11Texture2D*)> extended_desc)
-{
-	auto desc = extended_desc(*this);
-	create_srv(dev, desc);
-}
-
-void DXTexture::create_srv_ext(DXDevice* dev, std::function<D3D11_SHADER_RESOURCE_VIEW_DESC(ID3D11Texture3D*)> extended_desc)
-{
-	auto desc = extended_desc(*this);
-	create_srv(dev, desc);
-}
-
-
 
 const RtvPtr& DXTexture::get_rtv() const
 {
@@ -183,8 +162,11 @@ ID3D11Texture1D* DXTexture::get_1d()
 {
 	if (m_desc.type == TextureType::e1D) 
 		return reinterpret_cast<ID3D11Texture1D*>(m_res.Get());
-	else 
+	else
+	{
+		assert(false);
 		return nullptr;
+	}
 }
 
 ID3D11Texture2D* DXTexture::get_2d()
@@ -192,7 +174,10 @@ ID3D11Texture2D* DXTexture::get_2d()
 	if (m_desc.type == TextureType::e2D)
 		return reinterpret_cast<ID3D11Texture2D*>(m_res.Get());
 	else
+	{
+		assert(false);
 		return nullptr;
+	}
 }
 
 ID3D11Texture3D* DXTexture::get_3d()
@@ -200,5 +185,8 @@ ID3D11Texture3D* DXTexture::get_3d()
 	if (m_desc.type == TextureType::e3D)
 		return reinterpret_cast<ID3D11Texture3D*>(m_res.Get());
 	else
+	{
+		assert(false);
 		return nullptr;
+	}
 }
