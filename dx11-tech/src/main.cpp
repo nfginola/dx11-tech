@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Application.h"
 
-#include "Graphics/dx.h"
 
 int main()
 {

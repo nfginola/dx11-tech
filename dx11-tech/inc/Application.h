@@ -15,7 +15,7 @@ private:
 	bool m_app_alive = true;
 
 	unique_ptr<class Window> m_win;
-	//shared_ptr<class DXDevice> m_dx_device;
+	shared_ptr<class DXDevice> m_dx_device;
 	unique_ptr<class Input> m_input;
 
 	LRESULT custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);

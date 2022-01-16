@@ -163,7 +163,6 @@
     <ClCompile Include="src\Graphics\DXTexture.cpp" />
     <ClCompile Include="src\Graphics\DXPipelineState.cpp" />
     <ClCompile Include="src\Graphics\DXShader.cpp" />
-    <ClCompile Include="src\Graphics\dx.cpp" />
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\Graphics\GfxCommon.cpp" />
     <ClCompile Include="src\Input.cpp" />
@@ -183,7 +182,6 @@
   <ItemGroup>
     <ClInclude Include="inc\Graphics\DXResource.h" />
     <ClInclude Include="inc\Graphics\DXTexture.h" />
-    <ClInclude Include="inc\Graphics\dx.h" />
     <ClInclude Include="inc\Camera.h" />
     <ClInclude Include="inc\Application.h" />
     <ClInclude Include="inc\Graphics\DXDevice.h" />

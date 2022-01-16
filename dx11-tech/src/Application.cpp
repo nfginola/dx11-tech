@@ -2,9 +2,13 @@
 #include "Application.h"
 #include "Window.h"
 
-#include "Graphics/dx.h"
 #include "Input.h"
 #include "Timer.h"
+
+// Testing
+#include "Graphics/GfxCommon.h"
+#include "Graphics/DXTexture.h"
+#include "Graphics/DXShader.h"
 
 Application::Application()
 {
@@ -12,77 +16,78 @@ Application::Application()
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
 	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, 1920, 1080);
 	m_input = make_unique<Input>(m_win->get_hwnd());
-
-	// DX API
-	dx::init(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
+	m_dx_device = make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height());
 
 	/*
 	
-		We want at some point in the future to encapsulate this into an Engine.
-		The Engine would consist of:
-			- Window
-			- Input
-			- SceneManager
-				- Scene (Application provides)
-					- Composition based Entities
+	ezdx(make_unique dx device)
+	...
 
-			- Renderer (Provides App with higher level constructs)
-					- dx (Graphics API backend)
-				- Camera
-				- Mesh
-				- Material
-				- Shader
-				- Light
-			- Physics (Provides App with higher level constructs)
-					- BulletPhysics (Physics API backend)
-				- Colllision boxes
-				- Physics simulation (e.g gravity)
 
-		Application is required to do (every frame):
-			engine->start_frame();
-			scene->run();
-			engine->end_frame();
+	TEXTURE CREATION
+	=======
+
+	TextureHandle my_tex = ezdx->create_texture(TextureDesc::from(
+	));
+	ezdx->create_srv(my_tex, [](ID3D11Texture2D* tex) { return CD3D11(...); });
+
+	TextureHandle tex_copy = ezdx->create_texture(my_tex);						// create from handle --> same underlying Texture2D but no views!
+	ezdx->create_srv(tex_copy, [](ID3D11Texture2D* tex) { return CD3D11(...); }	// same tex2d, but different view!
+	========
+
+	TEXTURE BINDING
+	========
+	ezdx->bind_texture(Slot, Access, Stage, textureHandle);
+		-- if bind read --> check if internal texture is already bound as write, if yes, unbind.
+			-- if prev == readWrite --> unbind UAV for slot at stage
+			-- if prev == write		--> unbind RTV fully
+	========
+
+	CONSTANT BUFFER (EXPLICIT)
+	========
+
+	ezdx->bind_constant_buffer(slot, stage, bufferHandle)
+		-- internally checks the DXBuffer if it is of type Constant Buffer
+	========
+
+	OTHER BUFFER (VIEWS)
+	=======
+	ezdx->bind_buffer(slot, access, stage, bufferHandle)
+		-- internally checks that access, bufferhandle and views all match and exist
+	=======
+
+	FRAMEBUFFERS (COLLECTION OF TEXTURE TO RENDER TO)
+	=======
+	FboHandle ezdx->create_fbo( [ { tex1, settings1 }, { tex2, settings2 } ] )
 	
+	ezdx->bind_fbo(fboHandle);
+
+	ezdx->clear_fbo(fboHandle, { depth_stencil, [ tex1clear, tex2clear, ... ] });
+
+	=======
+
+	MISCELLANEOUS (FOR LATER) OPTIMIZATIONS
+	=======
+	ezdx->clear_constant_buffers()		// unbinds all bound cbuffers so that update latency is not slow! (it is dependent on how many places the res is bound)
+	=======
+
+
 	
 	*/
 
-	auto vb = dx::get()->create_vertex_buffer();
-	auto ib = dx::get()->create_index_buffer();
-	auto b = dx::get()->create_buffer();
-	auto tex = dx::get()->create_texture();
-	auto shader = dx::get()->create_shader("a.hlsl", "a.hlsl");
-	auto p = dx::get()->create_pipeline();
+	
 
-	dx::get()->bind_vertex_buffer(vb);
-	dx::get()->bind_index_buffer(ib);
-	dx::get()->upload_to_buffer((void*)m_win.get(), 512, b);
-
-	dx::get()->bind_buffer(0, BAccess::eConstant, ShaderStage::eHull, b);
-	dx::get()->bind_buffer(1, BAccess::eConstant, ShaderStage::eGeometry, b);		// we somehow need to handle UAV bound to some other stage --> binding as SRV problem
-	dx::get()->bind_buffer(2, BAccess::eConstant, ShaderStage::ePixel, b);			// solve this problem when we implement something with UAV
-	dx::get()->bind_texture(0, TAccess::eRead, ShaderStage::ePixel, tex);
-
-	dx::get()->bind_pipeline(p);
-
-	// should not be a public function: ShaderHandle is passed to a PipelineDescriptor
-	//dx::get()->bind_shader(shader);
-
-	dx::get()->draw_fullscreen_quad();
-
-
-	auto b_desc = BufferDesc::make_constant(32);
-	auto t_desc = TextureDesc::make_2d(nullptr, 0, 1920, 1080, DXGI_FORMAT_R8G8B8A8_UNORM, D3D11_USAGE_IMMUTABLE, D3D11_BIND_SHADER_RESOURCE);
-	auto p_desc = PipelineDesc::make(shader);
-
-	// Viewport and Scissors will be kept Dynamic
-
-	std::cout << "init\n";
-
+	// til next time: Work on creating DXBuffers 
+	DXTexture my_tex(m_dx_device.get(), TextureDesc::make_2d(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 800, 600)));
+	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture2D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE2D); });
+	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture1D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE1D); });
+	
+	DXShader shader(m_dx_device.get(), "a.hlsl", "b.hlsl");
 }
 
 Application::~Application()
 {
-	dx::shutdown();
+//	dx::shutdown();
 }
 
 void Application::run()
@@ -93,7 +98,7 @@ void Application::run()
 
 		Timer frame_timer;
 		m_win->pump_messages();
-		dx::get()->start_frame();
+		//dx::get()->start_frame();
 		m_input->begin();
 
 		if (m_input->lmb_down())
@@ -103,12 +108,12 @@ void Application::run()
 		}
 		if (m_input->key_pressed(Keys::R))
 		{
-			dx::get()->hot_reload_shader({ 35 });
+			//dx::get()->hot_reload_shader({ 35 });
 		}
 		
-		dx::get()->clear_backbuffer(DirectX::Colors::MediumSeaGreen);
-		dx::get()->present(false);
-		dx::get()->end_frame();
+		//dx::get()->clear_backbuffer(DirectX::Colors::MediumSeaGreen);
+		//dx::get()->present(false);
+		//dx::get()->end_frame();
 
 		m_input->end();
 
