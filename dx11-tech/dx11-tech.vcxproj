@@ -159,6 +159,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Graphics\GfxApi.cpp" />
+    <ClCompile Include="src\Graphics\DXBuffer.cpp" />
     <ClCompile Include="src\Graphics\DXResource.cpp" />
     <ClCompile Include="src\Graphics\DXTexture.cpp" />
     <ClCompile Include="src\Graphics\DXPipelineState.cpp" />
@@ -180,6 +182,8 @@
     <ClCompile Include="src\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="inc\Graphics\GfxApi.h" />
+    <ClInclude Include="inc\Graphics\DXBuffer.h" />
     <ClInclude Include="inc\Graphics\DXResource.h" />
     <ClInclude Include="inc\Graphics\DXTexture.h" />
     <ClInclude Include="inc\Camera.h" />

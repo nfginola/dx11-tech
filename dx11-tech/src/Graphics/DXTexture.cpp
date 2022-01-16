@@ -35,6 +35,13 @@ DXTexture::DXTexture(DXDevice* dev, const TextureDesc& desc) :
 	}
 }
 
+DXTexture::DXTexture(const DXTexture& rh) :
+	DXResource::DXResource(rh)
+{
+	m_desc = rh.m_desc;
+}
+
+
 void DXTexture::create_rtv(DXDevice* dev, const D3D11_RENDER_TARGET_VIEW_DESC& desc)
 {
 	switch (m_desc.type)
@@ -61,7 +68,15 @@ void DXTexture::create_rtv(DXDevice* dev, const D3D11_RENDER_TARGET_VIEW_DESC& d
 			assert(false);
 		}
 		break;
+	default:
+		assert(false);
+		break;
 	}
+
+	// Autofill format based on the underlying Texture
+	auto view_desc_cpy = desc;
+	if (desc.Format == DXGI_FORMAT_UNKNOWN)
+		view_desc_cpy.Format = get_texture_format();
 
 	HRCHECK(dev->get_device()->CreateRenderTargetView(m_res.Get(), &desc, m_rtv.GetAddressOf()));
 }
@@ -91,6 +106,11 @@ void DXTexture::create_uav(DXDevice* dev, const D3D11_UNORDERED_ACCESS_VIEW_DESC
 		}
 		break;
 	}
+
+	// Autofill format based on the underlying Texture
+	auto view_desc_cpy = desc;
+	if (desc.Format == DXGI_FORMAT_UNKNOWN)
+		view_desc_cpy.Format = get_texture_format();
 
 	HRCHECK(dev->get_device()->CreateUnorderedAccessView(m_res.Get(), &desc, m_uav.GetAddressOf()));
 }
@@ -125,6 +145,11 @@ void DXTexture::create_srv(DXDevice* dev, const D3D11_SHADER_RESOURCE_VIEW_DESC&
 		break;
 	}
 
+	// Autofill format based on the underlying Texture
+	auto view_desc_cpy = desc;
+	if (desc.Format == DXGI_FORMAT_UNKNOWN)
+		view_desc_cpy.Format = get_texture_format();
+
 	HRCHECK(dev->get_device()->CreateShaderResourceView(m_res.Get(), &desc, m_srv.GetAddressOf()));
 }
 
@@ -155,9 +180,11 @@ void DXTexture::create_rtv_ext(DXDevice* dev, std::variant<
 	create_view_ext(dev, extended_desc, creator);
 }
 
-const RtvPtr& DXTexture::get_rtv() const
+ID3D11RenderTargetView* DXTexture::get_rtv() const
 {
-	return m_rtv;
+	if (!m_rtv)
+		assert(false);
+	return m_rtv.Get();
 }
 
 ID3D11Texture1D* DXTexture::get_1d()
@@ -191,4 +218,25 @@ ID3D11Texture3D* DXTexture::get_3d()
 		assert(false);
 		return nullptr;
 	}
+}
+
+DXGI_FORMAT DXTexture::get_texture_format()
+{
+	DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+	switch (m_desc.type)
+	{
+	case TextureType::e1D:
+		format = std::get<D3D11_TEXTURE1D_DESC>(m_desc.desc).Format;
+		break;
+	case TextureType::e2D:
+		format = std::get<D3D11_TEXTURE2D_DESC>(m_desc.desc).Format;
+		break;
+	case TextureType::e3D:
+		format = std::get<D3D11_TEXTURE3D_DESC>(m_desc.desc).Format;
+		break;
+	default:
+		assert(false);
+		break;
+	}
+	return format;
 }

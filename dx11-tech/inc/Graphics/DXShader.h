@@ -1,6 +1,7 @@
 #pragma once
 #include "GfxCommon.h"
 #include <unordered_map>
+#include <filesystem>
 
 // Turn off this define if we want to use the shader for real purposes
 #define SHADER_DEBUG_NO_FILE

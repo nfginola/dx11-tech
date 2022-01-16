@@ -5,10 +5,9 @@
 #include "Input.h"
 #include "Timer.h"
 
-// Testing
-#include "Graphics/GfxCommon.h"
-#include "Graphics/DXTexture.h"
-#include "Graphics/DXShader.h"
+#include "Graphics/GfxApi.h"
+
+
 
 Application::Application()
 {
@@ -16,82 +15,30 @@ Application::Application()
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
 	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, 1920, 1080);
 	m_input = make_unique<Input>(m_win->get_hwnd());
-	m_dx_device = make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height());
+	m_gfx = make_unique<GfxApi>(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
 
-	/*
-	
-	ezdx(make_unique dx device)
-	...
+	//auto shader = m_gfx->create_shader_program("vs.hlsl", "ps.hlsl");
+	//std::cout << "shader: " << shader << std::endl;
+	//m_gfx->drop_shader_program(shader);
 
+	// mip level 0 texture
+	auto tex = m_gfx->create_texture(
+		TextureDesc::make_2d(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 800, 600, 1, 0, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET)), 
+		ViewDesc()
+		.set(CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D))
+		.set(CD3D11_RENDER_TARGET_VIEW_DESC(D3D11_RTV_DIMENSION_TEXTURE2D)));
 
-	TEXTURE CREATION
-	=======
+	// mip level 1 texture
+	auto tex2 = m_gfx->create_texture(tex,
+		ViewDesc()
+		.set(CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, DXGI_FORMAT_UNKNOWN, 1)));
 
-	TextureHandle my_tex = ezdx->create_texture(TextureDesc::from(
-	));
-	ezdx->create_srv(my_tex, [](ID3D11Texture2D* tex) { return CD3D11(...); });
-
-	TextureHandle tex_copy = ezdx->create_texture(my_tex);						// create from handle --> same underlying Texture2D but no views!
-	ezdx->create_srv(tex_copy, [](ID3D11Texture2D* tex) { return CD3D11(...); }	// same tex2d, but different view!
-	========
-
-	TEXTURE BINDING
-	========
-	ezdx->bind_texture(Slot, Access, Stage, textureHandle);
-		-- if bind read --> check if internal texture is already bound as write, if yes, unbind.
-			-- if prev == readWrite --> unbind UAV for slot at stage
-			-- if prev == write		--> unbind RTV fully
-	========
-
-	CONSTANT BUFFER (EXPLICIT)
-	========
-
-	ezdx->bind_constant_buffer(slot, stage, bufferHandle)
-		-- internally checks the DXBuffer if it is of type Constant Buffer
-	========
-
-	OTHER BUFFER (VIEWS)
-	=======
-	ezdx->bind_buffer(slot, access, stage, bufferHandle)
-		-- internally checks that access, bufferhandle and views all match and exist
-	=======
-
-	FRAMEBUFFERS (COLLECTION OF TEXTURE TO RENDER TO)
-	=======
-	FboHandle ezdx->create_fbo( [ { tex1, settings1 }, { tex2, settings2 } ] )
-	
-	ezdx->bind_fbo(fboHandle);
-
-	ezdx->clear_fbo(fboHandle, { depth_stencil, [ tex1clear, tex2clear, ... ] });
-
-	=======
-
-	MISCELLANEOUS (FOR LATER) OPTIMIZATIONS
-	=======
-	ezdx->clear_constant_buffers()		// unbinds all bound cbuffers so that update latency is not slow! (it is dependent on how many places the res is bound)
-	=======
+	auto tex3 = m_gfx->create_texture(tex,
+		ViewDesc()
+		.set(CD3D11_SHADER_RESOURCE_VIEW_DESC(D3D11_SRV_DIMENSION_TEXTURE2D, DXGI_FORMAT_UNKNOWN, 1)), true);
 
 
-	
-	*/
-
-	
-
-	// til next time: Work on creating DXBuffers 
-	DXTexture my_tex(m_dx_device.get(), TextureDesc::make_2d(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 800, 600)));
-	my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture2D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE2D); });
-	//my_tex.create_uav_ext(m_dx_device.get(), [](ID3D11Texture2D* tex) { return CD3D11_UNORDERED_ACCESS_VIEW_DESC(tex, D3D11_UAV_DIMENSION_TEXTURE2D); });
-
-	// Example mistakes, which are guarded against!
-	// Same mistakes are guarded against for create_uav and create_rtv.
-	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture2D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE1D); });
-	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture1D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE2D); });
-
-
-	//my_tex.create_srv(m_dx_device.get(), D3D11_SHADER_RESOURCE_VIEW_DESC{});
-	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture1D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE1D); });
-	
-	DXShader shader(m_dx_device.get(), "a.hlsl", "b.hlsl");
+	std::cout << "haha\n";
 }
 
 Application::~Application()

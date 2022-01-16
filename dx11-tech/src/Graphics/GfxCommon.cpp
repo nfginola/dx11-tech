@@ -5,10 +5,11 @@ BufferDesc BufferDesc::make_constant(UINT size, void* data)
 {
 	size = size + (16 - (size % 16));	// 16 bytes align
 	BufferDesc b_d{};
-	b_d.desc = CD3D11_BUFFER_DESC(size, D3D11_BIND_CONSTANT_BUFFER, D3D11_USAGE_DYNAMIC, D3D11_BIND_CONSTANT_BUFFER);
+	b_d.desc = CD3D11_BUFFER_DESC(size, D3D11_BIND_CONSTANT_BUFFER, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
 	b_d.subres.pSysMem = data;
 	b_d.subres.SysMemPitch = size;
 	b_d.subres.SysMemSlicePitch = 0;
+	b_d.type = BufferType::eConstant;
 	return b_d;
 }
 
@@ -19,6 +20,7 @@ BufferDesc BufferDesc::make_index(UINT size, void* data)
 	b_d.subres.pSysMem = data;
 	b_d.subres.SysMemPitch = size;
 	b_d.subres.SysMemSlicePitch = 0;
+	b_d.type = BufferType::eIndex;
 	return b_d;
 }
 
@@ -29,6 +31,7 @@ BufferDesc BufferDesc::make_vertex(UINT size, void* data)
 	b_d.subres.pSysMem = data;
 	b_d.subres.SysMemPitch = size;
 	b_d.subres.SysMemSlicePitch = 0;
+	b_d.type = BufferType::eVertex;
 	return b_d;
 }
 
@@ -72,3 +75,22 @@ TextureDesc TextureDesc::make_3d(const D3D11_TEXTURE3D_DESC& desc, const SubresI
 	assert(false);
 	return TextureDesc{};
 }
+
+ViewDesc& ViewDesc::set(const D3D11_SHADER_RESOURCE_VIEW_DESC& desc)
+{
+	srv_desc = desc;
+	return *this;
+}
+
+ViewDesc& ViewDesc::set(const D3D11_UNORDERED_ACCESS_VIEW_DESC& desc)
+{
+	uav_desc = desc;
+	return *this;
+}
+
+ViewDesc& ViewDesc::set(const D3D11_RENDER_TARGET_VIEW_DESC& desc)
+{
+	rtv_desc = desc;
+	return *this;
+}
+
