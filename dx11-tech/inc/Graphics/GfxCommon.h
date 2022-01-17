@@ -7,7 +7,7 @@ constexpr UINT MAX_SCISSORS = 4;
 constexpr UINT MAX_VIEWPORTS = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
 
 enum class ShaderStage { eNone, eVertex, eHull, eDomain, eGeometry, ePixel, eCompute};
-enum class BufferType { eNone, eConstant, eVertex, eIndex, eStructured, eAppendConsume, eByteAddress, eRaw };
+enum class BufferType { eNone, eConstant, eVertex, eIndex, eStructured, eAppendConsume, eByteAddress, eRaw, eCustom };
 enum class TextureType { eNone, e1D, e2D, e3D };
 enum class GPUAccess { eRead, eReadWrite };
 
@@ -124,6 +124,14 @@ private:
 	std::variant<std::array<UINT, 4>, std::array<FLOAT, 4>> m_clear;
 };
 
+class SubresourceData
+{
+public:
+	SubresourceData() = default;
+	SubresourceData(void* data, UINT pitch, UINT slice_pitch) : m_subres({ data, pitch, slice_pitch }) {}
+private:
+	D3D11_SUBRESOURCE_DATA m_subres{ nullptr, 0, 0 };
+};
 
 /*
 	Abstractions for working with graphics
@@ -222,10 +230,19 @@ class BufferDesc
 	friend class GfxApi;
 public:
 	BufferDesc() = delete;
-	BufferDesc(const D3D11_BUFFER_DESC& desc) : m_desc(desc) {};
+	BufferDesc(const D3D11_BUFFER_DESC& desc) : m_desc(desc), m_type(BufferType::eCustom) {}
+	BufferDesc(const D3D11_BUFFER_DESC& desc, BufferType type) : m_desc(desc), m_type(type) {}
+
+	static BufferDesc make_constant(UINT size);
+	static BufferDesc make_index_immutable(UINT size);
+	static BufferDesc make_vertex_immutable(UINT size);
+	/*
+		make others..
+	*/
 
 private:
 	D3D11_BUFFER_DESC m_desc;
+	BufferType m_type = BufferType::eNone;
 };
 
 class TextureDesc
@@ -235,9 +252,11 @@ class TextureDesc
 	friend class GfxApi;
 public:
 	TextureDesc() = delete;
-	TextureDesc(const D3D11_TEXTURE2D_DESC& desc) : m_desc(desc) {};
+	TextureDesc(const D3D11_TEXTURE2D_DESC& desc) : m_desc(desc), m_type(TextureType::e2D) {}
 
+private:
 	D3D11_TEXTURE2D_DESC m_desc;
+	TextureType m_type = TextureType::eNone;
 };
 
 

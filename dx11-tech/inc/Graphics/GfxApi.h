@@ -17,8 +17,8 @@ public:
 	void begin_frame();					// Should clear backbuffer automatically
 	void end_frame();
 
-	void create_buffer(const BufferDesc& desc, GPUBuffer* buffer);
-	void create_texture(const TextureDesc& desc, GPUTexture* texture);
+	void create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres = {});
+	void create_texture(const TextureDesc& desc, GPUTexture* texture, std::optional<SubresourceData> subres = {});
 	void create_sampler(const D3D11_SAMPLER_DESC& desc, Sampler* sampler);
 	void create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
 	void create_input_layout(Shader shader, const InputLayoutDesc& desc, InputLayout* layout);

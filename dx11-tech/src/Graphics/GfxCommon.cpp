@@ -125,3 +125,19 @@ void RenderPass::validate()
 
 	m_is_validated = true;
 }
+
+BufferDesc BufferDesc::make_constant(UINT size)
+{
+	size = size + (16 - (size % 16));	// 16 bytes align
+	return BufferDesc(CD3D11_BUFFER_DESC(size, D3D11_BIND_CONSTANT_BUFFER, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE), BufferType::eConstant);;
+}
+
+BufferDesc BufferDesc::make_index_immutable(UINT size)
+{
+	return BufferDesc(CD3D11_BUFFER_DESC(size, D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_IMMUTABLE), BufferType::eIndex);
+}
+
+BufferDesc BufferDesc::make_vertex_immutable(UINT size)
+{
+	return BufferDesc(CD3D11_BUFFER_DESC(size, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_IMMUTABLE), BufferType::eVertex);
+}

@@ -21,4 +21,14 @@ GfxApi::~GfxApi()
 
 }
 
-
+void GfxApi::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres)
+{
+	if (!subres.has_value())
+	{
+		std::cout << "subres is nullopt!\n";
+	}
+	else
+	{
+		std::cout << "subres is valid!\n";
+	}
+}

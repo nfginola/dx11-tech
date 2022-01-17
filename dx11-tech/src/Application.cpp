@@ -15,7 +15,12 @@ Application::Application()
 	m_input = make_unique<Input>(m_win->get_hwnd());
 	m_gfx = make_unique<GfxApi>(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
 
+	GPUBuffer b;
+	m_gfx->create_buffer(BufferDesc::make_constant(128), &b);
 
+	GPUBuffer b2;
+	BufferDesc b_d = CD3D11_BUFFER_DESC();
+	m_gfx->create_buffer(b_d, &b, SubresourceData(nullptr, 50, 50));
 
 
 }
