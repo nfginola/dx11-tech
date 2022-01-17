@@ -145,6 +145,19 @@ Application::Application()
 	
 	*/
 
+	/*
+		rethink using binding tables in GfxApi.
+		Maybe do as WickedEngine and return Texture, Shader and other objects which have internal state
+			--> GPUResource : friend class GfxApi
+			{
+				std::shared_ptr<void> internal_state;
+			}
+
+		use friend classes for intentional strong coupling to access the underlying DXBuffer/DXTexture
+	
+	
+	*/
+
 	// test copy
 	auto tex2 = m_gfx->create_texture(tex,
 		ViewDesc()
