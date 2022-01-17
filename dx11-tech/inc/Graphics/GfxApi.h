@@ -9,6 +9,15 @@
 		- Exploration (exposing the learning "surface area" in a controlled manner)
 		- Techniques (using the new learned tools for practical purposes)
 
+	API is "Lego Bricks" style!
+		1. Start by creating GPU types and resources
+		2. Assemble the appropriate type/resources into
+			- Framebuffers
+			- GraphicsPipeline
+			- RenderPass
+
+		3. Give the assembled bricks to the API
+		4. Give GPUResources to the API (Binding Buffers/Textures/Samplers)
 */
 class GfxApi
 {

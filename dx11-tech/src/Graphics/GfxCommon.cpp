@@ -5,7 +5,7 @@ Framebuffer& Framebuffer::set(uint8_t slot, GPUTexture target)
 {
 	assert(slot < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT);
 	if (slot > 1)
-		assert(m_targets[slot - 1].has_value());	// disallow gaps
+		assert(m_targets[slot - 1].has_value());	// forbid gaps
 
 	m_targets[slot] = target;
 	return *this;
@@ -17,6 +17,8 @@ void Framebuffer::validate()
 
 	m_is_validated = true;
 }
+
+
 
 InputLayoutDesc& InputLayoutDesc::add(D3D11_INPUT_ELEMENT_DESC desc)
 {
@@ -92,6 +94,8 @@ void GraphicsPipeline::validate()
 	is_validated = true;
 }
 
+
+
 RenderPass& RenderPass::set_framebuffer(Framebuffer framebuffer)
 {
 	m_framebuffer = framebuffer;
@@ -125,6 +129,8 @@ void RenderPass::validate()
 
 	m_is_validated = true;
 }
+
+
 
 BufferDesc BufferDesc::make_constant(UINT size)
 {

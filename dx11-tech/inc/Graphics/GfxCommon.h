@@ -126,6 +126,7 @@ private:
 
 class SubresourceData
 {
+	friend class GfxApi;
 public:
 	SubresourceData() = default;
 	SubresourceData(void* data, UINT pitch, UINT slice_pitch) : m_subres({ data, pitch, slice_pitch }) {}
