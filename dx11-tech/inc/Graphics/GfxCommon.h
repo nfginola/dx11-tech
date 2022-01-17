@@ -1,130 +1,241 @@
 #pragma once
-#include "Graphics/DXDevice.h"
-#include <variant>
 #include <optional>
+#include <variant>
+#include "Graphics/DXDevice.h"
 
-constexpr uint64_t INVALID_INTERNAL_ID = 0;
+constexpr UINT MAX_SCISSORS = 4;
+constexpr UINT MAX_VIEWPORTS = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
 
-struct InternalID
-{
-protected:
-	uint64_t id;
-	InternalID(uint64_t new_id) : id(new_id) {};
-	InternalID() : id(INVALID_INTERNAL_ID) {};					
-public:
-	operator uint64_t() { return id; }
-};
+enum class ShaderStage { eNone, eVertex, eHull, eDomain, eGeometry, ePixel, eCompute};
+enum class BufferType { eNone, eConstant, eVertex, eIndex, eStructured, eAppendConsume, eByteAddress, eRaw };
+enum class TextureType { eNone, e1D, e2D, e3D };
+enum class GPUAccess { eRead, eReadWrite };
 
 /*
-	Strongly typed IDs for safety
+	GPU related types/resources.
+	We use an intermediary type so that:
+		- We can keep extra state/helpers
+		- Make the API "opaque" (meaning we dont directly touch the D3D11 inner workings)
+
+	Also an educational experience to see how this kind of interface feels (pros/cons, workflow, etc.)
+
 */
-struct BufferHandle : public InternalID 
+class GPUType
 {
-	BufferHandle() = default;
-	BufferHandle(uint64_t new_id) : InternalID(new_id) {}
+public:
+	bool is_valid() const { return m_internal_resource != nullptr; }
+
+protected:
+	std::shared_ptr<void> m_internal_resource;
 };
 
-struct TextureHandle : public InternalID 
+class GPUResource : public GPUType
 {
-	TextureHandle() = default;
-	TextureHandle(uint64_t new_id) : InternalID(new_id) {} 
+	friend class GfxApi;
+protected:
+	std::shared_ptr<void> srv, uav, rtv;
 };
 
-struct ShaderHandle : public InternalID 
-{ 
-	ShaderHandle() = default;
-	ShaderHandle(uint64_t new_id) : InternalID(new_id) {} 
-};
-
-struct PipelineHandle : public InternalID 
+class GPUTexture : public GPUResource 
 {
-	PipelineHandle() = default;
-	PipelineHandle(uint64_t new_id) : InternalID(new_id) {} 
+	friend class GfxApi;
+private:
+	TextureType m_type = TextureType::eNone;
 };
 
-
-
-enum class ShaderStage
+class GPUBuffer : public GPUResource 
 {
-	eInvalid,
-	eVertex,
-	eHull,
-	eDomain,
-	eGeometry,
-	ePixel,
-	eCompute
+	friend class GfxApi;
+private:
+	BufferType m_type = BufferType::eNone;
 };
 
-//enum class GPUAccess
-//{
-//	eRead,				// SRV
-//	eReadWrite,			// UAV
-//	eWrite				// RTV
-//};
-
-enum class BufferType { eNone, eConstant, eVertex, eIndex, eStructured, eAppendConsume, eByteAddress, eRaw };
-
-enum class TextureType { eNone, e1D, e2D, e3D };
-
-struct SubresInit
+struct Shader : public GPUType 
 {
-	D3D11_SUBRESOURCE_DATA subres{ nullptr, 0, 0 };
-	SubresInit(void* data = nullptr, UINT data_size = 0, UINT depth_size = 0) : subres({ data, data_size, depth_size }) { };
+	friend class GraphicsPipeline;
+	friend class GfxApi;
+private:
+	ShaderStage m_stage = ShaderStage::eNone;
 };
 
-struct BufferDesc
+struct Sampler : public GPUType { friend class GfxApi; };
+
+struct RasterizerState : public GPUType { friend class GfxApi; };
+
+struct InputLayout : public GPUType { friend class GfxApi; };
+
+struct BlendState : public GPUType { friend class GfxApi; };
+
+struct DepthStencilState : public GPUType { friend class GfxApi; };
+
+
+/*
+	Helpers
+*/
+class RenderTextureClear
 {
-	static BufferDesc make_constant(UINT size, void* data = nullptr);
-	static BufferDesc make_vertex(UINT size, void* data = nullptr);
-	static BufferDesc make_index(UINT size, void* data = nullptr);
+	friend class GfxApi;
+public:
+	RenderTextureClear(std::array<float, 4> rgba = { 0.f, 0.f, 0.f, 1.f }) :
+		m_rgba(rgba)
+	{}
 
-	BufferType type = BufferType::eNone;
-	D3D11_BUFFER_DESC desc{};
-	D3D11_SUBRESOURCE_DATA subres{ nullptr, 0, 0 };
+	static RenderTextureClear black() { return RenderTextureClear(); }
+
+private:
+	std::array<float, 4> m_rgba = { 0.f, 0.f, 0.f, 1.f };
+
 };
 
-struct TextureDesc
+class DepthStencilClear
 {
-	static TextureDesc make_1d(const D3D11_TEXTURE1D_DESC& desc, const SubresInit& init_data = {});
-	static TextureDesc make_2d(const D3D11_TEXTURE2D_DESC& desc, const SubresInit& init_data = {});
-	static TextureDesc make_3d(const D3D11_TEXTURE3D_DESC& desc, const SubresInit& init_data = {});
+	friend class GfxApi;
+public:
+	DepthStencilClear(UINT clear_flags = D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, FLOAT depth = 1.0f, UINT8 stencil = 0) :
+		m_clear_flags(clear_flags),
+		m_depth(depth),
+		m_stencil(stencil)
+	{}
 
-	TextureType type = TextureType::eNone;
-	std::variant<D3D11_TEXTURE1D_DESC, D3D11_TEXTURE2D_DESC, D3D11_TEXTURE3D_DESC> desc{};
-	D3D11_SUBRESOURCE_DATA subres{ nullptr, 0, 0 };
+	static DepthStencilClear depth_1f_stencil_0() { return DepthStencilClear(); }
+
+private:
+	UINT m_clear_flags = D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL;
+	FLOAT m_depth = 1.0f;
+	UINT8 m_stencil = 0;
 };
 
-// Builder to inform what config for each view and which views are to be created for a resource
-// If format unknown used for Texture --> Will grab format from Texture automatically
-// Use CD3D11 for simple use
-struct ViewDesc
+class ReadWriteClear
 {
-	ViewDesc& set(const D3D11_SHADER_RESOURCE_VIEW_DESC& desc);
-	ViewDesc& set(const D3D11_UNORDERED_ACCESS_VIEW_DESC& desc);
-	ViewDesc& set(const D3D11_RENDER_TARGET_VIEW_DESC& desc);
+	friend class GfxApi;
+public:
+	ReadWriteClear() = delete;
+	
+	// Will trigger ClearUnorderedAccessViewFloat
+	static ReadWriteClear fp(FLOAT a, FLOAT b, FLOAT c, FLOAT d) { return ReadWriteClear(std::array<FLOAT, 4>{a, b, c, d}); }
 
-	std::optional<D3D11_SHADER_RESOURCE_VIEW_DESC> srv_desc;
-	std::optional<D3D11_UNORDERED_ACCESS_VIEW_DESC> uav_desc;
-	std::optional<D3D11_RENDER_TARGET_VIEW_DESC> rtv_desc;
+	// Will trigger ClearUnorderedAccessViewUint
+	static ReadWriteClear uint(UINT a, UINT b, UINT c, UINT d) { return ReadWriteClear(std::array<UINT, 4>{a, b, c, d}); }
+
+private:
+	ReadWriteClear(std::variant<std::array<UINT, 4>, std::array<FLOAT, 4>> clear) : m_clear(clear) {};
+
+private:
+	std::variant<std::array<UINT, 4>, std::array<FLOAT, 4>> m_clear;
 };
 
-//struct PipelineDesc
-//{
-//	D3D11_PRIMITIVE_TOPOLOGY topology;
-//
-//	std::vector<D3D11_INPUT_ELEMENT_DESC> input_layout_desc;
-//	ShaderHandle shader;
-//
-//	D3D11_RASTERIZER_DESC1 rasterizer_desc;
-//	D3D11_DEPTH_STENCIL_DESC depth_stencil_desc;
-//	D3D11_BLEND_DESC1 blend_desc;
-//	
-//	// we should add reflection so the input layout desc is most of the time optional
-//	// we have the freedom to add input layout desc if we want to incorporate instanced rendering
-//	static PipelineDesc make(
-//		ShaderHandle program,
-//		const std::vector<D3D11_INPUT_ELEMENT_DESC>& input_layout_desc = {},
-//		const D3D11_RASTERIZER_DESC1 & rasterizer_desc = CD3D11_RASTERIZER_DESC1(),
-//		const D3D11_DEPTH_STENCIL_DESC & depth_stencil_desc = CD3D11_DEPTH_STENCIL_DESC(),
-//		const D3D11_BLEND_DESC1 & blend_desc = CD3D11_BLEND_DESC1());
-//};
+
+/*
+	Abstractions for working with graphics
+
+	Any and all higher level abstractions that make use of Graphics SHOULD hold on to these types.
+*/ 
+
+class Framebuffer
+{
+	friend class RenderPass;
+	friend class GfxApi;
+public:
+	void set(uint8_t slot, GPUTexture target);
+
+private:
+	std::array<GPUTexture, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_targets;
+};
+
+class GraphicsPipeline
+{
+	friend class GfxApi;
+public:
+	GraphicsPipeline& set_shader(Shader shader);
+	GraphicsPipeline& set_input_layout(InputLayout layout);
+	GraphicsPipeline& set_topology(D3D11_PRIMITIVE_TOPOLOGY topology);
+	GraphicsPipeline& set_rasterizer(RasterizerState rasterizer_state);
+	GraphicsPipeline& set_blend(BlendState blend_state);
+	GraphicsPipeline& set_depth_stencil(DepthStencilState depth_stencil_state);
+	void validate();
+
+private:
+	bool is_validated = false;
+
+	Shader m_vs, m_ps, m_gs, m_hs, m_ds;
+
+	// IA
+	InputLayout m_input_layout;
+	D3D11_PRIMITIVE_TOPOLOGY m_topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+	// RS
+	RasterizerState m_raster;
+
+	// OM
+	BlendState m_blend;
+	DepthStencilState m_depth_stencil;
+};
+
+class ComputePipeline
+{
+	// To be implemented
+};
+
+class RenderPass
+{
+	friend class GfxApi;
+public:
+	RenderPass& set_framebuffer(Framebuffer framebuffer);
+	RenderPass& set_ds_clear(DepthStencilClear clear);
+	RenderPass& set_clear_values(UINT slot, RenderTextureClear clear);
+	void validate();
+
+private:
+	bool m_is_validated = false;
+
+	// Experiment first before we use it here
+	//std::array<D3D11_BOX, MAX_SCISSORS> scissors;
+	
+	std::array<D3D11_VIEWPORT, MAX_VIEWPORTS> m_viewports;
+	Framebuffer m_framebuffer;
+	std::array<std::optional<RenderTextureClear>, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_texture_clears;
+	std::optional<DepthStencilClear> m_ds_clear;
+};
+
+
+/*
+	Descriptors
+
+	Using custom BufferDesc/TextureDesc in-case of future extensions (e.g specialized views)
+*/
+class InputLayoutDesc
+{
+	friend class GfxApi;
+public:
+	InputLayoutDesc& add(D3D11_INPUT_ELEMENT_DESC desc);
+	
+private:
+	std::vector<D3D11_INPUT_ELEMENT_DESC> m_descs;
+
+};
+
+class BufferDesc
+{
+	friend class GfxApi;
+public:
+	BufferDesc() = delete;
+	BufferDesc(const D3D11_BUFFER_DESC& desc) : m_desc(desc) {};
+
+private:
+	D3D11_BUFFER_DESC m_desc;
+};
+
+class TextureDesc
+{
+	friend class GfxApi;
+public:
+	TextureDesc() = delete;
+	TextureDesc(const D3D11_TEXTURE2D_DESC& desc) : m_desc(desc) {};
+
+	D3D11_TEXTURE2D_DESC m_desc;
+};
+
+
+
+
+

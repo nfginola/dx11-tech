@@ -1,74 +1,100 @@
 #pragma once
+#include "Graphics/DXDevice.h"
 #include "Graphics/GfxCommon.h"
 
-#include <unordered_map>
-#include <memory>
-
 /*
-	
-	Working with Texture and Buffers in such a manner in this API puts the focus on the views.
-	This allows flexibility, for example:
-		- One large single underlying buffer which then uses 10 different Structured views to access different parts of the underlying buffer in isolation.
+	Once performance has been measured, only then should we allow binding multiple resources instead of single slot bindings.
+	We need to explore GPU Queries before we make any optimizations.
 
 */
-
 class GfxApi
 {
 public:
-	/*
-		Creation
-	*/
-	ShaderHandle create_shader_program(const std::filesystem::path& vs_path,
-		const std::filesystem::path& ps_path,
-		const std::filesystem::path& gs_path = "",
-		const std::filesystem::path& hs_path = "",
-		const std::filesystem::path& ds_path = "");
+	// Book-keeping (e.g cleanup)
+	void begin_frame();
+	void end_frame();
 
-	ShaderHandle create_compute_program(const std::filesystem::path& cs_path);
+	void create_buffer(const BufferDesc& desc, GPUBuffer* buffer);
+	void create_texture_2d(const TextureDesc& desc, GPUTexture* texture);
+	void create_sampler(const D3D11_SAMPLER_DESC& desc, Sampler* sampler);
+	void create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
+	void create_input_layout(Shader shader, const InputLayoutDesc& desc, InputLayout* layout);
+	void create_rasterizer_state(const D3D11_RASTERIZER_DESC1& desc, RasterizerState* rasterizer);
+	void create_blend_state(const D3D11_BLEND_DESC1& desc, BlendState* rasterizer);
+	void create_depth_stencil_state(const D3D11_DEPTH_STENCIL_DESC& desc, DepthStencilState* rasterizer);
 
-	BufferHandle create_buffer(const BufferDesc& desc, const ViewDesc& view = {});
-	TextureHandle create_texture(const TextureDesc& desc, const ViewDesc& view);
-
-	// Creates buffer from either the existing underlying buffer or a copy with identical properties
-	BufferHandle create_buffer(BufferHandle hdl, const ViewDesc& view = {}, bool use_underlying_resource = false);
-
-	// Creates texture from either the existing underlying texture or a copy with identical properties
-	TextureHandle create_texture(TextureHandle hdl, const ViewDesc& view, bool use_underlying_resource = false);
+	void begin_pass(const RenderPass& pass);	// Bind RTVs and pass
+	void end_pass();							// Unbind RTVs and cleanup
 
 	/*
-		Miscellaneous helpers
+		A draw is expected to be done between a begin_pass and end_pass!
+		Otherwise, no Render Targets are set.
 	*/
-	void reload_shader(ShaderHandle hdl);
+	
+	void bind_vertex_buffer(UINT slot, const GPUBuffer* buffer, UINT stride, UINT offset);
+	void bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format, UINT offset);
+
+	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer);
+	void bind_resource(UINT slot, ShaderStage stage, GPUAccess access, const GPUResource* resource);
+	void bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler);
+	void bind_pipeline(const GraphicsPipeline* pipeline);
+	void bind_compute_pipeline(const ComputePipeline* pipeline);
 
 	/*
-		Dropping resources
+	
+	Need to experiment before use:
+		RSSetScissorRects
+	
+	Priority implement:
+		DrawIndexed
+		Map
+		Unmap
+		UpdateSubresource
+	
+	Second prio:
+		ResolveSubresource
+		Begin
+		End
+		GetData
+		SetPredication
+		GetPredication
+		Dispatch
+		GenerateMips? (maybe automatic?)
+
+	Back Burner:
+		void clear_readwrite_resource(const GPUResource* resource, ReadWriteClear clear);
+		void copy_resource(const GPUResource* dst, const GPUResource* src);
+		ID3D11DeviceContext::CopySubresourceRegion
+
+		GetResourceMinLOD??
+
+		DispatchIndirect
+		Draw
+		DrawAuto
+		DrawIndexedInstanced
+		DrawIndexedInstancedIndirect
+		DrawInstanced
+		DrawInstancedIndirect
+
+
+
 	*/
-	void drop_shader_program(ShaderHandle hdl);
-	void drop_buffer(BufferHandle hdl);
-	void drop_texture(TextureHandle hdl);
 
 public:
 	GfxApi() = delete;
-	GfxApi(unique_ptr<DXDevice> dev);
+	GfxApi(unique_ptr<class DXDevice> dev);
 	~GfxApi();
 
 	GfxApi& operator=(const GfxApi&) = delete;
 	GfxApi(const GfxApi&) = delete;
 
 private:
+
+
+private:
 	unique_ptr<DXDevice> m_dev;
-	
-	// ID's will just chronological values
-	uint64_t m_next_buffer_id = INVALID_INTERNAL_ID + 1;
-	uint64_t m_next_texture_id = INVALID_INTERNAL_ID + 1;
-	uint64_t m_next_shader_id = INVALID_INTERNAL_ID + 1;
 
-	// List of buffers and textures allocated on the GPU
-	std::unordered_map<uint64_t, unique_ptr<class DXBuffer>> m_buffers;
-	std::unordered_map<uint64_t, unique_ptr<class DXTexture>> m_textures;
 
-	// List of shaders ready to use
-	std::unordered_map<uint64_t, unique_ptr<class DXShader>> m_shaders;
 };
 
 
