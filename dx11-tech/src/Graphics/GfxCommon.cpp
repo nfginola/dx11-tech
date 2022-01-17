@@ -1,13 +1,21 @@
 #include "pch.h"
 #include "Graphics/GfxCommon.h"
 
-void Framebuffer::set(uint8_t slot, GPUTexture target)
+Framebuffer& Framebuffer::set(uint8_t slot, GPUTexture target)
 {
 	assert(slot < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT);
 	if (slot > 1)
-		assert(m_targets[slot - 1].is_valid());	// disallow gaps
+		assert(m_targets[slot - 1].has_value());	// disallow gaps
 
 	m_targets[slot] = target;
+	return *this;
+}
+
+void Framebuffer::validate()
+{
+	assert(m_targets[0].has_value());
+
+	m_is_validated = true;
 }
 
 InputLayoutDesc& InputLayoutDesc::add(D3D11_INPUT_ELEMENT_DESC desc)
@@ -108,9 +116,10 @@ RenderPass& RenderPass::set_clear_values(UINT slot, RenderTextureClear clear)
 
 void RenderPass::validate()
 {
+	assert(m_framebuffer.m_is_validated);
 	for (int i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
 	{
-		if (m_framebuffer.m_targets[i].is_valid() && !m_texture_clears[i].has_value())
+		if (m_framebuffer.m_targets[i].has_value() && !m_texture_clears[i].has_value())
 			assert(false);		// Target[i] requires a Texture Clear
 	}
 

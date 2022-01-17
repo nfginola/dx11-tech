@@ -136,10 +136,13 @@ class Framebuffer
 	friend class RenderPass;
 	friend class GfxApi;
 public:
-	void set(uint8_t slot, GPUTexture target);
+	Framebuffer& set(uint8_t slot, GPUTexture target);
+	void validate();
 
 private:
-	std::array<GPUTexture, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_targets;
+	bool m_is_validated = false;
+
+	std::array<std::optional<GPUTexture>, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_targets;
 };
 
 class GraphicsPipeline
@@ -191,8 +194,8 @@ private:
 	// Experiment first before we use it here
 	//std::array<D3D11_BOX, MAX_SCISSORS> scissors;
 	
-	std::array<D3D11_VIEWPORT, MAX_VIEWPORTS> m_viewports;
 	Framebuffer m_framebuffer;
+	std::array<std::optional<D3D11_VIEWPORT>, MAX_VIEWPORTS> m_viewports;
 	std::array<std::optional<RenderTextureClear>, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_texture_clears;
 	std::optional<DepthStencilClear> m_ds_clear;
 };
