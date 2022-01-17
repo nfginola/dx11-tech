@@ -227,6 +227,8 @@ private:
 
 class TextureDesc
 {
+	// Will probably extend to use Variants to handle Texture1D and Texture3D down the line.
+
 	friend class GfxApi;
 public:
 	TextureDesc() = delete;
