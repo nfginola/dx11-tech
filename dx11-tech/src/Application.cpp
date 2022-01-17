@@ -150,7 +150,7 @@ Application::Application()
 		Maybe do as WickedEngine and return Texture, Shader and other objects which have internal state
 			--> GPUResource : friend class GfxApi
 			{
-				std::shared_ptr<void> internal_state;
+				std::shared_ptr<DXResource> internal_state;
 			}
 
 		use friend classes for intentional strong coupling to access the underlying DXBuffer/DXTexture
