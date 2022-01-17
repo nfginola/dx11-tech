@@ -15,7 +15,7 @@ Application::Application()
 	m_input = make_unique<Input>(m_win->get_hwnd());
 	m_gfx = make_unique<GfxApi>(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
 
-
+	
 	/*
 
 	ezdx(make_unique dx device)
@@ -144,6 +144,14 @@ Application::Application()
 
 	
 	*/
+
+	/*
+		PSO, mimic Vulkan
+		Samplers, set by yourself
+	
+	
+	*/
+
 
 	/*
 		rethink using binding tables in GfxApi.
