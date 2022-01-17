@@ -36,6 +36,11 @@ public:
 	TextureHandle create_texture(TextureHandle hdl, const ViewDesc& view, bool use_underlying_resource = false);
 
 	/*
+		Miscellaneous helpers
+	*/
+	void reload_shader(ShaderHandle hdl);
+
+	/*
 		Dropping resources
 	*/
 	void drop_shader_program(ShaderHandle hdl);

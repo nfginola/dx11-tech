@@ -20,84 +20,7 @@ GfxApi::GfxApi(std::unique_ptr<DXDevice> dev) :
 	m_textures.reserve(500);
 
 
-	/*
-	
-	ezdx(make_unique dx device)
-	...
 
-
-	TEXTURE CREATION
-	=======
-
-	TextureHandle my_tex = ezdx->create_texture(TextureDesc::from(
-	));
-	ezdx->create_srv(my_tex, [](ID3D11Texture2D* tex) { return CD3D11(...); });
-
-	TextureHandle tex_copy = ezdx->create_texture(my_tex);						// create from handle --> same underlying Texture2D but no views!
-	ezdx->create_srv(tex_copy, [](ID3D11Texture2D* tex) { return CD3D11(...); }	// same tex2d, but different view!
-	========
-
-	TEXTURE BINDING
-	========
-	ezdx->bind_texture(Slot, Access, Stage, textureHandle);
-		-- if bind read --> check if internal texture is already bound as write, if yes, unbind.
-			-- if prev == readWrite --> unbind UAV for slot at stage
-			-- if prev == write		--> unbind RTV fully
-	========
-
-	CONSTANT BUFFER (EXPLICIT)
-	========
-
-	ezdx->bind_constant_buffer(slot, stage, bufferHandle)
-		-- internally checks the DXBuffer if it is of type Constant Buffer
-	========
-
-	OTHER BUFFER (VIEWS)
-	=======
-	ezdx->bind_buffer(slot, access, stage, bufferHandle)
-		-- internally checks that access, bufferhandle and views all match and exist
-	=======
-
-	FRAMEBUFFERS (COLLECTION OF TEXTURE TO RENDER TO)
-	=======
-	FboHandle ezdx->create_fbo( [ { tex1, settings1 }, { tex2, settings2 } ] )
-	
-	ezdx->bind_fbo(fboHandle);
-
-	ezdx->clear_fbo(fboHandle, { depth_stencil, [ tex1clear, tex2clear, ... ] });
-
-	=======
-
-	MISCELLANEOUS (FOR LATER) OPTIMIZATIONS
-	=======
-	ezdx->clear_constant_buffers()		// unbinds all bound cbuffers so that update latency is not slow! (it is dependent on how many places the res is bound)
-	=======
-
-
-	
-	*/
-
-	// Creating shader
-	DXShader shader(m_dev.get(), "a.hlsl", "b.hlsl");
-	
-	// Creating texture and view for it
-	DXTexture my_tex(m_dev.get(), TextureDesc::make_2d(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 800, 600)));
-	my_tex.create_srv_ext(m_dev.get(), [](ID3D11Texture2D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE2D); });
-	
-	// Test copy
-	DXTexture ot(my_tex);
-
-	// Test buffer
-	DXBuffer cbuf(m_dev.get(), BufferDesc::make_constant(128));
-
-
-
-
-
-	// Example mistakes, which are guarded against!
-	// Same mistakes are guarded against for create_uav and create_rtv.
-	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture2D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE1D); });
-	//my_tex.create_srv_ext(m_dx_device.get(), [](ID3D11Texture1D* tex) { return CD3D11_SHADER_RESOURCE_VIEW_DESC(tex, D3D11_SRV_DIMENSION_TEXTURE2D); });
 
 }
 
@@ -199,6 +122,11 @@ TextureHandle GfxApi::create_texture(TextureHandle hdl, const ViewDesc& view, bo
 	m_textures.insert({ id, std::move(tex) });
 
 	return id;
+}
+
+void GfxApi::reload_shader(ShaderHandle hdl)
+{
+	m_shaders.find(hdl)->second->recompile(m_dev.get());
 }
 
 void GfxApi::drop_shader_program(ShaderHandle hdl)

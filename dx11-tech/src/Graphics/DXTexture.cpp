@@ -78,7 +78,7 @@ void DXTexture::create_rtv(DXDevice* dev, const D3D11_RENDER_TARGET_VIEW_DESC& d
 	if (desc.Format == DXGI_FORMAT_UNKNOWN)
 		view_desc_cpy.Format = get_texture_format();
 
-	HRCHECK(dev->get_device()->CreateRenderTargetView(m_res.Get(), &desc, m_rtv.GetAddressOf()));
+	HRCHECK(dev->get_device()->CreateRenderTargetView(m_res.Get(), &view_desc_cpy, m_rtv.GetAddressOf()));
 }
 
 void DXTexture::create_uav(DXDevice* dev, const D3D11_UNORDERED_ACCESS_VIEW_DESC& desc)
@@ -112,7 +112,7 @@ void DXTexture::create_uav(DXDevice* dev, const D3D11_UNORDERED_ACCESS_VIEW_DESC
 	if (desc.Format == DXGI_FORMAT_UNKNOWN)
 		view_desc_cpy.Format = get_texture_format();
 
-	HRCHECK(dev->get_device()->CreateUnorderedAccessView(m_res.Get(), &desc, m_uav.GetAddressOf()));
+	HRCHECK(dev->get_device()->CreateUnorderedAccessView(m_res.Get(), &view_desc_cpy, m_uav.GetAddressOf()));
 }
 
 void DXTexture::create_srv(DXDevice* dev, const D3D11_SHADER_RESOURCE_VIEW_DESC& desc)
@@ -150,7 +150,7 @@ void DXTexture::create_srv(DXDevice* dev, const D3D11_SHADER_RESOURCE_VIEW_DESC&
 	if (desc.Format == DXGI_FORMAT_UNKNOWN)
 		view_desc_cpy.Format = get_texture_format();
 
-	HRCHECK(dev->get_device()->CreateShaderResourceView(m_res.Get(), &desc, m_srv.GetAddressOf()));
+	HRCHECK(dev->get_device()->CreateShaderResourceView(m_res.Get(), &view_desc_cpy, m_srv.GetAddressOf()));
 }
 
 void DXTexture::create_srv_ext(DXDevice* dev, std::variant<
