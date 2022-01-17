@@ -9,6 +9,8 @@
 
 Application::Application()
 {
+	// Old snapshot
+
 	// Window and Input
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
 	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, 1920, 1080);
