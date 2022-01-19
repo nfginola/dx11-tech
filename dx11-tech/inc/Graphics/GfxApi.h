@@ -1,8 +1,9 @@
 #pragma once
 #include "Graphics/GfxCommon.h"
-#include "Graphics/GfxDescriptors.h"
+#include "Graphics/GfxDescriptorsPrimitive.h"
+#include "Graphics/GfxDescriptorsAbstraction.h"
 #include "Graphics/GfxTypes.h"
-#include "Graphics/GfxHelpers.h"
+#include "Graphics/GfxHelperTypes.h"
 
 /*
 	Once performance has been measured, only then should we allow binding multiple resources instead of single slot bindings.
@@ -34,16 +35,14 @@ public:
 	void create_texture(const TextureDesc& desc, GPUTexture* texture, std::optional<SubresourceData> subres = {});
 	void create_sampler(const D3D11_SAMPLER_DESC& desc, Sampler* sampler);
 	void create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
-	void create_input_layout(Shader shader, const InputLayoutDesc& desc, InputLayout* layout);
-	void create_rasterizer_state(const D3D11_RASTERIZER_DESC1& desc, RasterizerState* rasterizer);
-	void create_blend_state(const D3D11_BLEND_DESC1& desc, BlendState* rasterizer);
-	void create_depth_stencil_state(const D3D11_DEPTH_STENCIL_DESC& desc, DepthStencilState* rasterizer);
 
-	void create_pipeline(GraphicsPipeline* pipeline);
-	void create_compute_pipeline(ComputePipeline* pipeline);
-	void create_renderpass(RenderPass* rp);
+	// Create GPU abstractions
+	void create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer);
+	void create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline);
+	//void create_compute_pipeline(ComputePipeline* pipeline);
 
-	void begin_pass(const RenderPass* pass);	// Bind RTVs and pass
+	// Bind RTVs and pass
+	void begin_pass(const Framebuffer* framebuffer, const std::vector<D3D11_VIEWPORT>& viewports, std::optional<DepthStencilClear> m_ds_clear = {});
 
 	/*
 		A draw is expected to be done between a begin_pass and end_pass!

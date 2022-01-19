@@ -1,12 +1,5 @@
 #include "pch.h"
-#include "Graphics/GfxDescriptors.h"
-
-InputLayoutDesc& InputLayoutDesc::add(D3D11_INPUT_ELEMENT_DESC desc)
-{
-	m_descs.push_back(desc);
-	return *this;
-}
-
+#include "Graphics/GfxDescriptorsPrimitive.h"
 
 BufferDesc BufferDesc::constant(UINT size, bool dynamic)
 {
@@ -60,18 +53,3 @@ TextureDesc TextureDesc::depth_stencil(DepthFormat format, UINT width, UINT heig
 	}
 }
 
-FramebufferDesc& FramebufferDesc::set_render_target(uint8_t slot, GPUTexture target)
-{
-	assert(slot < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT);
-	if (slot > 0)
-		assert(m_targets[slot - 1].has_value());	// forbid gaps
-
-	m_targets[slot] = target;
-	return *this;
-}
-
-FramebufferDesc& FramebufferDesc::set_depth_stencil(GPUTexture target)
-{
-	m_depth_stencil = target;
-	return *this;
-}

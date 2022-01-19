@@ -1,23 +1,12 @@
 #pragma once
 #include "Graphics/GfxCommon.h"
-#include "Graphics/GfxTypes.h"
-
-class InputLayoutDesc
-{
-	friend class GfxApi;
-public:
-	InputLayoutDesc& add(D3D11_INPUT_ELEMENT_DESC desc);
-
-private:
-	std::vector<D3D11_INPUT_ELEMENT_DESC> m_descs;
-
-};
+#include "Graphics/GfxHelperTypes.h"
 
 class BufferDesc
 {
 	friend class GfxApi;
 public:
-	BufferDesc() = delete;
+	BufferDesc() = default;
 	BufferDesc(const D3D11_BUFFER_DESC& desc) : m_desc(desc), m_type(BufferType::eCustom) {}
 	BufferDesc(const D3D11_BUFFER_DESC& desc, BufferType type) : m_desc(desc), m_type(type) {}
 
@@ -39,38 +28,16 @@ class TextureDesc
 
 	friend class GfxApi;
 public:
-	TextureDesc() = delete;
-	TextureDesc(const D3D11_TEXTURE2D_DESC& desc) : m_desc(desc), m_type(TextureType::e2D) {}
+	TextureDesc() = default;
+	TextureDesc(const D3D11_TEXTURE2D_DESC& desc) : m_desc(desc), m_type(TextureType::e2D), m_render_target_clear(RenderTextureClear::black()) {}
 
 	static TextureDesc depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT mip_levels = 0);
 
 private:
 	D3D11_TEXTURE2D_DESC m_desc;
 	TextureType m_type = TextureType::eNone;
+	RenderTextureClear m_render_target_clear = RenderTextureClear::black();
 };
 
-class FramebufferDesc
-{
-public:
-	FramebufferDesc& set_render_target(uint8_t slot, GPUTexture target);
-	FramebufferDesc& set_depth_stencil(GPUTexture target);
 
-private:
-	std::array<std::optional<GPUTexture>, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_targets;
-	std::optional<GPUTexture> m_depth_stencil;
-};
 
-class GraphicsPipelineDesc
-{
-
-};
-
-class ComputePipelineDesc
-{
-
-};
-
-class RenderPassDesc
-{
-
-};

@@ -48,13 +48,16 @@
     <ClCompile Include="src\Graphics\DXDevice.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\GfxDescriptors.cpp">
+    <ClCompile Include="src\Graphics\GfxDescriptorsPrimitive.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Graphics\GfxTypes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\GfxHelpers.cpp">
+    <ClCompile Include="src\Graphics\GfxHelperTypes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Graphics\GfxDescriptorsAbstraction.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -89,13 +92,16 @@
     <ClInclude Include="inc\Graphics\DXDevice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\GfxDescriptors.h">
+    <ClInclude Include="inc\Graphics\GfxDescriptorsPrimitive.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inc\Graphics\GfxTypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\GfxHelpers.h">
+    <ClInclude Include="inc\Graphics\GfxHelperTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\Graphics\GfxDescriptorsAbstraction.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

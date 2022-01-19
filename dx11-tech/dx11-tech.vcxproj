@@ -159,13 +159,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\Graphics\GfxHelpers.cpp" />
+    <ClCompile Include="src\Graphics\GfxDescriptorsAbstraction.cpp" />
+    <ClCompile Include="src\Graphics\GfxHelperTypes.cpp" />
     <ClCompile Include="src\Graphics\GfxTypes.cpp" />
     <ClCompile Include="src\Graphics\DXDevice.cpp" />
     <ClCompile Include="src\Graphics\GfxApi.cpp" />
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\Graphics\GfxCommon.cpp" />
-    <ClCompile Include="src\Graphics\GfxDescriptors.cpp" />
+    <ClCompile Include="src\Graphics\GfxDescriptorsPrimitive.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -180,13 +181,14 @@
     <ClCompile Include="src\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="inc\Graphics\GfxHelpers.h" />
+    <ClInclude Include="inc\Graphics\GfxDescriptorsAbstraction.h" />
+    <ClInclude Include="inc\Graphics\GfxHelperTypes.h" />
     <ClInclude Include="inc\Graphics\GfxTypes.h" />
     <ClInclude Include="inc\Graphics\DXDevice.h" />
     <ClInclude Include="inc\Graphics\GfxApi.h" />
     <ClInclude Include="inc\Camera.h" />
     <ClInclude Include="inc\Application.h" />
-    <ClInclude Include="inc\Graphics\GfxDescriptors.h" />
+    <ClInclude Include="inc\Graphics\GfxDescriptorsPrimitive.h" />
     <ClInclude Include="inc\pch.h" />
     <ClInclude Include="inc\Utilities.h" />
     <ClInclude Include="inc\Window.h" />

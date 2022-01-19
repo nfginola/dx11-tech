@@ -21,8 +21,8 @@ Application::Application()
 
 	GPUTexture t1;
 	GPUTexture t2;
-	m_gfx->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 1280, 720), &t1);
-	m_gfx->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 1280, 720, 1, 0, D3D11_BIND_RENDER_TARGET), &t2);
+	m_gfx->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 1920, 1080), &t1);
+	m_gfx->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 1920, 1080, 1, 0, D3D11_BIND_RENDER_TARGET), &t2);
 
 	GPUTexture* active_texture = &t1;
 	/*
@@ -36,9 +36,9 @@ Application::Application()
 
 
 	GPUTexture ds_24_8, ds_32_8, d_32;
-	m_gfx->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, 1280, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
-	m_gfx->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32_S8, 1280, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &ds_32_8);
-	m_gfx->create_texture(TextureDesc::depth_stencil(DepthFormat::eD24_S8, 1280, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &ds_24_8);
+	m_gfx->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, 1920, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
+	m_gfx->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32_S8, 1920, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &ds_32_8);
+	m_gfx->create_texture(TextureDesc::depth_stencil(DepthFormat::eD24_S8, 1920, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &ds_24_8);
 	/*
 		We can have different RenderPasses with different Depth Stencil View to be able to see the effects of less/more depth at runtime trivially!
 	*/
@@ -56,7 +56,22 @@ Application::Application()
 	//auto fb3 = fb;
 	//fb3.set_depth_stencil(ds_24_8).validate();
 
-	std::cout << "ha\n";
+
+	Framebuffer fb;
+	FramebufferDesc fb_d({ t2 }, d_32);
+	m_gfx->create_framebuffer(fb_d, &fb);
+
+	Framebuffer* active_fb = &fb;
+
+	std::vector<D3D11_VIEWPORT> viewports = {
+			CD3D11_VIEWPORT(0.f, 0.f, 1920.f, 1080.f, GfxConstants::MIN_DEPTH, GfxConstants::MAX_DEPTH),
+			CD3D11_VIEWPORT(0.f, 0.f, 1920.f, 1080.f, GfxConstants::MIN_DEPTH, GfxConstants::MAX_DEPTH),
+			CD3D11_VIEWPORT(0.f, 0.f, 1920.f, 1080.f, GfxConstants::MIN_DEPTH, GfxConstants::MAX_DEPTH),
+	};
+
+	std::array<std::optional<RenderTextureClear>, GfxConstants::MAX_RENDER_TARGETS> target_clears = { RenderTextureClear::black() };
+
+	m_gfx->begin_pass(active_fb, viewports, DepthStencilClear::d1_s0());
 }
 
 Application::~Application()

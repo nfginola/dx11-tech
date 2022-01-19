@@ -20,13 +20,12 @@ class DepthStencilClear
 {
 	friend class GfxApi;
 public:
-	DepthStencilClear(UINT clear_flags = D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, FLOAT depth = 1.0f, UINT8 stencil = 0) :
+	DepthStencilClear(FLOAT depth, UINT8 stencil, UINT clear_flags = D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL) :
 		m_clear_flags(clear_flags),
 		m_depth(depth),
 		m_stencil(stencil)
 	{}
-
-	static DepthStencilClear depth_1f_stencil_0() { return DepthStencilClear(); }
+	static DepthStencilClear d1_s0() { return DepthStencilClear(1.0f, 0); }
 
 private:
 	UINT m_clear_flags = D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL;

@@ -2,14 +2,6 @@
 #include "Graphics/GfxApi.h"
 #include "Graphics/GfxCommon.h"
 
-uint64_t get_next_id(uint64_t& counter)
-{
-	auto id = counter;
-	++counter;
-	return id;
-}
-
-
 GfxApi::GfxApi(std::unique_ptr<DXDevice> dev) :
 	m_dev(std::move(dev))
 {
@@ -335,4 +327,58 @@ void GfxApi::create_texture(const TextureDesc& desc, GPUTexture* texture, std::o
 	}
 
 
+}
+
+void GfxApi::create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer)
+{
+	framebuffer->m_depth_stencil = desc.m_depth_stencil;
+	framebuffer->m_targets = desc.m_targets;
+	framebuffer->m_is_registered = true;
+}
+
+void GfxApi::begin_pass(const Framebuffer* framebuffer,
+	const std::vector<D3D11_VIEWPORT>& viewports,
+	std::optional<DepthStencilClear> m_ds_clear)
+{
+	if (!framebuffer->m_is_registered)
+	{
+		assert(false && "Framebuffer is not registered!");
+		return;
+	}
+
+	auto& ctx = m_dev->get_context();
+	auto& dsv_opt = framebuffer->m_depth_stencil;
+
+	ID3D11RenderTargetView* rtvs[GfxConstants::MAX_RENDER_TARGETS] = {};
+
+	// clear framebuffer (automatic clear to black if none supplied)
+	// and get render targets
+	for (int i = 0; i < framebuffer->m_targets.size(); ++i)
+	{
+		// get target
+		auto& target_opt = framebuffer->m_targets[i];
+		if (!target_opt.has_value())
+			break;
+		auto& target = target_opt.value();
+		rtvs[i] = target.m_rtv.Get();					
+
+		// clear target
+		ctx->ClearRenderTargetView(target.m_rtv.Get(), target.m_desc.m_render_target_clear.m_rgba.data());
+	}
+
+	// clear depth stencil
+	if (m_ds_clear.has_value() && dsv_opt.has_value())
+	{
+		auto& ds_clear = m_ds_clear.value();
+		auto dsv = dsv_opt.value().m_dsv.Get();
+		ctx->ClearDepthStencilView(dsv, ds_clear.m_clear_flags, ds_clear.m_depth, ds_clear.m_stencil);	// clear ds
+		ctx->OMSetRenderTargets(GfxConstants::MAX_RENDER_TARGETS, rtvs, dsv);	// bind targets (with dsv)
+	}
+	else
+	{
+		ctx->OMSetRenderTargets(GfxConstants::MAX_RENDER_TARGETS, rtvs, nullptr);	// bind targets (no dsv)
+	}
+
+	// bind viewports
+	ctx->RSSetViewports((UINT)viewports.size(), viewports.data());
 }
