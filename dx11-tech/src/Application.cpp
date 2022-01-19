@@ -16,13 +16,47 @@ Application::Application()
 	m_gfx = make_unique<GfxApi>(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
 
 	GPUBuffer b;
-	m_gfx->create_buffer(BufferDesc::make_constant(128), &b);
-
-	GPUBuffer b2;
-	BufferDesc b_d = CD3D11_BUFFER_DESC();
-	m_gfx->create_buffer(b_d, &b, SubresourceData(nullptr, 50, 50));
+	m_gfx->create_buffer(BufferDesc::constant(128), &b);
 
 
+	GPUTexture t1;
+	GPUTexture t2;
+	m_gfx->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 1280, 720), &t1);
+	m_gfx->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 1280, 720, 1, 0, D3D11_BIND_RENDER_TARGET), &t2);
+
+	GPUTexture* active_texture = &t1;
+	/*
+		Above gives clear possibility to easily branch and set active bindings in a flexible manner.
+		same goes for the other bind functions! (e.g Pipeline)
+
+		for example, we can switch to a Read-Through Pipeline with multiple viewports for Light Pass on a deferred renderer 
+	*/
+
+	//m_gfx->bind_resource(0, ShaderStage::eVertex, GPUAccess::eRead, active_texture);
+
+
+	GPUTexture ds_24_8, ds_32_8, d_32;
+	m_gfx->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, 1280, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
+	m_gfx->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32_S8, 1280, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &ds_32_8);
+	m_gfx->create_texture(TextureDesc::depth_stencil(DepthFormat::eD24_S8, 1280, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &ds_24_8);
+	/*
+		We can have different RenderPasses with different Depth Stencil View to be able to see the effects of less/more depth at runtime trivially!
+	*/
+	//Framebuffer aa;
+	//Framebuffer fb;
+
+	//auto fb = Framebuffer()
+	//	.set_render_target(0, t2)
+	//	.set_render_target(1, t1)
+	//	.set_depth_stencil(d_32)
+	//	.validate();
+
+	//auto fb2 = fb;
+	//fb2.set_depth_stencil(ds_32_8);
+	//auto fb3 = fb;
+	//fb3.set_depth_stencil(ds_24_8).validate();
+
+	std::cout << "ha\n";
 }
 
 Application::~Application()

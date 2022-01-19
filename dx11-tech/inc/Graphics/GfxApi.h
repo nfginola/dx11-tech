@@ -1,5 +1,8 @@
 #pragma once
 #include "Graphics/GfxCommon.h"
+#include "Graphics/GfxDescriptors.h"
+#include "Graphics/GfxTypes.h"
+#include "Graphics/GfxHelpers.h"
 
 /*
 	Once performance has been measured, only then should we allow binding multiple resources instead of single slot bindings.
@@ -26,6 +29,7 @@ public:
 	void begin_frame();					// Should clear backbuffer automatically
 	void end_frame();
 
+	// Create GPU primitives
 	void create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres = {});
 	void create_texture(const TextureDesc& desc, GPUTexture* texture, std::optional<SubresourceData> subres = {});
 	void create_sampler(const D3D11_SAMPLER_DESC& desc, Sampler* sampler);
@@ -35,30 +39,44 @@ public:
 	void create_blend_state(const D3D11_BLEND_DESC1& desc, BlendState* rasterizer);
 	void create_depth_stencil_state(const D3D11_DEPTH_STENCIL_DESC& desc, DepthStencilState* rasterizer);
 
+	void create_pipeline(GraphicsPipeline* pipeline);
+	void create_compute_pipeline(ComputePipeline* pipeline);
+	void create_renderpass(RenderPass* rp);
+
 	void begin_pass(const RenderPass* pass);	// Bind RTVs and pass
-	void end_pass();							// Unbind RTVs and cleanup
 
 	/*
 		A draw is expected to be done between a begin_pass and end_pass!
 		Otherwise, no Render Targets are set (D3D11 will complain)
 	*/
+
+	void end_pass();							// Unbind RTVs and cleanup
+
 	
+	// No need to check for type, D3D11 will do it for us
 	void bind_vertex_buffer(UINT slot, const GPUBuffer* buffer, UINT stride, UINT offset);
 	void bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format, UINT offset);
-
 	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer);
+
+	// Bind views, no need to known underlying type
 	void bind_resource(UINT slot, ShaderStage stage, GPUAccess access, const GPUResource* resource);
+
+	// Sampler :)
 	void bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler);
+
+	// Bind helpers
 	void bind_pipeline(const GraphicsPipeline* pipeline);
 	void bind_compute_pipeline(const ComputePipeline* pipeline);
 
 	/*
 	
+
+	
 	Need to experiment before use:
 		RSSetScissorRects
 	
 	Priority implement:
-		DrawIndexed
+		DrawIndexedInstanced
 		Map
 		Unmap
 		UpdateSubresource
@@ -83,7 +101,7 @@ public:
 		DispatchIndirect
 		Draw
 		DrawAuto
-		DrawIndexedInstanced
+		DrawIndexed
 		DrawIndexedInstancedIndirect
 		DrawInstanced
 		DrawInstancedIndirect

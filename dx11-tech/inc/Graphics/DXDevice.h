@@ -10,6 +10,8 @@
 
 using Microsoft::WRL::ComPtr;
 
+using DeviceChildPtr = ComPtr<ID3D11DeviceChild>;
+
 using SwapChainPtr = ComPtr<IDXGISwapChain>;
 using DevicePtr = ComPtr<ID3D11Device>;
 using DeviceContextPtr = ComPtr<ID3D11DeviceContext>;
