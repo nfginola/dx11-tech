@@ -42,19 +42,6 @@ Application::Application()
 	/*
 		We can have different RenderPasses with different Depth Stencil View to be able to see the effects of less/more depth at runtime trivially!
 	*/
-	//Framebuffer aa;
-	//Framebuffer fb;
-
-	//auto fb = Framebuffer()
-	//	.set_render_target(0, t2)
-	//	.set_render_target(1, t1)
-	//	.set_depth_stencil(d_32)
-	//	.validate();
-
-	//auto fb2 = fb;
-	//fb2.set_depth_stencil(ds_32_8);
-	//auto fb3 = fb;
-	//fb3.set_depth_stencil(ds_24_8).validate();
 
 
 	Framebuffer fb;
@@ -69,9 +56,26 @@ Application::Application()
 			CD3D11_VIEWPORT(0.f, 0.f, 1920.f, 1080.f, GfxConstants::MIN_DEPTH, GfxConstants::MAX_DEPTH),
 	};
 
-	std::array<std::optional<RenderTextureClear>, GfxConstants::MAX_RENDER_TARGETS> target_clears = { RenderTextureClear::black() };
+	/*
+		For hardcoded textures and stuffs for Rendering Techniques, we can freely stick resources as private member objects in a Renderer or something.
+		For resources that are to be handed out, they should be dynamically allocated, example:
+			(shared_ptr<GPUBuffer> vertex_buffer = make_shared(..)
+			(shared_ptr<GPUTexture> albedo_tex = make_shared(..)
+			
+			We can just allocate on heap immediately and not think about an allocator for now..
+			We want this so that any higher level abstraction only hold on to a pointer. (GPUBuffer/GPUTexture internal is quite large, see below for size)
+	*/
+	std::cout << "sizeof GPUTexture: " << sizeof(GPUTexture) << "\n";
+	std::cout << "sizeof GPUBuffer: " << sizeof(GPUBuffer) << "\n";
 
-	m_gfx->begin_pass(active_fb, viewports, DepthStencilClear::d1_s0());
+	Shader s1, s2;
+	InputLayoutDesc d = InputLayoutDesc::get_layout<Vertex_POS_UV_NORMAL>();
+	//auto p_d = PipelineDesc()
+	//	.set_shaders(VertexShader(s1), PixelShader(s2))
+	//	.set_input_layout(d);
+
+
+	m_gfx->begin_pass(active_fb, DepthStencilClear::d1_s0());
 }
 
 Application::~Application()

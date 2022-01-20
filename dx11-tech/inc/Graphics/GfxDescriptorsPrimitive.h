@@ -18,7 +18,7 @@ public:
 	*/
 
 private:
-	D3D11_BUFFER_DESC m_desc;
+	D3D11_BUFFER_DESC m_desc{};
 	BufferType m_type = BufferType::eNone;
 };
 
@@ -34,10 +34,54 @@ public:
 	static TextureDesc depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT mip_levels = 0);
 
 private:
-	D3D11_TEXTURE2D_DESC m_desc;
+	D3D11_TEXTURE2D_DESC m_desc{};
 	TextureType m_type = TextureType::eNone;
 	RenderTextureClear m_render_target_clear = RenderTextureClear::black();
 };
 
+class InputLayoutDesc
+{
+	friend class GfxApi;
+public:
+	InputLayoutDesc() = default;
+	InputLayoutDesc(const std::vector<D3D11_INPUT_ELEMENT_DESC>& descs) : m_input_descs(descs) {}
+	InputLayoutDesc& append(const D3D11_INPUT_ELEMENT_DESC& desc);
 
+	// Assumes a VertexLayout type which has a static get_desc() function returning an std::vector<D3D11_INPUT_ELEMENT_DESC>
+	template <typename VertexLayout>
+	static InputLayoutDesc get_layout()
+	{
+		return VertexLayout::get_desc();
+	}
+
+private:
+	std::vector<D3D11_INPUT_ELEMENT_DESC> m_input_descs;
+};
+
+/*
+
+	To-do... (make helper creators just like above desc)
+
+*/
+
+class RasterizerDesc 
+{
+
+private:
+	D3D11_RASTERIZER_DESC1 m_rasterizer_desc{};
+};
+
+class BlendDesc 
+{
+
+private:
+	D3D11_BLEND_DESC1 m_blend_desc{};
+};
+
+class DepthStencilDesc 
+{
+
+private:
+	D3D11_DEPTH_STENCIL_DESC m_depth_stencil_desc{};
+};
 

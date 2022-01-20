@@ -53,3 +53,8 @@ TextureDesc TextureDesc::depth_stencil(DepthFormat format, UINT width, UINT heig
 	}
 }
 
+InputLayoutDesc& InputLayoutDesc::append(const D3D11_INPUT_ELEMENT_DESC& desc)
+{
+	m_input_descs.push_back(desc);
+	return *this;
+}

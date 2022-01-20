@@ -36,21 +36,25 @@ public:
 	void create_sampler(const D3D11_SAMPLER_DESC& desc, Sampler* sampler);
 	void create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
 
+	GPUTexture get_backbuffer();
+
 	// Create GPU abstractions
 	void create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer);
 	void create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline);
 	//void create_compute_pipeline(ComputePipeline* pipeline);
 
-	// Bind RTVs and pass
-	void begin_pass(const Framebuffer* framebuffer, const std::vector<D3D11_VIEWPORT>& viewports, std::optional<DepthStencilClear> m_ds_clear = {});
+
 
 	/*
 		A draw is expected to be done between a begin_pass and end_pass!
 		Otherwise, no Render Targets are set (D3D11 will complain)
 	*/
 
-	void end_pass();							// Unbind RTVs and cleanup
+	void begin_pass(const Framebuffer* framebuffer, std::optional<DepthStencilClear> m_ds_clear = {});
+	void end_pass();
 
+	void bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports);
+	void bind_scissors(const std::vector<D3D11_RECT>& rects);
 	
 	// No need to check for type, D3D11 will do it for us
 	void bind_vertex_buffer(UINT slot, const GPUBuffer* buffer, UINT stride, UINT offset);
@@ -64,7 +68,7 @@ public:
 	void bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler);
 
 	// Bind helpers
-	void bind_pipeline(const GraphicsPipeline* pipeline);
+	void bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
 	void bind_compute_pipeline(const ComputePipeline* pipeline);
 
 	/*
@@ -122,6 +126,7 @@ private:
 
 private:
 	unique_ptr<DXDevice> m_dev;
+	GPUTexture m_backbuffer;
 
 
 };
