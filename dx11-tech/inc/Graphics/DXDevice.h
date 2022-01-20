@@ -50,6 +50,8 @@ using GsPtr = ComPtr<ID3D11GeometryShader>;
 using PsPtr = ComPtr<ID3D11PixelShader>;
 using CsPtr = ComPtr<ID3D11ComputeShader>;
 
+using BlobPtr = ComPtr<ID3DBlob>;
+
 
 
 bool HRCHECK(HRESULT hr);

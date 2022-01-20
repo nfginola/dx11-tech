@@ -30,7 +30,7 @@ private:
 class GPUType
 {
 public:
-	bool is_valid() const { return m_internal_resource == nullptr; }
+	bool is_valid() const { return m_internal_resource != nullptr; }
 
 protected:
 	GPUType() = default;		// Not a public object!
@@ -67,7 +67,6 @@ private:
 
 class Shader : public GPUType
 {
-	friend class GraphicsPipeline;
 	friend class GfxDevice;
 public:
 	Shader() = default;
@@ -75,6 +74,7 @@ public:
 	ShaderStage get_stage() { return m_stage; }
 private:
 	ShaderStage m_stage = ShaderStage::eNone;
+	ShaderBytecode m_blob;
 };
 
 class Sampler : public GPUType { friend class GfxDevice; };

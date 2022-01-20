@@ -60,6 +60,9 @@
     <ClCompile Include="src\Graphics\GfxDescriptorsAbstraction.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Graphics\GfxVertexTypes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="inc\Window.h">
@@ -104,5 +107,12 @@
     <ClInclude Include="inc\Graphics\GfxDescriptorsAbstraction.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="inc\Graphics\GfxVertexTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="VertexShader.hlsl" />
+    <FxCompile Include="PixelShader.hlsl" />
   </ItemGroup>
 </Project>

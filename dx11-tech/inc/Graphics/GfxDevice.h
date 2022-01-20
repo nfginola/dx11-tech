@@ -2,6 +2,7 @@
 #include "Graphics/GfxCommon.h"
 #include "Graphics/GfxDescriptorsPrimitive.h"
 #include "Graphics/GfxDescriptorsAbstraction.h"
+#include "Graphics/GfxVertexTypes.h"
 #include "Graphics/GfxTypes.h"
 #include "Graphics/GfxHelperTypes.h"
 
@@ -18,14 +19,17 @@ class GfxDevice
 {
 public:
 	// Book-keeping (e.g cleanup)
-	void begin_frame();					// Should clear backbuffer automatically
-	void end_frame();
+	void frame_start();					// Should clear backbuffer automatically
+	void frame_end();
+
+	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
+	void compile_shader(ShaderStage stage, const std::filesystem::path& fpath, ShaderBytecode* bytecode);
 
 	// Create GPU primitives
 	void create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres = {});
 	void create_texture(const TextureDesc& desc, GPUTexture* texture, std::optional<SubresourceData> subres = {});
 	void create_sampler(const SamplerDesc& desc, Sampler* sampler);
-	void create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
+	void create_shader(ShaderStage stage, const ShaderBytecode& bytecode, Shader* shader);
 
 	GPUTexture get_backbuffer();
 
@@ -33,20 +37,14 @@ public:
 	void create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer);
 	void create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline);
 	//void create_compute_pipeline(ComputePipeline* pipeline);
+	
+	void draw();
+	void present(bool vsync = true);
 
-
-
-	/*
-		A draw is expected to be done between a begin_pass and end_pass!
-		Otherwise, no Render Targets are set (D3D11 will complain)
-	*/
 
 	void begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
 	void end_pass();
 	
-	/*
-		in the spirit of using custom types, make custom types for Viewport and Rect!
-	*/
 	void bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports);
 	void bind_scissors(const std::vector<D3D11_RECT>& rects);
 	

@@ -62,19 +62,10 @@ private:
 	D3D11_SUBRESOURCE_DATA m_subres{ nullptr, 0, 0 };
 };
 
-
-
-
-
-// Vertex types
-struct Vertex_POS_UV_NORMAL
+struct ShaderBytecode
 {
-	DirectX::XMFLOAT3 pos;
-	DirectX::XMFLOAT2 uv;
-	DirectX::XMFLOAT3 normal;
-	//DirectX::XMFLOAT3 tangent;
-	//DirectX::XMFLOAT3 bitangent;
-
-	static std::vector<D3D11_INPUT_ELEMENT_DESC> get_desc(UINT buffer_slot, D3D11_INPUT_CLASSIFICATION input_slot_class);
+	shared_ptr<std::vector<uint8_t>> code;
 };
+
+
 

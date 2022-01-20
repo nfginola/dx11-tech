@@ -2,7 +2,7 @@
 #include "Graphics/GfxDevice.h"
 #include "Graphics/GfxCommon.h"
 
-static GfxDevice* s_device = nullptr;
+static GfxDevice* s_gfx_device = nullptr;
 
 namespace gfxconstants
 {
@@ -12,21 +12,21 @@ namespace gfxconstants
 
 void GfxDevice::initialize(unique_ptr<DXDevice> dev)
 {
-	if (!s_device)
-		s_device = new GfxDevice(std::move(dev));
+	if (!s_gfx_device)
+		s_gfx_device = new GfxDevice(std::move(dev));
 	else
 		assert(false);	// dont try initializing multiple times..
 }
 
 void GfxDevice::shutdown()
 {
-	if (s_device)
-		delete s_device;
+	if (s_gfx_device)
+		delete s_gfx_device;
 }
 
 GfxDevice* GfxDevice::get()
 {
-	return s_device;
+	return s_gfx_device;
 }
 
 GfxDevice::GfxDevice(std::unique_ptr<DXDevice> dev) :
@@ -47,7 +47,7 @@ GfxDevice::~GfxDevice()
 
 }
 
-void GfxDevice::begin_frame()
+void GfxDevice::frame_start()
 {
 	auto& ctx = m_dev->get_context();
 	ctx->RSSetScissorRects(gfxconstants::MAX_SCISSORS, (const D3D11_RECT*)gfxconstants::NULL_RESOURCE);
@@ -60,6 +60,74 @@ void GfxDevice::begin_frame()
 	ctx->GSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
 	ctx->PSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
 	ctx->CSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
+}
+
+void GfxDevice::frame_end()
+{
+}
+
+void GfxDevice::compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader)
+{
+	ShaderBytecode bc;
+	compile_shader(stage, fpath, &bc);
+	create_shader(stage, bc, shader);
+}
+
+void GfxDevice::compile_shader(ShaderStage stage, const std::filesystem::path& fpath, ShaderBytecode* bytecode)
+{
+	std::string target;
+	switch (stage)
+	{
+	case ShaderStage::eVertex:
+		target = "vs_5_0";
+		break;
+	case ShaderStage::ePixel:
+		target = "ps_5_0";
+		break;
+	case ShaderStage::eHull:
+		target = "hs_5_0";
+		break;
+	case ShaderStage::eDomain:
+		target = "ds_5_0";
+		break;
+	case ShaderStage::eGeometry:
+		target = "gs_5_0";
+		break;
+	case ShaderStage::eCompute:
+		target = "cs_5_0";
+		break;
+	}
+
+	UINT flags = D3DCOMPILE_WARNINGS_ARE_ERRORS | D3DCOMPILE_ENABLE_STRICTNESS;
+#if defined( DEBUG ) || defined( _DEBUG )
+	flags |= D3DCOMPILE_DEBUG;
+#endif
+
+	BlobPtr shader_blob;
+	BlobPtr error_blob;
+	auto HR = D3DCompileFromFile(
+		fpath.wstring().c_str(),
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"main",
+		target.c_str(),
+		flags, 0,
+		shader_blob.ReleaseAndGetAddressOf(), error_blob.ReleaseAndGetAddressOf()
+	);
+	if (FAILED(HR))
+	{
+		if (error_blob)
+		{
+			OutputDebugStringA((char*)error_blob->GetBufferPointer());
+			std::cout << (char*)error_blob->GetBufferPointer() << "\n";
+			assert(false);
+			return;
+		}
+	}
+	
+	bytecode->code = std::make_shared<std::vector<uint8_t>>();
+	bytecode->code->resize(shader_blob->GetBufferSize());
+	std::memcpy(bytecode->code->data(), shader_blob->GetBufferPointer(), shader_blob->GetBufferSize());
 }
 
 void GfxDevice::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres)
@@ -378,6 +446,45 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 
 }
 
+void GfxDevice::create_sampler(const SamplerDesc& desc, Sampler* sampler)
+{
+	HRCHECK(m_dev->get_device()->CreateSamplerState(&desc.m_sampler_desc, 
+		(ID3D11SamplerState**)sampler->m_internal_resource.ReleaseAndGetAddressOf()));
+}
+
+void GfxDevice::create_shader(ShaderStage stage, const ShaderBytecode& bytecode, Shader* shader)
+{
+	switch (stage)
+	{
+	case ShaderStage::eVertex:
+		HRCHECK(m_dev->get_device()->CreateVertexShader(bytecode.code->data(), bytecode.code->size(), nullptr, (ID3D11VertexShader**)shader->m_internal_resource.ReleaseAndGetAddressOf()));
+		shader->m_stage = ShaderStage::eVertex;
+		shader->m_blob = bytecode;
+		break;
+	case ShaderStage::ePixel:
+		HRCHECK(m_dev->get_device()->CreatePixelShader(bytecode.code->data(), bytecode.code->size(), nullptr, (ID3D11PixelShader**)shader->m_internal_resource.ReleaseAndGetAddressOf()));
+		shader->m_stage = ShaderStage::ePixel;
+		break;
+	case ShaderStage::eHull:
+		HRCHECK(m_dev->get_device()->CreateHullShader(bytecode.code->data(), bytecode.code->size(), nullptr, (ID3D11HullShader**)shader->m_internal_resource.ReleaseAndGetAddressOf()));
+		shader->m_stage = ShaderStage::eHull;
+		break;
+	case ShaderStage::eDomain:
+		HRCHECK(m_dev->get_device()->CreateDomainShader(bytecode.code->data(), bytecode.code->size(), nullptr, (ID3D11DomainShader**)shader->m_internal_resource.ReleaseAndGetAddressOf()));
+		shader->m_stage = ShaderStage::eDomain;
+		break;
+	case ShaderStage::eGeometry:
+		HRCHECK(m_dev->get_device()->CreateGeometryShader(bytecode.code->data(), bytecode.code->size(), nullptr, (ID3D11GeometryShader**)shader->m_internal_resource.ReleaseAndGetAddressOf()));
+		shader->m_stage = ShaderStage::eGeometry;
+		break;
+	case ShaderStage::eCompute:
+		HRCHECK(m_dev->get_device()->CreateComputeShader(bytecode.code->data(), bytecode.code->size(), nullptr, (ID3D11ComputeShader**)shader->m_internal_resource.ReleaseAndGetAddressOf()));
+		shader->m_stage = ShaderStage::eCompute;
+		break;
+	}
+}
+
+
 GPUTexture GfxDevice::get_backbuffer()
 {
 	return m_backbuffer;
@@ -398,8 +505,49 @@ void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* fra
 
 void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline)
 {
-	// Create...
+	auto& dev = m_dev->get_device();
 
+	// create rasterizer state
+	HRCHECK(dev->CreateRasterizerState1(&desc.m_rasterizer_desc.m_rasterizer_desc,
+		(ID3D11RasterizerState1**)pipeline->m_rasterizer.m_internal_resource.ReleaseAndGetAddressOf()));
+
+	// create blend state
+	HRCHECK(dev->CreateBlendState1(&desc.m_blend_desc.m_blend_desc,
+		(ID3D11BlendState1**)pipeline->m_blend.m_internal_resource.ReleaseAndGetAddressOf()));
+
+	// create depth stencil state
+	HRCHECK(dev->CreateDepthStencilState(&desc.m_depth_stencil_desc.m_depth_stencil_desc,
+		(ID3D11DepthStencilState**)pipeline->m_depth_stencil.m_internal_resource.ReleaseAndGetAddressOf()));
+
+	// create input layout (duplicates may be created here, we will ignore this for simplicity)
+	HRCHECK(dev->CreateInputLayout(
+		desc.m_input_desc.m_input_descs.data(),
+		(UINT)desc.m_input_desc.m_input_descs.size(),
+		desc.m_vs.m_blob.code->data(),
+		(UINT)desc.m_vs.m_blob.code->size(),
+		(ID3D11InputLayout**)pipeline->m_input_layout.m_internal_resource.ReleaseAndGetAddressOf()));
+
+	// add shaders
+	pipeline->m_vs = desc.m_vs;
+	pipeline->m_ps = desc.m_ps;
+	if (desc.m_gs.has_value())
+		pipeline->m_gs = desc.m_gs.value();
+	if (desc.m_hs.has_value())
+		pipeline->m_hs = desc.m_hs.value();
+	if (desc.m_ds.has_value())
+		pipeline->m_ds = desc.m_ds.value();
+
+	pipeline->m_is_registered = true;
+}
+
+void GfxDevice::draw()
+{
+	m_dev->get_context()->Draw(3, 0);
+}
+
+void GfxDevice::present(bool vsync)
+{
+	m_dev->get_sc()->Present(vsync ? 1 : 0, 0);
 }
 
 void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear)
@@ -413,13 +561,8 @@ void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_
 	auto& ctx = m_dev->get_context();
 	auto& dsv_opt = framebuffer->m_depth_stencil_target;
 
-	// unbind all SRVs (adds overhead (how much?), but adds safety)
-
-
+	// clear framebuffer and get render targets
 	ID3D11RenderTargetView* rtvs[gfxconstants::MAX_RENDER_TARGETS] = {};
-
-	// clear framebuffer (automatic clear to black if none supplied)
-	// and get render targets
 	for (int i = 0; i < framebuffer->m_targets.size(); ++i)
 	{
 		// get target
