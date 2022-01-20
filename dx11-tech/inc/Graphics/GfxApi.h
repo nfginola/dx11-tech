@@ -61,8 +61,11 @@ public:
 	void bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format, UINT offset);
 	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer);
 
-	// Bind views, no need to known underlying type
-	void bind_resource(UINT slot, ShaderStage stage, GPUAccess access, const GPUResource* resource);
+	// Bind shader resource (Read access), no need to known underlying type
+	void bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource);
+
+	// Bind UAV (Read-Write access) (only supports CS at the moment, 11.1)
+	void bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource);
 
 	// Sampler :)
 	void bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler);

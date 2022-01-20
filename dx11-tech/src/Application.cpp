@@ -57,7 +57,7 @@ Application::Application()
 	};
 
 	/*
-		For hardcoded textures and stuffs for Rendering Techniques, we can freely stick resources as private member objects in a Renderer or something.
+		For hardcoded textures and stuffs for Rendering Techniques, we can freely stick resources as private member objects in a Renderer or something (they are on heap).
 		For resources that are to be handed out, they should be dynamically allocated, example:
 			(shared_ptr<GPUBuffer> vertex_buffer = make_shared(..)
 			(shared_ptr<GPUTexture> albedo_tex = make_shared(..)
@@ -67,6 +67,7 @@ Application::Application()
 	*/
 	std::cout << "sizeof GPUTexture: " << sizeof(GPUTexture) << "\n";
 	std::cout << "sizeof GPUBuffer: " << sizeof(GPUBuffer) << "\n";
+	std::cout << "sizeof GfxApi: " << sizeof(GfxApi) << "\n";
 
 	Shader s1, s2;
 	InputLayoutDesc d = InputLayoutDesc::get_layout<Vertex_POS_UV_NORMAL>();
@@ -74,7 +75,7 @@ Application::Application()
 	//	.set_shaders(VertexShader(s1), PixelShader(s2))
 	//	.set_input_layout(d);
 
-
+	m_gfx->bind_viewports(viewports);
 	m_gfx->begin_pass(active_fb, DepthStencilClear::d1_s0());
 }
 

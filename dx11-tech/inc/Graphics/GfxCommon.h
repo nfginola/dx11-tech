@@ -17,7 +17,6 @@ namespace GfxConstants
 enum class ShaderStage { eNone, eVertex, eHull, eDomain, eGeometry, ePixel, eCompute};
 enum class BufferType { eNone, eConstant, eVertex, eIndex, eStructured, eAppendConsume, eByteAddress, eRaw, eCustom };
 enum class TextureType { eNone, e1D, e2D, e3D };
-enum class GPUAccess { eRead, eReadWrite };
 enum class DepthFormat { eD32, eD32_S8, eD24_S8 };
 
 
