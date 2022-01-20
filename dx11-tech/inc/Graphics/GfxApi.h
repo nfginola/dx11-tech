@@ -33,7 +33,7 @@ public:
 	// Create GPU primitives
 	void create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres = {});
 	void create_texture(const TextureDesc& desc, GPUTexture* texture, std::optional<SubresourceData> subres = {});
-	void create_sampler(const D3D11_SAMPLER_DESC& desc, Sampler* sampler);
+	void create_sampler(const SamplerDesc& desc, Sampler* sampler);
 	void create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
 
 	GPUTexture get_backbuffer();
@@ -72,12 +72,7 @@ public:
 	void bind_compute_pipeline(const ComputePipeline* pipeline);
 
 	/*
-	
-
-	
-	Need to experiment before use:
-		RSSetScissorRects
-	
+		
 	Priority implement:
 		DrawIndexedInstanced
 		Map

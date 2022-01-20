@@ -64,6 +64,13 @@ private:
 
 */
 
+class SamplerDesc
+{
+
+private:
+	D3D11_SAMPLER_DESC m_sampler_desc{};
+};
+
 class RasterizerDesc 
 {
 
