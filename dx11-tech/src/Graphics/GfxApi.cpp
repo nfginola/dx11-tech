@@ -381,7 +381,7 @@ void GfxApi::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipelin
 
 }
 
-void GfxApi::begin_pass(const Framebuffer* framebuffer, std::optional<DepthStencilClear> m_ds_clear)
+void GfxApi::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear)
 {
 	if (!framebuffer->m_is_registered)
 	{
@@ -412,9 +412,8 @@ void GfxApi::begin_pass(const Framebuffer* framebuffer, std::optional<DepthStenc
 	}
 
 	// clear depth stencil
-	if (m_ds_clear.has_value() && dsv_opt.is_valid())
+	if (dsv_opt.is_valid())
 	{
-		auto& ds_clear = m_ds_clear.value();
 		auto dsv = dsv_opt.m_dsv.Get();
 		ctx->ClearDepthStencilView(dsv, ds_clear.m_clear_flags, ds_clear.m_depth, ds_clear.m_stencil);	// clear ds
 		ctx->OMSetRenderTargets(GfxConstants::MAX_RENDER_TARGETS, rtvs, dsv);	// bind targets (with dsv)

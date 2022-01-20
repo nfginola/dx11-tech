@@ -3,6 +3,7 @@
 
 PipelineDesc& PipelineDesc::set_shaders(VertexShader vs, PixelShader ps, std::optional<GeometryShader> gs, std::optional<HullShader> hs, std::optional<DomainShader> ds)
 {
+	// Catch errrors early for easy debugging
 	assert(vs.get().get_stage() == ShaderStage::eVertex);
 	assert(ps.get().get_stage() == ShaderStage::ePixel);
 

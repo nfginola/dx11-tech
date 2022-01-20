@@ -45,15 +45,15 @@ Application::Application()
 
 
 	Framebuffer fb;
-	FramebufferDesc fb_d({ t2 }, d_32);
+	FramebufferDesc fb_d({ t2 }, ds_32_8);
 	m_gfx->create_framebuffer(fb_d, &fb);
 
 	Framebuffer* active_fb = &fb;
 
 	std::vector<D3D11_VIEWPORT> viewports = {
-			CD3D11_VIEWPORT(0.f, 0.f, 1920.f, 1080.f, GfxConstants::MIN_DEPTH, GfxConstants::MAX_DEPTH),
-			CD3D11_VIEWPORT(0.f, 0.f, 1920.f, 1080.f, GfxConstants::MIN_DEPTH, GfxConstants::MAX_DEPTH),
-			CD3D11_VIEWPORT(0.f, 0.f, 1920.f, 1080.f, GfxConstants::MIN_DEPTH, GfxConstants::MAX_DEPTH),
+			CD3D11_VIEWPORT(0.f, 0.f, 1920.f, 1080.f),
+			CD3D11_VIEWPORT(0.f, 0.f, 1920.f, 1080.f),
+			CD3D11_VIEWPORT(0.f, 0.f, 1920.f, 1080.f),
 	};
 
 	/*

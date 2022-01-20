@@ -50,7 +50,7 @@ public:
 		Otherwise, no Render Targets are set (D3D11 will complain)
 	*/
 
-	void begin_pass(const Framebuffer* framebuffer, std::optional<DepthStencilClear> m_ds_clear = {});
+	void begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
 	void end_pass();
 
 	void bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports);
