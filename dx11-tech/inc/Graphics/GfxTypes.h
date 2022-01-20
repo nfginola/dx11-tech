@@ -40,7 +40,7 @@ protected:
 
 class GPUResource : public GPUType
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 protected:
 	SrvPtr m_srv;
 	UavPtr m_uav;
@@ -49,7 +49,7 @@ protected:
 
 class GPUTexture : public GPUResource
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 private:
 	TextureType m_type = TextureType::eNone;
 	TextureDesc m_desc;
@@ -58,7 +58,7 @@ private:
 
 class GPUBuffer : public GPUResource
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 private:
 	BufferType m_type = BufferType::eNone;
 	BufferDesc m_desc;
@@ -68,7 +68,7 @@ private:
 class Shader : public GPUType
 {
 	friend class GraphicsPipeline;
-	friend class GfxApi;
+	friend class GfxDevice;
 public:
 	Shader() = default;
 	operator Shader () { return *this; }
@@ -77,15 +77,15 @@ private:
 	ShaderStage m_stage = ShaderStage::eNone;
 };
 
-class Sampler : public GPUType { friend class GfxApi; };
+class Sampler : public GPUType { friend class GfxDevice; };
 
-class RasterizerState : public GPUType { friend class GfxApi; };
+class RasterizerState : public GPUType { friend class GfxDevice; };
 
-class InputLayout : public GPUType { friend class GfxApi; };
+class InputLayout : public GPUType { friend class GfxDevice; };
 
-class BlendState : public GPUType { friend class GfxApi; };
+class BlendState : public GPUType { friend class GfxDevice; };
 
-class DepthStencilState : public GPUType { friend class GfxApi; };
+class DepthStencilState : public GPUType { friend class GfxDevice; };
 
 
 using VertexShader = NamedType<Shader, struct VertexShaderPhantom>;
@@ -97,7 +97,7 @@ using ComputeShader = NamedType<Shader, struct ComputeShaderPhantom>;
 
 class Framebuffer 
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 public:
 	Framebuffer() = default;
 private:
@@ -112,7 +112,7 @@ private:
 
 class GraphicsPipeline 
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 public:
 	GraphicsPipeline() = default;
 private:

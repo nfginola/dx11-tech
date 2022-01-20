@@ -3,7 +3,7 @@
 
 class RenderTextureClear
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 public:
 	RenderTextureClear(std::array<float, 4> rgba = { 0.f, 0.f, 0.f, 1.f }) :
 		m_rgba(rgba)
@@ -18,7 +18,7 @@ private:
 
 class DepthStencilClear
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 public:
 	DepthStencilClear(FLOAT depth, UINT8 stencil, UINT clear_flags = D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL) :
 		m_clear_flags(clear_flags),
@@ -35,7 +35,7 @@ private:
 
 class ReadWriteClear
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 public:
 	ReadWriteClear() = delete;
 
@@ -54,7 +54,7 @@ private:
 
 class SubresourceData
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 public:
 	SubresourceData() = default;
 	SubresourceData(void* data, UINT pitch, UINT slice_pitch) : m_subres({ data, pitch, slice_pitch }) {}

@@ -8,7 +8,7 @@
 
 class FramebufferDesc
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 public:
 	FramebufferDesc(std::array<std::optional<GPUTexture>, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> render_targets, std::optional<GPUTexture> depth_stencil_target = {}) :
 		m_targets(render_targets), m_depth_stencil_target(depth_stencil_target) {};
@@ -24,7 +24,7 @@ private:
 
 class PipelineDesc
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 public:
 	// Strongly typed for safer public interface
 	// https://www.fluentcpp.com/2016/12/08/strong-types-for-strong-interfaces/

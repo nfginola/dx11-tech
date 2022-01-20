@@ -5,7 +5,7 @@
 #include "Input.h"
 #include "Timer.h"
 
-#include "Graphics/GfxApi.h"
+#include "Graphics/GfxDevice.h"
 
 Application::Application()
 {
@@ -13,7 +13,7 @@ Application::Application()
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
 	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, 1920, 1080);
 	m_input = make_unique<Input>(m_win->get_hwnd());
-	m_gfx = make_unique<GfxApi>(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
+	m_gfx = make_unique<GfxDevice>(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
 
 	GPUBuffer b;
 	m_gfx->create_buffer(BufferDesc::constant(128), &b);
@@ -67,7 +67,7 @@ Application::Application()
 	*/
 	std::cout << "sizeof GPUTexture: " << sizeof(GPUTexture) << "\n";
 	std::cout << "sizeof GPUBuffer: " << sizeof(GPUBuffer) << "\n";
-	std::cout << "sizeof GfxApi: " << sizeof(GfxApi) << "\n";
+	std::cout << "sizeof GfxApi: " << sizeof(GfxDevice) << "\n";
 
 	Shader s1, s2;
 	InputLayoutDesc d = InputLayoutDesc::get_layout<Vertex_POS_UV_NORMAL>();

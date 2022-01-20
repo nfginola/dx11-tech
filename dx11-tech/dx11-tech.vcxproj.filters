@@ -42,7 +42,7 @@
     <ClCompile Include="src\Graphics\GfxCommon.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\GfxApi.cpp">
+    <ClCompile Include="src\Graphics\GfxDevice.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Graphics\DXDevice.cpp">
@@ -86,7 +86,7 @@
     <ClInclude Include="inc\Graphics\GfxCommon.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\GfxApi.h">
+    <ClInclude Include="inc\Graphics\GfxDevice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inc\Graphics\DXDevice.h">

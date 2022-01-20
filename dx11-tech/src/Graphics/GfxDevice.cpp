@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Graphics/GfxApi.h"
+#include "Graphics/GfxDevice.h"
 #include "Graphics/GfxCommon.h"
 
 namespace GfxConstants
@@ -8,7 +8,7 @@ namespace GfxConstants
 	const void* const NULL_RESOURCE[GfxConstants::MAX_SHADER_INPUT_RESOURCE_SLOTS] = {};
 }
 
-GfxApi::GfxApi(std::unique_ptr<DXDevice> dev) :
+GfxDevice::GfxDevice(std::unique_ptr<DXDevice> dev) :
 	m_dev(std::move(dev))
 {
 	// Initialize backbuffer texture primitive
@@ -21,12 +21,12 @@ GfxApi::GfxApi(std::unique_ptr<DXDevice> dev) :
 
 }
 
-GfxApi::~GfxApi()
+GfxDevice::~GfxDevice()
 {
 
 }
 
-void GfxApi::begin_frame()
+void GfxDevice::begin_frame()
 {
 	auto& ctx = m_dev->get_context();
 	ctx->RSSetScissorRects(GfxConstants::MAX_SCISSORS, (const D3D11_RECT*)GfxConstants::NULL_RESOURCE);
@@ -41,7 +41,7 @@ void GfxApi::begin_frame()
 	ctx->CSSetShaderResources(0, GfxConstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)GfxConstants::NULL_RESOURCE);
 }
 
-void GfxApi::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres)
+void GfxDevice::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres)
 {
 	const auto& d3d_desc = desc.m_desc;
 
@@ -63,7 +63,7 @@ void GfxApi::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optio
 	}
 }
 
-void GfxApi::create_texture(const TextureDesc& desc, GPUTexture* texture, std::optional<SubresourceData> subres)
+void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std::optional<SubresourceData> subres)
 {
 	auto d3d_desc = desc.m_desc;
 
@@ -357,12 +357,12 @@ void GfxApi::create_texture(const TextureDesc& desc, GPUTexture* texture, std::o
 
 }
 
-GPUTexture GfxApi::get_backbuffer()
+GPUTexture GfxDevice::get_backbuffer()
 {
 	return m_backbuffer;
 }
 
-void GfxApi::create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer)
+void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer)
 {
 	framebuffer->m_depth_stencil_target = desc.m_depth_stencil_target.has_value() ? desc.m_depth_stencil_target.value() : GPUTexture();
 
@@ -375,13 +375,13 @@ void GfxApi::create_framebuffer(const FramebufferDesc& desc, Framebuffer* frameb
 	framebuffer->m_is_registered = true;
 }
 
-void GfxApi::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline)
+void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline)
 {
 	// Create...
 
 }
 
-void GfxApi::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear)
+void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear)
 {
 	if (!framebuffer->m_is_registered)
 	{
@@ -426,7 +426,7 @@ void GfxApi::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_cle
 
 }
 
-void GfxApi::end_pass()
+void GfxDevice::end_pass()
 {
 	auto& ctx = m_dev->get_context();
 
@@ -437,19 +437,19 @@ void GfxApi::end_pass()
 
 }
 
-void GfxApi::bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports)
+void GfxDevice::bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports)
 {
 	auto& ctx = m_dev->get_context();
 	ctx->RSSetViewports((UINT)viewports.size(), viewports.data());
 }
 
-void GfxApi::bind_scissors(const std::vector<D3D11_RECT>& rects)
+void GfxDevice::bind_scissors(const std::vector<D3D11_RECT>& rects)
 {
 	auto& ctx = m_dev->get_context();
 	ctx->RSSetScissorRects((UINT)rects.size(), rects.data());
 }
 
-void GfxApi::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor, UINT stencil_ref)
+void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor, UINT stencil_ref)
 {
 	if (!pipeline->m_is_registered)
 	{

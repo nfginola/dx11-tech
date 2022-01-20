@@ -163,7 +163,7 @@
     <ClCompile Include="src\Graphics\GfxHelperTypes.cpp" />
     <ClCompile Include="src\Graphics\GfxTypes.cpp" />
     <ClCompile Include="src\Graphics\DXDevice.cpp" />
-    <ClCompile Include="src\Graphics\GfxApi.cpp" />
+    <ClCompile Include="src\Graphics\GfxDevice.cpp" />
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\Graphics\GfxCommon.cpp" />
     <ClCompile Include="src\Graphics\GfxDescriptorsPrimitive.cpp" />
@@ -185,7 +185,7 @@
     <ClInclude Include="inc\Graphics\GfxHelperTypes.h" />
     <ClInclude Include="inc\Graphics\GfxTypes.h" />
     <ClInclude Include="inc\Graphics\DXDevice.h" />
-    <ClInclude Include="inc\Graphics\GfxApi.h" />
+    <ClInclude Include="inc\Graphics\GfxDevice.h" />
     <ClInclude Include="inc\Camera.h" />
     <ClInclude Include="inc\Application.h" />
     <ClInclude Include="inc\Graphics\GfxDescriptorsPrimitive.h" />

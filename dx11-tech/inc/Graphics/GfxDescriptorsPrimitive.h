@@ -4,7 +4,7 @@
 
 class BufferDesc
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 public:
 	BufferDesc() = default;
 	BufferDesc(const D3D11_BUFFER_DESC& desc) : m_desc(desc), m_type(BufferType::eCustom) {}
@@ -26,7 +26,7 @@ class TextureDesc
 {
 	// Will probably extend to use Variants to handle Texture1D and Texture3D down the line.
 
-	friend class GfxApi;
+	friend class GfxDevice;
 public:
 	TextureDesc() = default;
 	TextureDesc(const D3D11_TEXTURE2D_DESC& desc) : m_desc(desc), m_type(TextureType::e2D), m_render_target_clear(RenderTextureClear::black()) {}
@@ -41,7 +41,7 @@ private:
 
 class InputLayoutDesc
 {
-	friend class GfxApi;
+	friend class GfxDevice;
 public:
 	InputLayoutDesc() = default;
 	InputLayoutDesc(const std::vector<D3D11_INPUT_ELEMENT_DESC>& descs) : m_input_descs(descs) {}
