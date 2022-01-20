@@ -4,10 +4,10 @@
 
 static GfxDevice* s_device = nullptr;
 
-namespace GfxConstants
+namespace gfxconstants
 {
 	// For unbinding state
-	const void* const NULL_RESOURCE[GfxConstants::MAX_SHADER_INPUT_RESOURCE_SLOTS] = {};
+	const void* const NULL_RESOURCE[gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS] = {};
 }
 
 void GfxDevice::initialize(unique_ptr<DXDevice> dev)
@@ -50,16 +50,16 @@ GfxDevice::~GfxDevice()
 void GfxDevice::begin_frame()
 {
 	auto& ctx = m_dev->get_context();
-	ctx->RSSetScissorRects(GfxConstants::MAX_SCISSORS, (const D3D11_RECT*)GfxConstants::NULL_RESOURCE);
+	ctx->RSSetScissorRects(gfxconstants::MAX_SCISSORS, (const D3D11_RECT*)gfxconstants::NULL_RESOURCE);
 
 	// nuke all SRVs
 	// https://stackoverflow.com/questions/20300778/are-there-directx-guidelines-for-binding-and-unbinding-resources-between-draw-ca
-	ctx->VSSetShaderResources(0, GfxConstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)GfxConstants::NULL_RESOURCE);
-	ctx->HSSetShaderResources(0, GfxConstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)GfxConstants::NULL_RESOURCE);
-	ctx->DSSetShaderResources(0, GfxConstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)GfxConstants::NULL_RESOURCE);
-	ctx->GSSetShaderResources(0, GfxConstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)GfxConstants::NULL_RESOURCE);
-	ctx->PSSetShaderResources(0, GfxConstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)GfxConstants::NULL_RESOURCE);
-	ctx->CSSetShaderResources(0, GfxConstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)GfxConstants::NULL_RESOURCE);
+	ctx->VSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
+	ctx->HSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
+	ctx->DSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
+	ctx->GSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
+	ctx->PSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
+	ctx->CSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
 }
 
 void GfxDevice::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres)
@@ -416,7 +416,7 @@ void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_
 	// unbind all SRVs (adds overhead (how much?), but adds safety)
 
 
-	ID3D11RenderTargetView* rtvs[GfxConstants::MAX_RENDER_TARGETS] = {};
+	ID3D11RenderTargetView* rtvs[gfxconstants::MAX_RENDER_TARGETS] = {};
 
 	// clear framebuffer (automatic clear to black if none supplied)
 	// and get render targets
@@ -437,11 +437,11 @@ void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_
 	{
 		auto dsv = dsv_opt.m_dsv.Get();
 		ctx->ClearDepthStencilView(dsv, ds_clear.m_clear_flags, ds_clear.m_depth, ds_clear.m_stencil);	// clear ds
-		ctx->OMSetRenderTargets(GfxConstants::MAX_RENDER_TARGETS, rtvs, dsv);	// bind targets (with dsv)
+		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, rtvs, dsv);	// bind targets (with dsv)
 	}
 	else
 	{
-		ctx->OMSetRenderTargets(GfxConstants::MAX_RENDER_TARGETS, rtvs, nullptr);	// bind targets (no dsv)
+		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, rtvs, nullptr);	// bind targets (no dsv)
 	}
 
 
@@ -451,10 +451,10 @@ void GfxDevice::end_pass()
 {
 	auto& ctx = m_dev->get_context();
 
-	ctx->OMSetRenderTargets(GfxConstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)GfxConstants::NULL_RESOURCE, nullptr);
+	ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr);
 
 	// unbind UAVs too
-	ctx->CSSetUnorderedAccessViews(0, GfxConstants::MAX_CS_UAV, (ID3D11UnorderedAccessView* const*)GfxConstants::NULL_RESOURCE, (const UINT*)GfxConstants::NULL_RESOURCE);
+	ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_CS_UAV, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
 
 }
 

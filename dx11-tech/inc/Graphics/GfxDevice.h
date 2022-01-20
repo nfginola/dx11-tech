@@ -43,7 +43,10 @@ public:
 
 	void begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
 	void end_pass();
-
+	
+	/*
+		in the spirit of using custom types, make custom types for Viewport and Rect!
+	*/
 	void bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports);
 	void bind_scissors(const std::vector<D3D11_RECT>& rects);
 	
