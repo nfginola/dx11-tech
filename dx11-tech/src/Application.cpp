@@ -71,9 +71,9 @@ Application::Application()
 
 	Shader s1, s2;
 	InputLayoutDesc d = InputLayoutDesc::get_layout<Vertex_POS_UV_NORMAL>();
-	//auto p_d = PipelineDesc()
-	//	.set_shaders(VertexShader(s1), PixelShader(s2))
-	//	.set_input_layout(d);
+	auto p_d = PipelineDesc()
+		.set_shaders(VertexShader(s1), PixelShader(s2))
+		.set_input_layout(d);
 
 	m_gfx->bind_viewports(viewports);
 	m_gfx->begin_pass(active_fb, DepthStencilClear::d1_s0());

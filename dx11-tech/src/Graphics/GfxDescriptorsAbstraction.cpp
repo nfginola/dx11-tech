@@ -58,6 +58,12 @@ PipelineDesc& PipelineDesc::set_blend(const BlendDesc& desc)
 	return *this;
 }
 
+PipelineDesc& PipelineDesc::set_sample_mask(UINT mask)
+{
+	m_sample_mask = mask;
+	return *this;
+}
+
 PipelineDesc& PipelineDesc::set_depth_stencil(const DepthStencilDesc& desc)
 {
 	m_depth_stencil_desc = desc;

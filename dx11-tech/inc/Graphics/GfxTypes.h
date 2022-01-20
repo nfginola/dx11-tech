@@ -87,7 +87,8 @@ class BlendState : public GPUType { friend class GfxDevice; };
 
 class DepthStencilState : public GPUType { friend class GfxDevice; };
 
-
+// Strongly typed shaders for safer public interface
+// https://www.fluentcpp.com/2016/12/08/strong-types-for-strong-interfaces/
 using VertexShader = NamedType<Shader, struct VertexShaderPhantom>;
 using PixelShader = NamedType<Shader, struct PixelShaderPhantom>;
 using GeometryShader = NamedType<Shader, struct GeometryShaderPhantom>;
