@@ -13,16 +13,19 @@ Application::Application()
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
 	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, 1920, 1080);
 	m_input = make_unique<Input>(m_win->get_hwnd());
-	m_gfx = make_unique<GfxDevice>(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
+	
+	// Initialize graphics device (singleton)
+	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
+	auto dev = GfxDevice::get();
 
 	GPUBuffer b;
-	m_gfx->create_buffer(BufferDesc::constant(128), &b);
+	dev->create_buffer(BufferDesc::constant(128), &b);
 
 
 	GPUTexture t1;
 	GPUTexture t2;
-	m_gfx->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 1920, 1080), &t1);
-	m_gfx->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 1920, 1080, 1, 0, D3D11_BIND_RENDER_TARGET), &t2);
+	dev->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 1920, 1080), &t1);
+	dev->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 1920, 1080, 1, 0, D3D11_BIND_RENDER_TARGET), &t2);
 
 	GPUTexture* active_texture = &t1;
 	/*
@@ -36,9 +39,9 @@ Application::Application()
 
 
 	GPUTexture ds_24_8, ds_32_8, d_32;
-	m_gfx->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, 1920, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
-	m_gfx->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32_S8, 1920, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &ds_32_8);
-	m_gfx->create_texture(TextureDesc::depth_stencil(DepthFormat::eD24_S8, 1920, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &ds_24_8);
+	dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, 1920, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
+	dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32_S8, 1920, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &ds_32_8);
+	dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD24_S8, 1920, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &ds_24_8);
 	/*
 		We can have different RenderPasses with different Depth Stencil View to be able to see the effects of less/more depth at runtime trivially!
 	*/
@@ -46,7 +49,7 @@ Application::Application()
 
 	Framebuffer fb;
 	FramebufferDesc fb_d({ t2 }, ds_32_8);
-	m_gfx->create_framebuffer(fb_d, &fb);
+	dev->create_framebuffer(fb_d, &fb);
 
 	Framebuffer* active_fb = &fb;
 
@@ -71,17 +74,17 @@ Application::Application()
 
 	Shader s1, s2;
 	InputLayoutDesc d = InputLayoutDesc::get_layout<Vertex_POS_UV_NORMAL>();
-	auto p_d = PipelineDesc()
-		.set_shaders(VertexShader(s1), PixelShader(s2))
-		.set_input_layout(d);
+	//auto p_d = PipelineDesc()
+	//	.set_shaders(VertexShader(s1), PixelShader(s2))
+	//	.set_input_layout(d);
 
-	m_gfx->bind_viewports(viewports);
-	m_gfx->begin_pass(active_fb, DepthStencilClear::d1_s0());
+	dev->bind_viewports(viewports);
+	dev->begin_pass(active_fb, DepthStencilClear::d1_s0());
 }
 
 Application::~Application()
 {
-
+	GfxDevice::shutdown();
 }
 
 void Application::run()

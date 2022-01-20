@@ -2,10 +2,31 @@
 #include "Graphics/GfxDevice.h"
 #include "Graphics/GfxCommon.h"
 
+static GfxDevice* s_device = nullptr;
+
 namespace GfxConstants
 {
 	// For unbinding state
 	const void* const NULL_RESOURCE[GfxConstants::MAX_SHADER_INPUT_RESOURCE_SLOTS] = {};
+}
+
+void GfxDevice::initialize(unique_ptr<DXDevice> dev)
+{
+	if (!s_device)
+		s_device = new GfxDevice(std::move(dev));
+	else
+		assert(false);	// dont try initializing multiple times..
+}
+
+void GfxDevice::shutdown()
+{
+	if (s_device)
+		delete s_device;
+}
+
+GfxDevice* GfxDevice::get()
+{
+	return s_device;
 }
 
 GfxDevice::GfxDevice(std::unique_ptr<DXDevice> dev) :
@@ -484,3 +505,4 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 	ctx->OMSetDepthStencilState((ID3D11DepthStencilState*)pipeline->m_depth_stencil.m_internal_resource.Get(), stencil_ref);
 	ctx->OMSetBlendState((ID3D11BlendState*)pipeline->m_blend.m_internal_resource.Get(), blend_factor.data(), pipeline->m_sample_mask);
 }
+

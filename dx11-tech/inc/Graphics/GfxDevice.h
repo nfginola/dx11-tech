@@ -100,6 +100,10 @@ public:
 	*/
 
 public:
+	static void initialize(unique_ptr<DXDevice> dev);
+	static void shutdown();
+	static GfxDevice* get();
+
 	GfxDevice() = delete;
 	GfxDevice(unique_ptr<class DXDevice> dev);
 	~GfxDevice();
@@ -109,12 +113,11 @@ public:
 
 private:
 
-
-private:
 	unique_ptr<DXDevice> m_dev;
 	GPUTexture m_backbuffer;
 
-
 };
+
+
 
 

@@ -49,9 +49,9 @@ public:
 
 	// Assumes a VertexLayout type which has a static get_desc() function returning an std::vector<D3D11_INPUT_ELEMENT_DESC>
 	template <typename VertexLayout>
-	static InputLayoutDesc get_layout()
+	static InputLayoutDesc get_layout(UINT buffer_slot = 0, D3D11_INPUT_CLASSIFICATION input_slot_class = D3D11_INPUT_PER_VERTEX_DATA)
 	{
-		return VertexLayout::get_desc();
+		return VertexLayout::get_desc(buffer_slot, input_slot_class);
 	}
 
 private:

@@ -16,7 +16,6 @@ private:
 
 	unique_ptr<class Window> m_win;
 	unique_ptr<class Input> m_input;
-	unique_ptr<class GfxDevice> m_gfx;
 
 	LRESULT custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
