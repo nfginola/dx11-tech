@@ -53,6 +53,13 @@ TextureDesc TextureDesc::depth_stencil(DepthFormat format, UINT width, UINT heig
 	}
 }
 
+TextureDesc TextureDesc::make_2d(DXGI_FORMAT format, UINT width, UINT height, UINT bind_flags, UINT mip_levels, UINT array_size, D3D11_USAGE usage, UINT cpu_access_flags, UINT sample_count, UINT sample_quality, UINT misc_flags)
+{
+	return TextureDesc(CD3D11_TEXTURE2D_DESC(format, width, height, array_size, mip_levels, bind_flags, usage, cpu_access_flags, sample_count, sample_quality, misc_flags));
+}
+
+
+
 InputLayoutDesc& InputLayoutDesc::append(const D3D11_INPUT_ELEMENT_DESC& desc)
 {
 	m_input_descs.push_back(desc);

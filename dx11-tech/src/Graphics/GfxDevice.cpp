@@ -507,17 +507,21 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 {
 	auto& dev = m_dev->get_device();
 
-	// create rasterizer state
+	// create rasterizer state (default state if user dont supply)
 	HRCHECK(dev->CreateRasterizerState1(&desc.m_rasterizer_desc.m_rasterizer_desc,
 		(ID3D11RasterizerState1**)pipeline->m_rasterizer.m_internal_resource.ReleaseAndGetAddressOf()));
 
-	// create blend state
+	// create blend state (default state if user dont supply)
 	HRCHECK(dev->CreateBlendState1(&desc.m_blend_desc.m_blend_desc,
 		(ID3D11BlendState1**)pipeline->m_blend.m_internal_resource.ReleaseAndGetAddressOf()));
 
 	// create depth stencil state
-	HRCHECK(dev->CreateDepthStencilState(&desc.m_depth_stencil_desc.m_depth_stencil_desc,
-		(ID3D11DepthStencilState**)pipeline->m_depth_stencil.m_internal_resource.ReleaseAndGetAddressOf()));
+	// explicitly avoid creation if desc not supplied --> avoid depth-stencil clear
+	if (desc.m_depth_stencil_desc.has_value())
+	{
+		HRCHECK(dev->CreateDepthStencilState(&desc.m_depth_stencil_desc.value().m_depth_stencil_desc,
+			(ID3D11DepthStencilState**)pipeline->m_depth_stencil.m_internal_resource.ReleaseAndGetAddressOf()));
+	}
 
 	// create input layout (duplicates may be created here, we will ignore this for simplicity)
 	if (!desc.m_input_desc.m_input_descs.empty())
@@ -529,7 +533,6 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 			(UINT)desc.m_vs.m_blob.code->size(),
 			(ID3D11InputLayout**)pipeline->m_input_layout.m_internal_resource.ReleaseAndGetAddressOf()));
 	}
-
 
 	// add shaders
 	pipeline->m_vs = desc.m_vs;
@@ -544,9 +547,9 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 	pipeline->m_is_registered = true;
 }
 
-void GfxDevice::draw()
+void GfxDevice::draw(UINT vertex_count, UINT start_loc)
 {
-	m_dev->get_context()->Draw(6, 0);
+	m_dev->get_context()->Draw(vertex_count, start_loc);
 }
 
 void GfxDevice::present(bool vsync)

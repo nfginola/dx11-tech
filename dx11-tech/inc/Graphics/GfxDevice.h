@@ -38,7 +38,7 @@ public:
 	void create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline);
 	//void create_compute_pipeline(ComputePipeline* pipeline);
 	
-	void draw();
+	void draw(UINT vertex_count, UINT start_loc = 0);
 	void present(bool vsync = true);
 
 

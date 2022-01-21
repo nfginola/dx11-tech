@@ -26,7 +26,6 @@ class TextureDesc
 {
 	// Will probably extend to use Variants to handle Texture1D and Texture3D down the line.
 	
-	// Set mip_levels = 0 to generate mip level textures all the way to the bottom!
 
 	friend class GfxDevice;
 public:
@@ -34,6 +33,20 @@ public:
 	TextureDesc(const D3D11_TEXTURE2D_DESC& desc) : m_desc(desc), m_type(TextureType::e2D), m_render_target_clear(RenderTextureClear::black()) {}
 	
 	static TextureDesc depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT mip_levels = 1);
+	
+	// Set mip_levels = 0 to generate mip level textures all the way to the bottom!
+	static TextureDesc make_2d(
+		DXGI_FORMAT format,
+		UINT width, 
+		UINT height, 
+		UINT bind_flags = D3D11_BIND_SHADER_RESOURCE,
+		UINT mip_levels = 1, 
+		UINT array_size = 1,
+		D3D11_USAGE usage = D3D11_USAGE_DEFAULT,
+		UINT cpu_access_flags = 0,
+		UINT sample_count = 1,
+		UINT sample_quality = 0,
+		UINT misc_flags = 0);
 
 private:
 	D3D11_TEXTURE2D_DESC m_desc{};

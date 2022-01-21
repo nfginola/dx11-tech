@@ -55,7 +55,7 @@ private:
 	// OM
 	BlendDesc m_blend_desc{};
 	UINT m_sample_mask = 0xffffffff;
-	DepthStencilDesc m_depth_stencil_desc{};
+	std::optional<DepthStencilDesc> m_depth_stencil_desc{};
 };
 
 class ComputePipelineDesc

@@ -5,26 +5,31 @@
 #include "Input.h"
 #include "Timer.h"
 
-
 Application::Application()
 {
+	constexpr UINT WIDTH = 1920;
+	constexpr UINT HEIGHT = 1080;
+
 	// Window and Input
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
-	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, 1920, 1080);
+	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, WIDTH, HEIGHT);
 	m_input = make_unique<Input>(m_win->get_hwnd());
 	
 	// Initialize graphics device (singleton)
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
 	auto dev = GfxDevice::get();
 
+	/*
+		Draw triangle and do fullscreen pass
+	*/
 
 	// create depth tex
 	GPUTexture d_32;
-	dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, 1920, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
+	dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, WIDTH, HEIGHT, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
 
 	// create framebuffer for render to texture
-	dev->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 1920, 1080, 1, 1, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &r_tex);
-	dev->create_framebuffer(FramebufferDesc({ r_tex }), &r_fb);
+	dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R8G8B8A8_UNORM, WIDTH, HEIGHT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &r_tex);
+	dev->create_framebuffer(FramebufferDesc({ r_tex }, d_32), &r_fb);
 
 	// compile and create shaders
 	Shader vs, ps;
@@ -34,7 +39,7 @@ Application::Application()
 	// create pipeline
 	auto p_d = PipelineDesc()
 		.set_shaders(VertexShader(vs), PixelShader(ps))
-		.set_input_layout(InputLayoutDesc::get_layout<Vertex_POS_UV_NORMAL>());
+		.set_input_layout(InputLayoutDesc::get_layout<Vertex_POS_UV_NORMAL>());		// input layout not used right now with hardcoded triangle
 	dev->create_pipeline(p_d, &p);
 
 	/*
@@ -42,7 +47,7 @@ Application::Application()
 	*/
 
 	// create framebuffer for render to tex
-	dev->create_framebuffer(FramebufferDesc({ dev->get_backbuffer() }, d_32), &fb);
+	dev->create_framebuffer(FramebufferDesc({ dev->get_backbuffer() }), &fb);
 
 	// create fullscreen quad shaders
 	Shader fs_vs, fs_ps;
@@ -50,7 +55,8 @@ Application::Application()
 	dev->compile_and_create_shader(ShaderStage::ePixel, "fullscreenQuadPS.hlsl", &fs_ps);
 	
 	// fullscreen quad pipeline
-	auto rp_d = PipelineDesc().set_shaders(VertexShader(fs_vs), PixelShader(fs_ps));
+	auto rp_d = PipelineDesc()
+		.set_shaders(VertexShader(fs_vs), PixelShader(fs_ps));
 	dev->create_pipeline(rp_d, &r_p);
 
 	// create and bind persistent sampler
@@ -104,7 +110,7 @@ void Application::run()
 		dev->begin_pass(&r_fb);
 		dev->bind_viewports(viewports);
 		dev->bind_pipeline(&p);
-		dev->draw();
+		dev->draw(3);
 		dev->end_pass();
 
 		// draw fullscreen pass
@@ -112,7 +118,7 @@ void Application::run()
 		dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
 		dev->bind_viewports(viewports);
 		dev->bind_pipeline(&r_p);
-		dev->draw();
+		dev->draw(6);
 		dev->end_pass();
 
 		dev->present();
