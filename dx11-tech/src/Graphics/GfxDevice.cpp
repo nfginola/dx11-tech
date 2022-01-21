@@ -520,12 +520,16 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 		(ID3D11DepthStencilState**)pipeline->m_depth_stencil.m_internal_resource.ReleaseAndGetAddressOf()));
 
 	// create input layout (duplicates may be created here, we will ignore this for simplicity)
-	HRCHECK(dev->CreateInputLayout(
-		desc.m_input_desc.m_input_descs.data(),
-		(UINT)desc.m_input_desc.m_input_descs.size(),
-		desc.m_vs.m_blob.code->data(),
-		(UINT)desc.m_vs.m_blob.code->size(),
-		(ID3D11InputLayout**)pipeline->m_input_layout.m_internal_resource.ReleaseAndGetAddressOf()));
+	if (!desc.m_input_desc.m_input_descs.empty())
+	{
+		HRCHECK(dev->CreateInputLayout(
+			desc.m_input_desc.m_input_descs.data(),
+			(UINT)desc.m_input_desc.m_input_descs.size(),
+			desc.m_vs.m_blob.code->data(),
+			(UINT)desc.m_vs.m_blob.code->size(),
+			(ID3D11InputLayout**)pipeline->m_input_layout.m_internal_resource.ReleaseAndGetAddressOf()));
+	}
+
 
 	// add shaders
 	pipeline->m_vs = desc.m_vs;
@@ -542,7 +546,7 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 
 void GfxDevice::draw()
 {
-	m_dev->get_context()->Draw(3, 0);
+	m_dev->get_context()->Draw(6, 0);
 }
 
 void GfxDevice::present(bool vsync)
@@ -613,6 +617,62 @@ void GfxDevice::bind_scissors(const std::vector<D3D11_RECT>& rects)
 	ctx->RSSetScissorRects((UINT)rects.size(), rects.data());
 }
 
+void GfxDevice::bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource)
+{
+	ID3D11ShaderResourceView* srvs[] = { resource->m_srv.Get() };
+	auto& ctx = m_dev->get_context();
+
+	switch (stage)
+	{
+	case ShaderStage::eVertex:
+		ctx->VSSetShaderResources(slot, 1, srvs);
+		break;
+	case ShaderStage::ePixel:
+		ctx->PSSetShaderResources(slot, 1, srvs);
+		break;
+	case ShaderStage::eHull:
+		ctx->HSSetShaderResources(slot, 1, srvs);
+		break;
+	case ShaderStage::eDomain:
+		ctx->DSSetShaderResources(slot, 1, srvs);
+		break;
+	case ShaderStage::eGeometry:
+		ctx->GSSetShaderResources(slot, 1, srvs);
+		break;
+	case ShaderStage::eCompute:
+		ctx->CSSetShaderResources(slot, 1, srvs);
+		break;
+	}
+}
+
+void GfxDevice::bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler)
+{
+	ID3D11SamplerState* samplers[] = { (ID3D11SamplerState*)sampler->m_internal_resource.Get() };
+	auto& ctx = m_dev->get_context();
+
+	switch (stage)
+	{
+	case ShaderStage::eVertex:
+		ctx->VSSetSamplers(slot, 1, samplers);
+		break;
+	case ShaderStage::ePixel:
+		ctx->PSSetSamplers(slot, 1, samplers);
+		break;
+	case ShaderStage::eHull:
+		ctx->HSSetSamplers(slot, 1, samplers);
+		break;
+	case ShaderStage::eDomain:
+		ctx->DSSetSamplers(slot, 1, samplers);
+		break;
+	case ShaderStage::eGeometry:
+		ctx->GSSetSamplers(slot, 1, samplers);
+		break;
+	case ShaderStage::eCompute:
+		ctx->CSSetSamplers(slot, 1, samplers);
+		break;
+	}
+}
+
 void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor, UINT stencil_ref)
 {
 	if (!pipeline->m_is_registered)
@@ -622,6 +682,11 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 	}
 
 	auto& ctx = m_dev->get_context();
+
+	if (pipeline->m_input_layout.is_valid())
+		ctx->IASetInputLayout((ID3D11InputLayout*)pipeline->m_input_layout.m_internal_resource.Get());
+	else
+		ctx->IASetInputLayout(nullptr);
 
 	// bind shaders
 	ctx->VSSetShader((ID3D11VertexShader*)pipeline->m_vs.m_internal_resource.Get(), nullptr, 0);

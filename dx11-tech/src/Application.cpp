@@ -17,26 +17,19 @@ Application::Application()
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
 	auto dev = GfxDevice::get();
 
-	std::cout << "sizeof GPUTexture: " << sizeof(GPUTexture) << "\n";
-	std::cout << "sizeof GPUBuffer: " << sizeof(GPUBuffer) << "\n";
-	std::cout << "sizeof GfxApi: " << sizeof(GfxDevice) << "\n";
 
 	// create depth tex
 	GPUTexture d_32;
 	dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, 1920, 1080, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
 
-	// create framebuffer for backbuffer
-	dev->create_framebuffer(FramebufferDesc({ dev->get_backbuffer() }, d_32), &fb);
+	// create framebuffer for render to texture
+	dev->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 1920, 1080, 1, 1, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &r_tex);
+	dev->create_framebuffer(FramebufferDesc({ r_tex }), &r_fb);
 
-	// compile shaders
-	ShaderBytecode vs_bc, ps_bc;
-	dev->compile_shader(ShaderStage::eVertex, "VertexShader.hlsl", &vs_bc);
-	dev->compile_shader(ShaderStage::ePixel, "PixelShader.hlsl", &ps_bc);
-	
-	// create shaders
+	// compile and create shaders
 	Shader vs, ps;
-	dev->create_shader(ShaderStage::eVertex, vs_bc, &vs);
-	dev->create_shader(ShaderStage::ePixel, ps_bc, &ps);
+	dev->compile_and_create_shader(ShaderStage::eVertex, "VertexShader.hlsl", &vs);
+	dev->compile_and_create_shader(ShaderStage::ePixel, "PixelShader.hlsl", &ps);
 
 	// create pipeline
 	auto p_d = PipelineDesc()
@@ -44,20 +37,26 @@ Application::Application()
 		.set_input_layout(InputLayoutDesc::get_layout<Vertex_POS_UV_NORMAL>());
 	dev->create_pipeline(p_d, &p);
 
-	//// create render tex
-	//GPUTexture render_tex;
-	//dev->create_texture(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 1920, 1080, 1, 0, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &render_tex);
+	/*
+		create intermediary render tex and add fullscreen pass 
+	*/
 
-	//// create framebuffer for render tex
-	//dev->create_framebuffer(FramebufferDesc({ render_tex }), &r_fb);
+	// create framebuffer for render to tex
+	dev->create_framebuffer(FramebufferDesc({ dev->get_backbuffer() }, d_32), &fb);
 
+	// create fullscreen quad shaders
+	Shader fs_vs, fs_ps;
+	dev->compile_and_create_shader(ShaderStage::eVertex, "fullscreenQuadVS.hlsl", &fs_vs);
+	dev->compile_and_create_shader(ShaderStage::ePixel, "fullscreenQuadPS.hlsl", &fs_ps);
+	
+	// fullscreen quad pipeline
+	auto rp_d = PipelineDesc().set_shaders(VertexShader(fs_vs), PixelShader(fs_ps));
+	dev->create_pipeline(rp_d, &r_p);
 
+	// create and bind persistent sampler
+	dev->create_sampler(SamplerDesc(), &def_samp);
+	dev->bind_sampler(0, ShaderStage::ePixel, &def_samp);
 
-
-
-
-	//dev->bind_viewports(viewports);
-	//dev->begin_pass(active_fb, DepthStencilClear::d1_s0());
 }
 
 Application::~Application()
@@ -76,7 +75,7 @@ void Application::run()
 		Timer frame_timer;
 		m_win->pump_messages();
 		m_input->begin();
-
+	
 		if (m_input->lmb_down())
 		{
 			std::cout << m_input->get_mouse_position().first << ", " << m_input->get_mouse_position().second << std::endl;
@@ -100,15 +99,21 @@ void Application::run()
 		}
 
 		dev->frame_start();
-
-
-		dev->begin_pass(&fb);
+	
+		// draw triangle
+		dev->begin_pass(&r_fb);
 		dev->bind_viewports(viewports);
 		dev->bind_pipeline(&p);
 		dev->draw();
 		dev->end_pass();
 
-
+		// draw fullscreen pass
+		dev->begin_pass(&fb);
+		dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
+		dev->bind_viewports(viewports);
+		dev->bind_pipeline(&r_p);
+		dev->draw();
+		dev->end_pass();
 
 		dev->present();
 		dev->frame_end();

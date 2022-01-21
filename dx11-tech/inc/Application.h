@@ -15,11 +15,16 @@ public:
 	void run();
 
 private:
-	Framebuffer fb;
-	GraphicsPipeline p;
 	std::vector<D3D11_VIEWPORT> viewports = { CD3D11_VIEWPORT(0.f, 0.f, 1920.f, 1080.f) };
 
-	Framebuffer r_fb;
+	Framebuffer r_fb;		// render to texture
+	GPUTexture r_tex;		// above tex will be read
+	GraphicsPipeline p;		
+
+	Framebuffer fb;			// render to backbuffer
+	GraphicsPipeline r_p;
+
+	Sampler def_samp;		// linear minmagmip
 
 	bool m_paused = false;
 	bool m_app_alive = true;
