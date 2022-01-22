@@ -15,7 +15,14 @@ public:
 	void run();
 
 private:
-	std::vector<D3D11_VIEWPORT> viewports = { CD3D11_VIEWPORT(0.f, 0.f, 1920.f, 1080.f) };
+	std::vector<D3D11_VIEWPORT> viewports;
+
+	GPUBuffer vb_pos;
+	GPUBuffer vb_uv;
+	GPUBuffer vb_nor;
+	GPUBuffer ib;
+
+
 
 	Framebuffer r_fb;		// render to texture
 	GPUTexture r_tex;		// above tex will be read

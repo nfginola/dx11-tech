@@ -34,6 +34,23 @@ public:
 	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
 	void compile_shader(ShaderStage stage, const std::filesystem::path& fpath, ShaderBytecode* bytecode);
 
+	/*
+	Idea:
+		To solve dynamically binding a resource with different views (e.g accessing different subresources),
+		We can add a create resource function which overrides views:
+
+			create_texture_access(GPUTexture* access_tex, const GPUTexture* src_tex, const ViewDescriptor& desc);
+				.. get internal tex from GPUTexture..
+				.. branch on bind flags ..
+					.. get_srv_format(tex1/2/3d_desc) or get_rtv_format(tex1/2/3d_desc) (extract function from create_texture)
+					.. create uav/srv with slicing/indexing Params from ViewDescriptor
+
+			This will return a texture that uses the same underlying texture but is accessed differently.
+
+			Make sure it is clear that this is OPTIONAL!
+	*/
+	//void create_special_resource_access(const ViewDesc& desc, GPUResource* dst, const GPUResource* src);
+
 	void create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres = {});
 	void create_texture(const TextureDesc& desc, GPUTexture* texture, std::optional<SubresourceData> subres = {});
 	void create_sampler(const SamplerDesc& desc, Sampler* sampler);
@@ -44,8 +61,8 @@ public:
 
 	//void bind_compute_pipeline(const ComputePipeline* pipeline);
 	void bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
-	void bind_vertex_buffer(UINT slot, const GPUBuffer* buffer, UINT stride, UINT offset);
-	void bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format, UINT offset);
+	void bind_vertex_buffers(UINT count, const GPUBuffer* buffers, UINT* strides, UINT* offsets = nullptr);
+	void bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format = DXGI_FORMAT_R32_UINT, UINT offset = 0);
 	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer);
 	void bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource);
 	void bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource);
@@ -53,10 +70,13 @@ public:
 	void bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports);
 	void bind_scissors(const std::vector<D3D11_RECT>& rects);
 
+
+
 	void begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
 	void end_pass();
 
 	void draw(UINT vertex_count, UINT start_loc = 0);
+	void draw_indexed(UINT index_count, UINT index_start = 0, UINT vertex_start = 0);
 	void present(bool vsync = true);
 
 	/*
@@ -105,6 +125,9 @@ public:
 	GfxDevice(const GfxDevice&) = delete;
 
 private:
+	std::array<ID3D11UnorderedAccessView*, gfxconstants::MAX_RASTER_UAVS> m_raster_uavs;
+	UINT m_raster_rw_range_this_pass = 0;
+
 	bool m_inside_pass = false;
 	unique_ptr<DXDevice> m_dev;
 	GPUTexture m_backbuffer;

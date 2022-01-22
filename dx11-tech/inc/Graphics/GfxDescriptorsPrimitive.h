@@ -10,9 +10,9 @@ public:
 	BufferDesc(const D3D11_BUFFER_DESC& desc) : m_desc(desc), m_type(BufferType::eCustom) {}
 	BufferDesc(const D3D11_BUFFER_DESC& desc, BufferType type) : m_desc(desc), m_type(type) {}
 
-	static BufferDesc constant(UINT size, bool dynamic = true);
-	static BufferDesc index(UINT size, bool dynamic = false);
-	static BufferDesc vertex(UINT size, bool dynamic = false);
+	static BufferDesc constant(size_t size_in_bytes, bool dynamic = true);
+	static BufferDesc index(size_t size_in_bytes, bool dynamic = false);
+	static BufferDesc vertex(size_t size_in_bytes, bool dynamic = false);
 	/*
 		make others..
 	*/
@@ -58,11 +58,13 @@ private:
 
 class InputLayoutDesc
 {
+	// https://gamedev.net/forums/topic/631296-what-is-the-point-of-multiple-vertex-buffers/4980091/
+
 	friend class GfxDevice;
 public:
 	InputLayoutDesc() = default;
 	InputLayoutDesc(const std::vector<D3D11_INPUT_ELEMENT_DESC>& descs) : m_input_descs(descs) {}
-	InputLayoutDesc& append(const D3D11_INPUT_ELEMENT_DESC& desc);
+	InputLayoutDesc& append(LPCSTR semantic, DXGI_FORMAT format, UINT slot, D3D11_INPUT_CLASSIFICATION input_type = D3D11_INPUT_PER_VERTEX_DATA, UINT instanced_steprate = 0);
 
 	// Assumes a VertexLayout type which has a static get_desc() function returning an std::vector<D3D11_INPUT_ELEMENT_DESC>
 	template <typename VertexLayout>

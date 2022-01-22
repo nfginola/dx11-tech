@@ -7,35 +7,45 @@
 
 Application::Application()
 {
-	constexpr UINT WIDTH = 1920;
-	constexpr UINT HEIGHT = 1080;
+	// Window render area dimension
+	constexpr UINT WIN_WIDTH = 1920;
+	constexpr UINT WIN_HEIGHT = 1080;
+
+	// Resolution
+	constexpr UINT WIDTH = 1280;
+	constexpr UINT HEIGHT = 720;
 
 	// Window and Input
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
-	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, WIDTH, HEIGHT);
+	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, WIN_WIDTH, WIN_HEIGHT);
 	m_input = make_unique<Input>(m_win->get_hwnd());
 	
 	// Initialize graphics device (singleton)
-	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), m_win->get_client_width(), m_win->get_client_height()));
+	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
 	auto dev = GfxDevice::get();
 
-	/*
-		Idea:
-			To solve dynamically binding a resource with different views (e.g accessing different subresources),
-			We can add a create resource function which overrides views:
+	viewports = { CD3D11_VIEWPORT(0.f, 0.f, WIDTH, HEIGHT) };
 
-				create_texture_access(GPUTexture* access_tex, const GPUTexture* src_tex, const ViewDescriptor& desc);
-					.. get internal tex from GPUTexture..
-					.. branch on bind flags ..
-						.. get_srv_format(tex1/2/3d_desc) or get_rtv_format(tex1/2/3d_desc) (extract function from create_texture)
-						.. create uav/srv with slicing/indexing Params from ViewDescriptor
-				
-				This will return a texture that uses the same underlying texture but is accessed differently.
+	/*
+		
+		To-do: 
+			- Add raster UAVs for OMSetRenderTargetsAndUAV			DONE
+			- Add VB/IB binding to API								DONE
+			- Draw triangle with VB/IB								DONE (Interleaved too!)
+			- Add HDR rendering and tone mapping
+			- Enable multisampling
+			- Add Resource Naming and Command Naming (11.4?)
+			- Add GPU query (maybe Set/EndEventMarker? 11.3)
+			- Add Pipeline cache
+
 	*/
+
+
 
 	/*
 		Draw triangle and do fullscreen pass
 	*/
+
 
 	// create depth tex
 	GPUTexture d_32;
@@ -50,14 +60,32 @@ Application::Application()
 	dev->compile_and_create_shader(ShaderStage::eVertex, "VertexShader.hlsl", &vs);
 	dev->compile_and_create_shader(ShaderStage::ePixel, "PixelShader.hlsl", &ps);
 
+	// Use VB/IB for triangle (non-interleaved)
+	std::vector<DirectX::XMFLOAT3> positions = { { -0.5f, -0.5f, 0.f }, { 0.f, 0.5f, 0.f }, { 0.5f, -0.5f, 0.f } };
+	std::vector<DirectX::XMFLOAT2> uvs = { {0.f, 1.f}, {1.f, 0.f}, {1.f, 1.f} };
+	std::vector<DirectX::XMFLOAT3> normals = { { 1.f, 0.f, 0.f }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, 1.f } };
+	std::vector<uint32_t> indices = { 0, 1, 2 };
+	dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), &vb_pos, SubresourceData(positions.data()));
+	dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &vb_uv, SubresourceData(uvs.data()));
+	dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &vb_nor, SubresourceData(normals.data()));
+	dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &ib, SubresourceData(indices.data()));
+
+	// Interleaved layout
+	auto layout = InputLayoutDesc()
+		.append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0)
+		.append("UV", DXGI_FORMAT_R32G32_FLOAT, 1)
+		.append("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, 2);
+
 	// create pipeline
 	auto p_d = PipelineDesc()
 		.set_shaders(VertexShader(vs), PixelShader(ps))
-		.set_input_layout(InputLayoutDesc::get_layout<Vertex_POS_UV_NORMAL>());		// input layout not used right now with hardcoded triangle
+		.set_input_layout(layout);
 	dev->create_pipeline(p_d, &p);
 
+
+
 	/*
-		create intermediary render tex and add fullscreen pass 
+		fullscreen quad pass to backbuffer
 	*/
 
 	// create framebuffer for render to tex
@@ -122,18 +150,25 @@ void Application::run()
 	
 		// draw triangle
 		dev->bind_viewports(viewports);
-		dev->bind_pipeline(&p);
 
 		dev->begin_pass(&r_fb);
-		dev->draw(3);
+		dev->bind_pipeline(&p);
+	
+		GPUBuffer vbs[] = { vb_pos, vb_uv, vb_nor };
+		UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
+		dev->bind_vertex_buffers(_countof(vbs), vbs, strides);
+		dev->bind_index_buffer(&ib);
+
+		dev->draw_indexed(3);
+		
 		dev->end_pass();
 
 		// draw fullscreen pass
 		dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
 		dev->bind_viewports(viewports);
-		dev->bind_pipeline(&r_p);
 
 		dev->begin_pass(&fb);
+		dev->bind_pipeline(&r_p);
 		dev->draw(6);
 		dev->end_pass();
 

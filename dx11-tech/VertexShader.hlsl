@@ -26,18 +26,18 @@ static const float3 COLORS[] =
     float3(0.f, 0.f, 1.f)
 };
 
-//VertexOutput main(VertexInput input)
-VertexOutput main(uint v_ID : SV_VertexID)
+VertexOutput main(VertexInput input)
+//VertexOutput main(uint v_ID : SV_VertexID)
 {
     VertexOutput output = (VertexOutput) 0;
     
-    //output.position = float4(input.position, 1.f);
-    //output.uv = input.uv;
-    //output.normal = input.normal;
+    output.position = float4(input.position, 1.f);
+    output.uv = input.uv;
+    output.normal = input.normal;
     
-    output.position = float4(VERTS[v_ID], 1.f);
-    output.uv = 1.f.xx;
-    output.normal = COLORS[v_ID];
+    //output.position = float4(VERTS[v_ID], 1.f);
+    //output.uv = 1.f.xx;
+    //output.normal = COLORS[v_ID];
     
     return output;
 }

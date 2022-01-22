@@ -66,6 +66,8 @@ void GfxDevice::frame_end()
 {
 }
 
+
+
 void GfxDevice::compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader)
 {
 	ShaderBytecode bc;
@@ -484,12 +486,6 @@ void GfxDevice::create_shader(ShaderStage stage, const ShaderBytecode& bytecode,
 	}
 }
 
-
-GPUTexture GfxDevice::get_backbuffer()
-{
-	return m_backbuffer;
-}
-
 void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer)
 {
 	framebuffer->m_depth_stencil_target = desc.m_depth_stencil_target.has_value() ? *desc.m_depth_stencil_target : GPUTexture();
@@ -519,8 +515,8 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 	// explicitly avoid creation if desc not supplied --> avoid depth-stencil clear
 	//if (desc.m_depth_stencil_desc.has_value())
 	//{
-		HRCHECK(dev->CreateDepthStencilState(&desc.m_depth_stencil_desc.m_depth_stencil_desc,
-			(ID3D11DepthStencilState**)pipeline->m_depth_stencil.m_internal_resource.ReleaseAndGetAddressOf()));
+	HRCHECK(dev->CreateDepthStencilState(&desc.m_depth_stencil_desc.m_depth_stencil_desc,
+		(ID3D11DepthStencilState**)pipeline->m_depth_stencil.m_internal_resource.ReleaseAndGetAddressOf()));
 	//}
 
 	// create input layout (duplicates may be created here, we will ignore this for simplicity)
@@ -547,16 +543,8 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 	pipeline->m_is_registered = true;
 }
 
-void GfxDevice::draw(UINT vertex_count, UINT start_loc)
-{
-	assert(m_inside_pass == true && "Draw call must be inside a Pass scope!");
-	m_dev->get_context()->Draw(vertex_count, start_loc);
-}
 
-void GfxDevice::present(bool vsync)
-{
-	m_dev->get_sc()->Present(vsync ? 1 : 0, 0);
-}
+
 
 void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear)
 {
@@ -584,29 +572,45 @@ void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_
 		ctx->ClearRenderTargetView(target.m_rtv.Get(), target.m_desc.m_render_target_clear.m_rgba.data());
 	}
 
-	// clear depth stencil
+	ID3D11DepthStencilView* dsv = nullptr;
 	if (depth_tex.is_valid())
 	{
-		auto dsv = depth_tex.m_dsv.Get();
+		dsv = depth_tex.m_dsv.Get();
 		ctx->ClearDepthStencilView(dsv, ds_clear.m_clear_flags, ds_clear.m_depth, ds_clear.m_stencil);
-		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, rtvs, dsv);	
+	}
+
+	if (m_raster_rw_range_this_pass > 0)
+	{
+		ctx->OMSetRenderTargetsAndUnorderedAccessViews(
+			gfxconstants::MAX_RENDER_TARGETS, rtvs, dsv,
+			0, gfxconstants::MAX_RASTER_UAVS, m_raster_uavs.data(), nullptr);
 	}
 	else
 	{
-		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, rtvs, nullptr);	
+		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, rtvs, dsv);
 	}
+
 }
 
 void GfxDevice::end_pass()
 {
+	assert(m_inside_pass == true);
 	m_inside_pass = false;
 	auto& ctx = m_dev->get_context();
+	
+	if (m_raster_rw_range_this_pass > 0)
+	{
+		ctx->OMSetRenderTargetsAndUnorderedAccessViews(
+			gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr,
+			0, gfxconstants::MAX_RASTER_UAVS, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, nullptr);
+	}
+	else
+	{
+		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr);
+	}
+	m_raster_rw_range_this_pass = 0;
 
-	ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr);
-
-	// unbind UAVs too
 	ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_CS_UAV, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
-
 }
 
 void GfxDevice::bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports)
@@ -679,29 +683,27 @@ void GfxDevice::bind_resource(UINT slot, ShaderStage stage, const GPUResource* r
 
 void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource)
 {
-	if (m_inside_pass)
-		assert(false && "Resource RWs must be bound prior to begin_pass()");
+	assert(m_inside_pass == true && "Resource RWs must be bound prior to begin_pass()");
 
 	ID3D11UnorderedAccessView* uavs[] = { resource->m_uav.Get() };
 	auto& ctx = m_dev->get_context();
 
 	switch (stage)
 	{
+	// https://docs.microsoft.com/en-us/windows/win32/direct3d11/direct3d-11-1-features#use-uavs-at-every-pipeline-stage
+	// 11.1, use UAVs at every pipeline stage
 	case ShaderStage::eVertex:
 	case ShaderStage::ePixel:
 	case ShaderStage::eHull:
 	case ShaderStage::eDomain:
 	case ShaderStage::eGeometry:
-		// These count as rasterizer UAVs
-		// We should have a local state in GfxDevice which tracks the rasterizer UAVs
-		// using this, we can bind along with begin_pass when OMSetRenderTargets is done
-		// by using OMSetRenderTargetsAndUnorderedAccess
-		/*
-			m_gfx_uavs[slot] = resource->m_srv.Get();
-		
-		*/
-		assert(false);
+	{
+		m_raster_uavs[slot] = resource->m_uav.Get();
+		auto range = m_raster_rw_range_this_pass;
+		// https://github.com/assimp/assimp/issues/2271 paranthesis solves DEFINE NOMINMAX
+		m_raster_rw_range_this_pass = (std::max)(range, slot);
 		break;
+	}
 	case ShaderStage::eCompute:
 		ctx->CSSetUnorderedAccessViews(slot, 1, uavs, nullptr);
 		break;
@@ -775,5 +777,46 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 	ctx->RSSetState((ID3D11RasterizerState*)pipeline->m_rasterizer.m_internal_resource.Get());
 	ctx->OMSetDepthStencilState((ID3D11DepthStencilState*)pipeline->m_depth_stencil.m_internal_resource.Get(), stencil_ref);
 	ctx->OMSetBlendState((ID3D11BlendState*)pipeline->m_blend.m_internal_resource.Get(), blend_factor.data(), pipeline->m_sample_mask);
+}
+
+void GfxDevice::bind_vertex_buffers(UINT count, const GPUBuffer* buffers, UINT* strides, UINT* offsets)
+{
+	ID3D11Buffer* vbs[gfxconstants::MAX_VBS] = {};
+	for (UINT i = 0; i < count; ++i)
+	{
+		vbs[i] = (ID3D11Buffer*)buffers[i].m_internal_resource.Get();
+	}
+	m_dev->get_context()->IASetVertexBuffers(0, count, vbs,
+		strides ? strides : (UINT*)gfxconstants::NULL_RESOURCE,
+		offsets ? offsets : (UINT*)gfxconstants::NULL_RESOURCE);
+}
+
+void GfxDevice::bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format, UINT offset)
+{
+	m_dev->get_context()->IASetIndexBuffer((ID3D11Buffer*)buffer->m_internal_resource.Get(), format, offset);
+}
+
+
+
+
+GPUTexture GfxDevice::get_backbuffer()
+{
+	return m_backbuffer;
+}
+
+void GfxDevice::draw(UINT vertex_count, UINT start_loc)
+{
+	assert(m_inside_pass == true && "Draw call must be inside a Pass scope!");
+	m_dev->get_context()->Draw(vertex_count, start_loc);
+}
+
+void GfxDevice::draw_indexed(UINT index_count, UINT index_start, UINT vertex_start)
+{
+	m_dev->get_context()->DrawIndexed(index_count, index_start, vertex_start);
+}
+
+void GfxDevice::present(bool vsync)
+{
+	m_dev->get_sc()->Present(vsync ? 1 : 0, 0);
 }
 

@@ -57,7 +57,10 @@ class SubresourceData
 	friend class GfxDevice;
 public:
 	SubresourceData() = default;
-	SubresourceData(void* data, UINT pitch, UINT slice_pitch) : m_subres({ data, pitch, slice_pitch }) {}
+
+	// https://docs.microsoft.com/en-us/windows/win32/api/d3d11/ns-d3d11-d3d11_subresource_data
+	// Pitch and Slice pitch only meaningful for 2D and 3D texture data respectively
+	SubresourceData(void* data, UINT pitch = 0, UINT slice_pitch = 0) : m_subres({ data, pitch, slice_pitch }) {}
 private:
 	D3D11_SUBRESOURCE_DATA m_subres{ nullptr, 0, 0 };
 };
