@@ -18,53 +18,46 @@
 class GfxDevice
 {
 public:
+	/*
+		To-do
+			- Pipeline Cache
+				- When binding Pipeline, check for already bound state.
+				- have m_prev_pipeline pointer and compare internals
+	*/
+
 	// Book-keeping (e.g cleanup)
-	void frame_start();					// Should clear backbuffer automatically
+	void frame_start();	
 	void frame_end();
 
+	// Helpers
+	GPUTexture get_backbuffer();
 	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
 	void compile_shader(ShaderStage stage, const std::filesystem::path& fpath, ShaderBytecode* bytecode);
 
-	// Create GPU primitives
 	void create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres = {});
 	void create_texture(const TextureDesc& desc, GPUTexture* texture, std::optional<SubresourceData> subres = {});
 	void create_sampler(const SamplerDesc& desc, Sampler* sampler);
 	void create_shader(ShaderStage stage, const ShaderBytecode& bytecode, Shader* shader);
-
-	GPUTexture get_backbuffer();
-
-	// Create GPU abstractions
 	void create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer);
 	void create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline);
 	//void create_compute_pipeline(ComputePipeline* pipeline);
-	
-	void draw(UINT vertex_count, UINT start_loc = 0);
-	void present(bool vsync = true);
 
-
-	void begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
-	void end_pass();
-	
-	void bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports);
-	void bind_scissors(const std::vector<D3D11_RECT>& rects);
-	
-	// No need to check for type, D3D11 will do it for us
+	//void bind_compute_pipeline(const ComputePipeline* pipeline);
+	void bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
 	void bind_vertex_buffer(UINT slot, const GPUBuffer* buffer, UINT stride, UINT offset);
 	void bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format, UINT offset);
 	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer);
-
-	// Bind shader resource (Read access), no need to known underlying type
 	void bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource);
-
-	// Bind UAV (Read-Write access) (only supports CS at the moment, 11.1)
 	void bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource);
-
-	// Sampler
 	void bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler);
+	void bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports);
+	void bind_scissors(const std::vector<D3D11_RECT>& rects);
 
-	// Bind helpers
-	void bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
-	void bind_compute_pipeline(const ComputePipeline* pipeline);
+	void begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
+	void end_pass();
+
+	void draw(UINT vertex_count, UINT start_loc = 0);
+	void present(bool vsync = true);
 
 	/*
 		
@@ -92,7 +85,6 @@ public:
 		GetResourceMinLOD??
 
 		DispatchIndirect
-		Draw
 		DrawAuto
 		DrawIndexed
 		DrawIndexedInstancedIndirect
@@ -113,7 +105,7 @@ public:
 	GfxDevice(const GfxDevice&) = delete;
 
 private:
-
+	bool m_inside_pass = false;
 	unique_ptr<DXDevice> m_dev;
 	GPUTexture m_backbuffer;
 

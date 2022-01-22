@@ -138,7 +138,7 @@ void GfxDevice::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::op
 
 	HRCHECK(m_dev->get_device()->CreateBuffer(
 		&d3d_desc,
-		subres ? &subres.value().m_subres : nullptr,
+		subres ? &subres->m_subres : nullptr,
 		(ID3D11Buffer**)buffer->m_internal_resource.ReleaseAndGetAddressOf()));
 
 	// Create views
@@ -176,7 +176,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 	{
 		HRCHECK(m_dev->get_device()->CreateTexture2D(
 			&d3d_desc,
-			subres ? &subres.value().m_subres : nullptr,
+			subres ? &subres->m_subres : nullptr,
 			(ID3D11Texture2D**)texture->m_internal_resource.ReleaseAndGetAddressOf()));
 		break;
 	}
@@ -492,12 +492,12 @@ GPUTexture GfxDevice::get_backbuffer()
 
 void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer)
 {
-	framebuffer->m_depth_stencil_target = desc.m_depth_stencil_target.has_value() ? desc.m_depth_stencil_target.value() : GPUTexture();
+	framebuffer->m_depth_stencil_target = desc.m_depth_stencil_target.has_value() ? *desc.m_depth_stencil_target : GPUTexture();
 
 	for (int i = 0; i < desc.m_targets.size(); ++i)
 	{
 		if (desc.m_targets[i].has_value())
-			framebuffer->m_targets[i] = desc.m_targets[i].value();
+			framebuffer->m_targets[i] = *desc.m_targets[i];
 	}
 
 	framebuffer->m_is_registered = true;
@@ -517,11 +517,11 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 
 	// create depth stencil state
 	// explicitly avoid creation if desc not supplied --> avoid depth-stencil clear
-	if (desc.m_depth_stencil_desc.has_value())
-	{
-		HRCHECK(dev->CreateDepthStencilState(&desc.m_depth_stencil_desc.value().m_depth_stencil_desc,
+	//if (desc.m_depth_stencil_desc.has_value())
+	//{
+		HRCHECK(dev->CreateDepthStencilState(&desc.m_depth_stencil_desc.m_depth_stencil_desc,
 			(ID3D11DepthStencilState**)pipeline->m_depth_stencil.m_internal_resource.ReleaseAndGetAddressOf()));
-	}
+	//}
 
 	// create input layout (duplicates may be created here, we will ignore this for simplicity)
 	if (!desc.m_input_desc.m_input_descs.empty())
@@ -538,17 +538,18 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 	pipeline->m_vs = desc.m_vs;
 	pipeline->m_ps = desc.m_ps;
 	if (desc.m_gs.has_value())
-		pipeline->m_gs = desc.m_gs.value();
+		pipeline->m_gs = *desc.m_gs;
 	if (desc.m_hs.has_value())
-		pipeline->m_hs = desc.m_hs.value();
+		pipeline->m_hs = *desc.m_hs;
 	if (desc.m_ds.has_value())
-		pipeline->m_ds = desc.m_ds.value();
+		pipeline->m_ds = *desc.m_ds;
 
 	pipeline->m_is_registered = true;
 }
 
 void GfxDevice::draw(UINT vertex_count, UINT start_loc)
 {
+	assert(m_inside_pass == true && "Draw call must be inside a Pass scope!");
 	m_dev->get_context()->Draw(vertex_count, start_loc);
 }
 
@@ -564,9 +565,10 @@ void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_
 		assert(false && "Framebuffer is not registered!");
 		return;
 	}
+	m_inside_pass = true;
 
 	auto& ctx = m_dev->get_context();
-	auto& dsv_opt = framebuffer->m_depth_stencil_target;
+	auto& depth_tex = framebuffer->m_depth_stencil_target;
 
 	// clear framebuffer and get render targets
 	ID3D11RenderTargetView* rtvs[gfxconstants::MAX_RENDER_TARGETS] = {};
@@ -583,22 +585,21 @@ void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_
 	}
 
 	// clear depth stencil
-	if (dsv_opt.is_valid())
+	if (depth_tex.is_valid())
 	{
-		auto dsv = dsv_opt.m_dsv.Get();
-		ctx->ClearDepthStencilView(dsv, ds_clear.m_clear_flags, ds_clear.m_depth, ds_clear.m_stencil);	// clear ds
-		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, rtvs, dsv);	// bind targets (with dsv)
+		auto dsv = depth_tex.m_dsv.Get();
+		ctx->ClearDepthStencilView(dsv, ds_clear.m_clear_flags, ds_clear.m_depth, ds_clear.m_stencil);
+		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, rtvs, dsv);	
 	}
 	else
 	{
-		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, rtvs, nullptr);	// bind targets (no dsv)
+		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, rtvs, nullptr);	
 	}
-
-
 }
 
 void GfxDevice::end_pass()
 {
+	m_inside_pass = false;
 	auto& ctx = m_dev->get_context();
 
 	ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr);
@@ -618,6 +619,34 @@ void GfxDevice::bind_scissors(const std::vector<D3D11_RECT>& rects)
 {
 	auto& ctx = m_dev->get_context();
 	ctx->RSSetScissorRects((UINT)rects.size(), rects.data());
+}
+
+void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer)
+{
+	ID3D11Buffer* cbs[] = { (ID3D11Buffer*)buffer->m_internal_resource.Get() };
+	auto& ctx = m_dev->get_context();
+
+	switch (stage)
+	{
+	case ShaderStage::eVertex:
+		ctx->VSSetConstantBuffers(slot, 1, cbs);
+		break;
+	case ShaderStage::ePixel:
+		ctx->PSSetConstantBuffers(slot, 1, cbs);
+		break;
+	case ShaderStage::eHull:
+		ctx->HSSetConstantBuffers(slot, 1, cbs);
+		break;
+	case ShaderStage::eDomain:
+		ctx->DSSetConstantBuffers(slot, 1, cbs);
+		break;
+	case ShaderStage::eGeometry:
+		ctx->GSSetConstantBuffers(slot, 1, cbs);
+		break;
+	case ShaderStage::eCompute:
+		ctx->CSSetConstantBuffers(slot, 1, cbs);
+		break;
+	}
 }
 
 void GfxDevice::bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource)
@@ -646,6 +675,38 @@ void GfxDevice::bind_resource(UINT slot, ShaderStage stage, const GPUResource* r
 		ctx->CSSetShaderResources(slot, 1, srvs);
 		break;
 	}
+}
+
+void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource)
+{
+	if (m_inside_pass)
+		assert(false && "Resource RWs must be bound prior to begin_pass()");
+
+	ID3D11UnorderedAccessView* uavs[] = { resource->m_uav.Get() };
+	auto& ctx = m_dev->get_context();
+
+	switch (stage)
+	{
+	case ShaderStage::eVertex:
+	case ShaderStage::ePixel:
+	case ShaderStage::eHull:
+	case ShaderStage::eDomain:
+	case ShaderStage::eGeometry:
+		// These count as rasterizer UAVs
+		// We should have a local state in GfxDevice which tracks the rasterizer UAVs
+		// using this, we can bind along with begin_pass when OMSetRenderTargets is done
+		// by using OMSetRenderTargetsAndUnorderedAccess
+		/*
+			m_gfx_uavs[slot] = resource->m_srv.Get();
+		
+		*/
+		assert(false);
+		break;
+	case ShaderStage::eCompute:
+		ctx->CSSetUnorderedAccessViews(slot, 1, uavs, nullptr);
+		break;
+	}
+
 }
 
 void GfxDevice::bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler)
@@ -710,7 +771,6 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 	else
 		ctx->DSSetShader(nullptr, nullptr, 0);
 
-	// bind topo, raster state, depth-stencil, blend state
 	ctx->IASetPrimitiveTopology(pipeline->m_topology);
 	ctx->RSSetState((ID3D11RasterizerState*)pipeline->m_rasterizer.m_internal_resource.Get());
 	ctx->OMSetDepthStencilState((ID3D11DepthStencilState*)pipeline->m_depth_stencil.m_internal_resource.Get(), stencil_ref);

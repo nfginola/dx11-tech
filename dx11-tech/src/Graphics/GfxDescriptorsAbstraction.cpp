@@ -15,20 +15,20 @@ PipelineDesc& PipelineDesc::set_shaders(VertexShader vs, PixelShader ps, std::op
 	
 	if (gs.has_value())
 	{
-		assert(gs.value().get().get_stage() == ShaderStage::eGeometry);
-		m_gs = gs.value().get();
+		assert(gs->get().get_stage() == ShaderStage::eGeometry);
+		m_gs = gs->get();
 	}
 
 	if (hs.has_value())
 	{
-		assert(hs.value().get().get_stage() == ShaderStage::eHull);
-		m_hs = hs.value().get();
+		assert(hs->get().get_stage() == ShaderStage::eHull);
+		m_hs = hs->get();
 	}
 
 	if (ds.has_value())
 	{
-		assert(ds.value().get().get_stage() == ShaderStage::eDomain);
-		m_hs = ds.value().get();
+		assert(ds->get().get_stage() == ShaderStage::eDomain);
+		m_hs = ds->get();
 	}
 
 	return *this;

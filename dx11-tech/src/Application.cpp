@@ -20,6 +20,20 @@ Application::Application()
 	auto dev = GfxDevice::get();
 
 	/*
+		Idea:
+			To solve dynamically binding a resource with different views (e.g accessing different subresources),
+			We can add a create resource function which overrides views:
+
+				create_texture_access(GPUTexture* access_tex, const GPUTexture* src_tex, const ViewDescriptor& desc);
+					.. get internal tex from GPUTexture..
+					.. branch on bind flags ..
+						.. get_srv_format(tex1/2/3d_desc) or get_rtv_format(tex1/2/3d_desc) (extract function from create_texture)
+						.. create uav/srv with slicing/indexing Params from ViewDescriptor
+				
+				This will return a texture that uses the same underlying texture but is accessed differently.
+	*/
+
+	/*
 		Draw triangle and do fullscreen pass
 	*/
 
@@ -107,20 +121,23 @@ void Application::run()
 		dev->frame_start();
 	
 		// draw triangle
-		dev->begin_pass(&r_fb);
 		dev->bind_viewports(viewports);
 		dev->bind_pipeline(&p);
+
+		dev->begin_pass(&r_fb);
 		dev->draw(3);
 		dev->end_pass();
 
 		// draw fullscreen pass
-		dev->begin_pass(&fb);
 		dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
 		dev->bind_viewports(viewports);
 		dev->bind_pipeline(&r_p);
+
+		dev->begin_pass(&fb);
 		dev->draw(6);
 		dev->end_pass();
 
+		// present
 		dev->present();
 		dev->frame_end();
 
