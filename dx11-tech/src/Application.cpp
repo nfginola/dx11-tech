@@ -32,8 +32,8 @@ Application::Application()
 			- Add raster UAVs for OMSetRenderTargetsAndUAV			DONE
 			- Add VB/IB binding to API								DONE
 			- Draw triangle with VB/IB								DONE (Non-interleaved data too!)
-			- Add HDR rendering and tone mapping
-			- Enable multisampling
+			- Add HDR rendering and tone mapping					DONE (ACES tonemapping added)
+			- Enable multisampling		
 			- Add Resource Naming and Command Naming (11.4?)
 			- Add GPU query (maybe Set/EndEventMarker? 11.3)
 			- Add Pipeline cache
@@ -43,76 +43,71 @@ Application::Application()
 	*/
 
 
+	// setup geometry pass 
+	{
+		// create depth tex
+		GPUTexture d_32;
+		dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, WIDTH, HEIGHT, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
 
-	/*
-		Draw triangle and do fullscreen pass
-	*/
+		// create framebuffer for render to texture (HDR)
+		dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, WIDTH, HEIGHT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &r_tex);
+		dev->create_framebuffer(FramebufferDesc({ r_tex }, d_32), &r_fb);
 
+		// compile and create shaders
+		Shader vs, ps;
+		dev->compile_and_create_shader(ShaderStage::eVertex, "VertexShader.hlsl", &vs);
+		dev->compile_and_create_shader(ShaderStage::ePixel, "PixelShader.hlsl", &ps);
 
-	// create depth tex
-	GPUTexture d_32;
-	dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, WIDTH, HEIGHT, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
+		// Use VB/IB for triangle (non-interleaved)
+		std::vector<DirectX::XMFLOAT3> positions = { { -0.5f, -0.5f, 0.f }, { 0.f, 0.5f, 0.f }, { 0.5f, -0.5f, 0.f } };
+		std::vector<DirectX::XMFLOAT2> uvs = { {0.f, 1.f}, {1.f, 0.f}, {1.f, 1.f} };
+		std::vector<DirectX::XMFLOAT3> normals = { { 1.f, 0.f, 0.f }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, 1.f } };
+		std::vector<uint32_t> indices = { 0, 1, 2 };
+		dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), &vb_pos, SubresourceData(positions.data()));
+		dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &vb_uv, SubresourceData(uvs.data()));
+		dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &vb_nor, SubresourceData(normals.data()));
+		dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &ib, SubresourceData(indices.data()));
 
-	// create framebuffer for render to texture
-	dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R8G8B8A8_UNORM, WIDTH, HEIGHT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &r_tex);
-	dev->create_framebuffer(FramebufferDesc({ r_tex }, d_32), &r_fb);
+		//auto instance_layout = InputLayoutDesc()
+		//	.append("INSTANCE_WM_ROW0", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1)
+		//	.append("INSTANCE_WM_ROW1", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1)
+		//	.append("INSTANCE_WM_ROW2", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1)
+		//	.append("INSTANCE_WM_ROW3", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1);
 
-	// compile and create shaders
-	Shader vs, ps;
-	dev->compile_and_create_shader(ShaderStage::eVertex, "VertexShader.hlsl", &vs);
-	dev->compile_and_create_shader(ShaderStage::ePixel, "PixelShader.hlsl", &ps);
+		// Interleaved layout
+		auto layout = InputLayoutDesc()
+			.append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0)
+			.append("UV", DXGI_FORMAT_R32G32_FLOAT, 1)
+			.append("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, 3);
 
-	// Use VB/IB for triangle (non-interleaved)
-	std::vector<DirectX::XMFLOAT3> positions = { { -0.5f, -0.5f, 0.f }, { 0.f, 0.5f, 0.f }, { 0.5f, -0.5f, 0.f } };
-	std::vector<DirectX::XMFLOAT2> uvs = { {0.f, 1.f}, {1.f, 0.f}, {1.f, 1.f} };
-	std::vector<DirectX::XMFLOAT3> normals = { { 1.f, 0.f, 0.f }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, 1.f } };
-	std::vector<uint32_t> indices = { 0, 1, 2 };
-	dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), &vb_pos, SubresourceData(positions.data()));
-	dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &vb_uv, SubresourceData(uvs.data()));
-	dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &vb_nor, SubresourceData(normals.data()));
-	dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &ib, SubresourceData(indices.data()));
-
-	//auto instance_layout = InputLayoutDesc()
-	//	.append("INSTANCE_WM_ROW0", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1)
-	//	.append("INSTANCE_WM_ROW1", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1)
-	//	.append("INSTANCE_WM_ROW2", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1)
-	//	.append("INSTANCE_WM_ROW3", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1);
-
-	// Interleaved layout
-	auto layout = InputLayoutDesc()
-		.append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0)
-		.append("UV", DXGI_FORMAT_R32G32_FLOAT, 1)
-		.append("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, 3);
-
-	// create pipeline
-	auto p_d = PipelineDesc()
-		.set_shaders(VertexShader(vs), PixelShader(ps))
-		.set_input_layout(layout);
-	dev->create_pipeline(p_d, &p);
+		// create pipeline
+		auto p_d = PipelineDesc()
+			.set_shaders(VertexShader(vs), PixelShader(ps))
+			.set_input_layout(layout);
+		dev->create_pipeline(p_d, &p);
+	}
 
 
+	// fullscreen quad pass to backbuffer
+	{
 
-	/*
-		fullscreen quad pass to backbuffer
-	*/
+		// create framebuffer for render to tex
+		dev->create_framebuffer(FramebufferDesc({ dev->get_backbuffer() }), &fb);
 
-	// create framebuffer for render to tex
-	dev->create_framebuffer(FramebufferDesc({ dev->get_backbuffer() }), &fb);
+		// create fullscreen quad shaders
+		Shader fs_vs, fs_ps;
+		dev->compile_and_create_shader(ShaderStage::eVertex, "fullscreenQuadVS.hlsl", &fs_vs);
+		dev->compile_and_create_shader(ShaderStage::ePixel, "fullscreenQuadPS.hlsl", &fs_ps);
 
-	// create fullscreen quad shaders
-	Shader fs_vs, fs_ps;
-	dev->compile_and_create_shader(ShaderStage::eVertex, "fullscreenQuadVS.hlsl", &fs_vs);
-	dev->compile_and_create_shader(ShaderStage::ePixel, "fullscreenQuadPS.hlsl", &fs_ps);
-	
-	// fullscreen quad pipeline
-	auto rp_d = PipelineDesc()
-		.set_shaders(VertexShader(fs_vs), PixelShader(fs_ps));
-	dev->create_pipeline(rp_d, &r_p);
+		// fullscreen quad pipeline
+		auto rp_d = PipelineDesc()
+			.set_shaders(VertexShader(fs_vs), PixelShader(fs_ps));
+		dev->create_pipeline(rp_d, &r_p);
 
-	// create and bind persistent sampler
-	dev->create_sampler(SamplerDesc(), &def_samp);
-	dev->bind_sampler(0, ShaderStage::ePixel, &def_samp);
-
+		// create and bind persistent sampler
+		dev->create_sampler(SamplerDesc(), &def_samp);
+		dev->bind_sampler(0, ShaderStage::ePixel, &def_samp);
+	}
 }
 
 Application::~Application()
