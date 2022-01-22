@@ -643,13 +643,14 @@ void GfxDevice::end_pass()
 		ctx->OMSetRenderTargetsAndUnorderedAccessViews(
 			gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr,
 			0, gfxconstants::MAX_RASTER_UAVS, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, nullptr);
+		m_raster_rw_range_this_pass = 0;
 	}
 	else
 	{
 		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr);
 	}
-	m_raster_rw_range_this_pass = 0;
 
+	// https://stackoverflow.com/questions/20300778/are-there-directx-guidelines-for-binding-and-unbinding-resources-between-draw-ca
 	ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_CS_UAV, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
 
 	// resolve any ms targets if any
@@ -663,6 +664,8 @@ void GfxDevice::end_pass()
 			ctx->ResolveSubresource(dst, 0, src, 0, format);
 		}
 	}
+
+	m_active_framebuffer = nullptr;
 }
 
 void GfxDevice::bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports)

@@ -1,5 +1,5 @@
 #pragma once
-#include "GfxCommon.h"
+#include "Graphics/GfxCommon.h"
 
 class RenderTextureClear
 {

@@ -40,6 +40,8 @@ Application::Application()
 			- Draw triangle with VB/IB								DONE (Non-interleaved data too!)
 			- Add HDR rendering and tone mapping					DONE (ACES tonemapping added)
 			- Enable multisampling									DONE 
+			- Add Set Resource Naming		( through device I think? )
+			- Add GPU Queries
 			- Add Resource Naming and Command Naming (11.4?)		
 			- Add GPU query (maybe Set/EndEventMarker? 11.3)
 			- Add Pipeline cache
