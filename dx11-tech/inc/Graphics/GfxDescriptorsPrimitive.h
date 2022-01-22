@@ -64,7 +64,9 @@ class InputLayoutDesc
 public:
 	InputLayoutDesc() = default;
 	InputLayoutDesc(const std::vector<D3D11_INPUT_ELEMENT_DESC>& descs) : m_input_descs(descs) {}
-	InputLayoutDesc& append(LPCSTR semantic, DXGI_FORMAT format, UINT slot, D3D11_INPUT_CLASSIFICATION input_type = D3D11_INPUT_PER_VERTEX_DATA, UINT instanced_steprate = 0);
+	InputLayoutDesc& append(LPCSTR semantic, DXGI_FORMAT format, UINT slot, InputClass input_type = InputClass::ePerVertex, UINT instanced_steprate = 0);
+	InputLayoutDesc& append(const InputLayoutDesc& another_layout);
+
 
 	// Assumes a VertexLayout type which has a static get_desc() function returning an std::vector<D3D11_INPUT_ELEMENT_DESC>
 	template <typename VertexLayout>

@@ -779,14 +779,15 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 	ctx->OMSetBlendState((ID3D11BlendState*)pipeline->m_blend.m_internal_resource.Get(), blend_factor.data(), pipeline->m_sample_mask);
 }
 
-void GfxDevice::bind_vertex_buffers(UINT count, const GPUBuffer* buffers, UINT* strides, UINT* offsets)
+void GfxDevice::bind_vertex_buffers(UINT start_slot, UINT count, const GPUBuffer* buffers, UINT* strides, UINT* offsets)
 {
-	ID3D11Buffer* vbs[gfxconstants::MAX_VBS] = {};
+	assert(count < 31);	// slot 31 is reserved for instancing
+	ID3D11Buffer* vbs[gfxconstants::MAX_INPUT_SLOTS] = {};
 	for (UINT i = 0; i < count; ++i)
 	{
 		vbs[i] = (ID3D11Buffer*)buffers[i].m_internal_resource.Get();
 	}
-	m_dev->get_context()->IASetVertexBuffers(0, count, vbs,
+	m_dev->get_context()->IASetVertexBuffers(start_slot, count, vbs,
 		strides ? strides : (UINT*)gfxconstants::NULL_RESOURCE,
 		offsets ? offsets : (UINT*)gfxconstants::NULL_RESOURCE);
 }

@@ -61,7 +61,7 @@ public:
 
 	//void bind_compute_pipeline(const ComputePipeline* pipeline);
 	void bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
-	void bind_vertex_buffers(UINT count, const GPUBuffer* buffers, UINT* strides, UINT* offsets = nullptr);
+	void bind_vertex_buffers(UINT start_slot, UINT count, const GPUBuffer* buffers, UINT* strides, UINT* offsets = nullptr);
 	void bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format = DXGI_FORMAT_R32_UINT, UINT offset = 0);
 	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer);
 	void bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource);

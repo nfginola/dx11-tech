@@ -31,12 +31,14 @@ Application::Application()
 		To-do: 
 			- Add raster UAVs for OMSetRenderTargetsAndUAV			DONE
 			- Add VB/IB binding to API								DONE
-			- Draw triangle with VB/IB								DONE (Interleaved too!)
+			- Draw triangle with VB/IB								DONE (Non-interleaved data too!)
 			- Add HDR rendering and tone mapping
 			- Enable multisampling
 			- Add Resource Naming and Command Naming (11.4?)
 			- Add GPU query (maybe Set/EndEventMarker? 11.3)
 			- Add Pipeline cache
+
+			- Add hardcoded instance buffer on slot 31 and automatically have it bound if turned on for a Pass
 
 	*/
 
@@ -70,11 +72,17 @@ Application::Application()
 	dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &vb_nor, SubresourceData(normals.data()));
 	dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &ib, SubresourceData(indices.data()));
 
+	//auto instance_layout = InputLayoutDesc()
+	//	.append("INSTANCE_WM_ROW0", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1)
+	//	.append("INSTANCE_WM_ROW1", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1)
+	//	.append("INSTANCE_WM_ROW2", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1)
+	//	.append("INSTANCE_WM_ROW3", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1);
+
 	// Interleaved layout
 	auto layout = InputLayoutDesc()
 		.append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0)
 		.append("UV", DXGI_FORMAT_R32G32_FLOAT, 1)
-		.append("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, 2);
+		.append("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, 3);
 
 	// create pipeline
 	auto p_d = PipelineDesc()
@@ -148,29 +156,37 @@ void Application::run()
 
 		dev->frame_start();
 	
-		// draw triangle
-		dev->bind_viewports(viewports);
+		// geometry pass
+		{
+			dev->bind_viewports(viewports);
 
-		dev->begin_pass(&r_fb);
-		dev->bind_pipeline(&p);
-	
-		GPUBuffer vbs[] = { vb_pos, vb_uv, vb_nor };
-		UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
-		dev->bind_vertex_buffers(_countof(vbs), vbs, strides);
-		dev->bind_index_buffer(&ib);
+			dev->begin_pass(&r_fb);
 
-		dev->draw_indexed(3);
-		
-		dev->end_pass();
+			// draw
+			dev->bind_pipeline(&p);
+			GPUBuffer vbs[] = { vb_pos, vb_uv, GPUBuffer(), vb_nor };
+			UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), 0, sizeof(DirectX::XMFLOAT3) };
+			dev->bind_vertex_buffers(0, _countof(vbs), vbs, strides);
+			// UINT instance_buffers = { world_mat_vib.Get() };
+			// UINT instance_buf_strides = { sizeof(XMFLOAT4x4) };
+			//dev->bind_vertex_buffers(gfxconstants::MAX_INPUT_SLOTS - _countof_instance_buffers, _countof(instance_buffers), &instance_buffers, &instance_buf_strides);
+			dev->bind_index_buffer(&ib);
+			dev->draw_indexed(3);
+
+			dev->end_pass();
+		}
 
 		// draw fullscreen pass
-		dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
-		dev->bind_viewports(viewports);
+		{
+			dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
+			dev->bind_viewports(viewports);
 
-		dev->begin_pass(&fb);
-		dev->bind_pipeline(&r_p);
-		dev->draw(6);
-		dev->end_pass();
+			dev->begin_pass(&fb);
+			dev->bind_pipeline(&r_p);
+			dev->draw(6);
+			dev->end_pass();
+		}
+
 
 		// present
 		dev->present();

@@ -58,7 +58,7 @@ TextureDesc TextureDesc::make_2d(DXGI_FORMAT format, UINT width, UINT height, UI
 	return TextureDesc(CD3D11_TEXTURE2D_DESC(format, width, height, array_size, mip_levels, bind_flags, usage, cpu_access_flags, sample_count, sample_quality, misc_flags));
 }
 
-InputLayoutDesc& InputLayoutDesc::append(LPCSTR semantic, DXGI_FORMAT format, UINT slot, D3D11_INPUT_CLASSIFICATION input_type, UINT instanced_steprate)
+InputLayoutDesc& InputLayoutDesc::append(LPCSTR semantic, DXGI_FORMAT format, UINT slot, InputClass input_type, UINT instanced_steprate)
 {
 	D3D11_INPUT_ELEMENT_DESC desc{};
 	desc.SemanticName = semantic;
@@ -66,9 +66,18 @@ InputLayoutDesc& InputLayoutDesc::append(LPCSTR semantic, DXGI_FORMAT format, UI
 	desc.Format = format;
 	desc.InputSlot = slot;
 	desc.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-	desc.InputSlotClass = input_type;		// per vert/instance
+	desc.InputSlotClass = input_type == InputClass::ePerVertex ? D3D11_INPUT_PER_VERTEX_DATA : D3D11_INPUT_PER_INSTANCE_DATA;		
 	desc.InstanceDataStepRate = 0;
 	m_input_descs.push_back(desc);
 
+	return *this;
+}
+
+InputLayoutDesc& InputLayoutDesc::append(const InputLayoutDesc& another_layout)
+{
+	for (const auto& other_element_layout : another_layout.m_input_descs)
+	{
+		m_input_descs.push_back(other_element_layout);
+	}
 	return *this;
 }

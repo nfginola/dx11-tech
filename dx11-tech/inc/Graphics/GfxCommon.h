@@ -3,6 +3,8 @@
 #include <variant>
 #include "Graphics/DXDevice.h"
 
+// https://docs.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-devices-downlevel-intro
+
 namespace gfxconstants
 {
 	static constexpr UINT MAX_CS_UAV = D3D11_PS_CS_UAV_REGISTER_COUNT;
@@ -14,14 +16,15 @@ namespace gfxconstants
 	static constexpr FLOAT MAX_DEPTH = D3D11_MAX_DEPTH;
 	//static constexpr UINT MAX_RASTER_UAVS = D3D11_1_UAV_SLOT_COUNT;
 	static constexpr UINT MAX_RASTER_UAVS = 8;
-	static constexpr UINT MAX_VBS = 8;		// arbitrary, otherwise D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT  https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-iasetvertexbuffers
+	static constexpr UINT MAX_INPUT_SLOTS = 16; // D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; arbitrary, otherwise D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT  https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-iasetvertexbuffers
+
 }
 
 enum class ShaderStage { eNone, eVertex, eHull, eDomain, eGeometry, ePixel, eCompute};
 enum class BufferType { eNone, eConstant, eVertex, eIndex, eStructured, eAppendConsume, eByteAddress, eRaw, eCustom };
 enum class TextureType { eNone, e1D, e2D, e3D };
 enum class DepthFormat { eD32, eD32_S8, eD24_S8 };
-
+enum class InputClass { ePerVertex, ePerInstance };
 
 
 
