@@ -25,6 +25,12 @@ Application::Application()
 	auto dev = GfxDevice::get();
 
 	viewports = { CD3D11_VIEWPORT(0.f, 0.f, WIDTH, HEIGHT) };
+		
+
+	std::cout << "Framebuffer size: " << sizeof(Framebuffer) << "\n";
+	std::cout << "GraphicsPipeline size: " << sizeof(GraphicsPipeline) << "\n";
+	std::cout << "GPUBuffer size: " << sizeof(GPUBuffer) << "\n";
+	std::cout << "GPUTexture size: " << sizeof(GPUTexture) << "\n";
 
 	/*
 		
@@ -126,29 +132,37 @@ void Application::run()
 		Timer frame_timer;
 		m_win->pump_messages();
 		m_input->begin();
-	
-		if (m_input->lmb_down())
+		
+
+
+
+
+		// take input 
 		{
-			std::cout << m_input->get_mouse_position().first << ", " << m_input->get_mouse_position().second << std::endl;
-			//std::cout << m_input->get_mouse_dt().first << ", " << m_input->get_mouse_dt().second << std::endl;
-		}
-		if (m_input->key_pressed(Keys::Left))
-		{
-			viewports[0].Width -= 40;
-		}
-		if (m_input->key_pressed(Keys::Right))
-		{
-			viewports[0].Width += 40;
-		}
-		if (m_input->key_pressed(Keys::Up))
-		{
-			viewports[0].Height -= 40;
-		}
-		if (m_input->key_pressed(Keys::Down))
-		{
-			viewports[0].Height += 40;
+			if (m_input->lmb_down())
+			{
+				std::cout << m_input->get_mouse_position().first << ", " << m_input->get_mouse_position().second << std::endl;
+				//std::cout << m_input->get_mouse_dt().first << ", " << m_input->get_mouse_dt().second << std::endl;
+			}
+			if (m_input->key_pressed(Keys::Left))
+			{
+				viewports[0].Width -= 40;
+			}
+			if (m_input->key_pressed(Keys::Right))
+			{
+				viewports[0].Width += 40;
+			}
+			if (m_input->key_pressed(Keys::Up))
+			{
+				viewports[0].Height -= 40;
+			}
+			if (m_input->key_pressed(Keys::Down))
+			{
+				viewports[0].Height += 40;
+			}
 		}
 
+		// gpu frame start
 		dev->frame_start();
 	
 		// geometry pass
@@ -183,11 +197,17 @@ void Application::run()
 		}
 
 
-		// present
-		dev->present();
-		dev->frame_end();
+
+
+
 
 		m_input->end();
+
+		// gpu frame end (does it help placing it at the end?)
+		// when vsync is on, presents waits for vertical blank (hence it is blocking)
+		// we can utilize that time between the block and vertical blank by placing Present at the end.
+		dev->present();
+		dev->frame_end();
 
 		auto sec_elapsed = frame_timer.elapsed();
 		//std::cout << "fps: " << 1.f / sec_elapsed << std::endl;

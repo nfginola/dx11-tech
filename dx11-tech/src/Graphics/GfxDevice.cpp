@@ -489,11 +489,12 @@ void GfxDevice::create_shader(ShaderStage stage, const ShaderBytecode& bytecode,
 void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer)
 {
 	framebuffer->m_depth_stencil_target = desc.m_depth_stencil_target.has_value() ? *desc.m_depth_stencil_target : GPUTexture();
+	framebuffer->m_targets.reserve(desc.m_targets.size());
 
 	for (int i = 0; i < desc.m_targets.size(); ++i)
 	{
 		if (desc.m_targets[i].has_value())
-			framebuffer->m_targets[i] = *desc.m_targets[i];
+			framebuffer->m_targets.push_back(*desc.m_targets[i]);
 	}
 
 	framebuffer->m_is_registered = true;

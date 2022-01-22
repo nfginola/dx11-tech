@@ -106,8 +106,9 @@ private:
 	Framebuffer(const Framebuffer&) = default;
 private:
 	bool m_is_registered = false;
-
-	std::array<GPUTexture, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_targets;
+	
+	std::vector<GPUTexture> m_targets;
+	//std::array<GPUTexture, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_targets;
 	GPUTexture m_depth_stencil_target;
 };
 
