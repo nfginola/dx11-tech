@@ -22,10 +22,11 @@ private:
 	GPUBuffer vb_nor;
 	GPUBuffer ib;
 
+	GPUTexture d_32;
 
-
-	Framebuffer r_fb;		// render to texture
-	GPUTexture r_tex;		// above tex will be read
+	Framebuffer r_fb;		
+	GPUTexture r_tex_ms;	// render to texture multi-sample
+	GPUTexture r_tex;		// render to texture resolve
 	GraphicsPipeline p;		
 
 	Framebuffer fb;			// render to backbuffer

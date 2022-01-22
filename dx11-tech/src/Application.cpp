@@ -39,8 +39,8 @@ Application::Application()
 			- Add VB/IB binding to API								DONE
 			- Draw triangle with VB/IB								DONE (Non-interleaved data too!)
 			- Add HDR rendering and tone mapping					DONE (ACES tonemapping added)
-			- Enable multisampling		
-			- Add Resource Naming and Command Naming (11.4?)
+			- Enable multisampling									DONE 
+			- Add Resource Naming and Command Naming (11.4?)		
 			- Add GPU query (maybe Set/EndEventMarker? 11.3)
 			- Add Pipeline cache
 
@@ -51,13 +51,55 @@ Application::Application()
 
 	// setup geometry pass 
 	{
-		// create depth tex
-		GPUTexture d_32;
-		dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, WIDTH, HEIGHT, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
 
-		// create framebuffer for render to texture (HDR)
-		dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, WIDTH, HEIGHT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &r_tex);
-		dev->create_framebuffer(FramebufferDesc({ r_tex }, d_32), &r_fb);
+
+
+		// MSAA
+		{
+			UINT sample_count = 4;
+			UINT sample_quality = 8;
+
+			// Create multisampled render target
+			dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R8G8B8A8_UNORM, WIDTH, HEIGHT, D3D11_BIND_RENDER_TARGET,
+				1, 1, D3D11_USAGE_DEFAULT, 0, sample_count, sample_quality, 0), &r_tex_ms);	
+
+			// Create multisampled depth texture with same count (specs requirement)
+			dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, WIDTH, HEIGHT, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE,
+				1, sample_count, sample_quality), &d_32);
+
+			// Declare render target as MS target and declare backbuffer as MS resolve target
+			dev->create_framebuffer(FramebufferDesc(
+				{ &r_tex_ms }, &d_32,
+				{ dev->get_backbuffer() }),
+				&r_fb);
+		}
+
+		// Render directly
+		{
+			//// Create normal depth texture
+			//dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, WIDTH, HEIGHT, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
+			
+			//// Render directly to backbuffer
+			//dev->create_framebuffer(FramebufferDesc(
+			//	{ dev->get_backbuffer() }, &d_32),
+			//	&r_fb);
+		}
+		
+		/*
+			To turn on, uncomment code below and uncomment the final quad pass in main loop
+		*/
+		// Render to Texture
+		{
+			//// create depth tex
+			//dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, WIDTH, HEIGHT, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
+
+			//// create render to texture (HDR)
+			//dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, WIDTH, HEIGHT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &r_tex);
+
+			//dev->create_framebuffer(FramebufferDesc(
+			//	{ &r_tex }, &d_32),
+			//	&r_fb);
+		}
 
 		// compile and create shaders
 		Shader vs, ps;
@@ -73,12 +115,6 @@ Application::Application()
 		dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &vb_uv, SubresourceData(uvs.data()));
 		dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &vb_nor, SubresourceData(normals.data()));
 		dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &ib, SubresourceData(indices.data()));
-
-		//auto instance_layout = InputLayoutDesc()
-		//	.append("INSTANCE_WM_ROW0", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1)
-		//	.append("INSTANCE_WM_ROW1", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1)
-		//	.append("INSTANCE_WM_ROW2", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1)
-		//	.append("INSTANCE_WM_ROW3", DXGI_FORMAT_R32G32B32A32_FLOAT, 4, InputClass::ePerInstance, 1);
 
 		// Interleaved layout
 		auto layout = InputLayoutDesc()
@@ -96,7 +132,6 @@ Application::Application()
 
 	// fullscreen quad pass to backbuffer
 	{
-
 		// create framebuffer for render to tex
 		dev->create_framebuffer(FramebufferDesc({ dev->get_backbuffer() }), &fb);
 
@@ -185,16 +220,16 @@ void Application::run()
 			dev->end_pass();
 		}
 
-		// draw fullscreen pass
-		{
-			dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
-			dev->bind_viewports(viewports);
+		//// draw fullscreen pass
+		//{
+		//	dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
+		//	dev->bind_viewports(viewports);
 
-			dev->begin_pass(&fb);
-			dev->bind_pipeline(&r_p);
-			dev->draw(6);
-			dev->end_pass();
-		}
+		//	dev->begin_pass(&fb);
+		//	dev->bind_pipeline(&r_p);
+		//	dev->draw(6);
+		//	dev->end_pass();
+		//}
 
 
 

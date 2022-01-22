@@ -10,16 +10,19 @@ class FramebufferDesc
 {
 	friend class GfxDevice;
 public:
-	FramebufferDesc(std::array<std::optional<GPUTexture>, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> render_targets, std::optional<GPUTexture> depth_stencil_target = {}) :
-		m_targets(render_targets), m_depth_stencil_target(depth_stencil_target) {};
+	FramebufferDesc(
+		std::vector<GPUTexture*> render_targets,
+		GPUTexture* depth_stencil_target = nullptr,
+		std::vector<GPUTexture*> resolve_targets = {}) : m_targets(render_targets), m_depth_stencil_target(depth_stencil_target),m_resolve_targets(resolve_targets) {};
 
 	FramebufferDesc() = default;
 	FramebufferDesc& operator=(const FramebufferDesc&) = default;
 	FramebufferDesc(const FramebufferDesc&) = default;
 
 private:
-	std::array<std::optional<GPUTexture>, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_targets;
-	std::optional<GPUTexture> m_depth_stencil_target;
+	std::vector<GPUTexture*> m_targets;
+	std::vector<GPUTexture*> m_resolve_targets;
+	GPUTexture* m_depth_stencil_target;
 };
 
 class PipelineDesc

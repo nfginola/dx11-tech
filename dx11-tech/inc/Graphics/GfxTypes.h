@@ -51,7 +51,6 @@ class GPUTexture : public GPUResource
 {
 	friend class GfxDevice;
 private:
-	TextureType m_type = TextureType::eNone;
 	TextureDesc m_desc;
 	DsvPtr m_dsv;
 };
@@ -60,9 +59,7 @@ class GPUBuffer : public GPUResource
 {
 	friend class GfxDevice;
 private:
-	BufferType m_type = BufferType::eNone;
 	BufferDesc m_desc;
-
 };
 
 class Shader : public GPUType
@@ -107,9 +104,10 @@ private:
 private:
 	bool m_is_registered = false;
 	
-	std::vector<GPUTexture> m_targets;
+	std::vector<GPUTexture*> m_targets;
+	std::vector<GPUTexture*> m_resolve_targets;
 	//std::array<GPUTexture, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_targets;
-	GPUTexture m_depth_stencil_target;
+	GPUTexture* m_depth_stencil_target = nullptr;
 };
 
 class GraphicsPipeline 

@@ -69,3 +69,4 @@ PipelineDesc& PipelineDesc::set_depth_stencil(const DepthStencilDesc& desc)
 	m_depth_stencil_desc = desc;
 	return *this;
 }
+

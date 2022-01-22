@@ -30,7 +30,7 @@ public:
 	void frame_end();
 
 	// Helpers
-	GPUTexture get_backbuffer();
+	GPUTexture* get_backbuffer();
 	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
 	void compile_shader(ShaderStage stage, const std::filesystem::path& fpath, ShaderBytecode* bytecode);
 
@@ -125,12 +125,16 @@ public:
 	GfxDevice(const GfxDevice&) = delete;
 
 private:
+	unique_ptr<DXDevice> m_dev;
+	GPUTexture m_backbuffer;
+
 	std::array<ID3D11UnorderedAccessView*, gfxconstants::MAX_RASTER_UAVS> m_raster_uavs;
 	UINT m_raster_rw_range_this_pass = 0;
 
 	bool m_inside_pass = false;
-	unique_ptr<DXDevice> m_dev;
-	GPUTexture m_backbuffer;
+
+	const Framebuffer* m_active_framebuffer = nullptr;
+
 
 };
 

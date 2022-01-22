@@ -32,7 +32,7 @@ public:
 	TextureDesc() = default;
 	TextureDesc(const D3D11_TEXTURE2D_DESC& desc) : m_desc(desc), m_type(TextureType::e2D), m_render_target_clear(RenderTextureClear::black()) {}
 	
-	static TextureDesc depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT mip_levels = 1);
+	static TextureDesc depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT mip_levels = 1, UINT sample_count = 1, UINT sample_quality = 0);
 	
 	// Set mip_levels = 0 to generate mip level textures all the way to the bottom!
 	static TextureDesc make_2d(
@@ -49,6 +49,14 @@ public:
 		UINT misc_flags = 0);
 
 private:
+	/*
+		Remember that 1D and 3D descriptors are SUBSETS of the 2D descriptor! (check MSDN to verify)
+		One caveat is to give ArraySize to Depth when filling 3D descriptor
+		If you add 1D/3D, no need to change here, simply have 
+			- convert_to_1d_desc()
+			- convert_to_3d_desc()
+		on branch time in create_texture!
+	*/
 	D3D11_TEXTURE2D_DESC m_desc{};
 	TextureType m_type = TextureType::eNone;
 

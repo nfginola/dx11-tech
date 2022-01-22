@@ -136,12 +136,14 @@ void GfxDevice::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::op
 {
 	const auto& d3d_desc = desc.m_desc;
 
-	buffer->m_type = desc.m_type;
+	buffer->m_desc.m_type = desc.m_type;
 
 	HRCHECK(m_dev->get_device()->CreateBuffer(
 		&d3d_desc,
 		subres ? &subres->m_subres : nullptr,
 		(ID3D11Buffer**)buffer->m_internal_resource.ReleaseAndGetAddressOf()));
+
+	buffer->m_desc.m_desc = d3d_desc;
 
 	// Create views
 	if (d3d_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE)
@@ -158,7 +160,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 {
 	auto d3d_desc = desc.m_desc;
 
-	texture->m_type = desc.m_type;
+	texture->m_desc.m_type = desc.m_type;
 
 	// Grab misc. data
 	bool is_array = d3d_desc.ArraySize > 1 ? true : false;
@@ -167,6 +169,15 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 
 	if (ms_on && d3d_desc.MipLevels != 1)
 		assert(false);		// https://docs.microsoft.com/en-us/windows/win32/api/d3d11/ns-d3d11-d3d11_texture2d_desc MipLevels = 1 required for MS
+
+	// check max multisample support
+	UINT max_sample_quality_levels = 0;
+	if (d3d_desc.SampleDesc.Count > 1)
+	{
+		m_dev->get_device()->CheckMultisampleQualityLevels(d3d_desc.Format, d3d_desc.SampleDesc.Count, &max_sample_quality_levels);
+		d3d_desc.SampleDesc.Quality = (std::min)(d3d_desc.SampleDesc.Quality, max_sample_quality_levels - 1);
+		std::cout << "Sample Quality: " << d3d_desc.SampleDesc.Quality << "\n";
+	}
 
 	// Create texture
 	switch (desc.m_type)
@@ -189,6 +200,8 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 		assert(false);
 		break;
 	}
+
+	texture->m_desc.m_desc = d3d_desc;
 
 	// Create views
 	if (d3d_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE)
@@ -445,7 +458,6 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 		));
 	}
 
-
 }
 
 void GfxDevice::create_sampler(const SamplerDesc& desc, Sampler* sampler)
@@ -488,14 +500,38 @@ void GfxDevice::create_shader(ShaderStage stage, const ShaderBytecode& bytecode,
 
 void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer)
 {
-	framebuffer->m_depth_stencil_target = desc.m_depth_stencil_target.has_value() ? *desc.m_depth_stencil_target : GPUTexture();
+	assert(desc.m_targets.size() > 0);
+
+	// if multisamp on, sanitize
+	{
+		const auto& d3d_desc_0 = desc.m_targets[0];
+		/*
+			https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-omsetrendertargets
+			If render targets use multisample anti-aliasing, all bound render targets and depth buffer
+			must be the same form of multisample resource (that is, the sample counts must be the same).
+		*/
+		if (d3d_desc_0->m_desc.m_desc.SampleDesc.Count > 1)
+		{
+			assert(desc.m_targets.size() == desc.m_resolve_targets.size()); // check that resolve targets exists for all render targets
+
+			// check so that all bound rts and ds have ethe same sample counts (as per above specs)
+			UINT samp_count = d3d_desc_0->m_desc.m_desc.SampleDesc.Count;
+			for (int i = 0; i < desc.m_targets.size(); ++i)
+				assert(desc.m_targets[i]->m_desc.m_desc.SampleDesc.Count == samp_count);
+			assert(desc.m_depth_stencil_target->m_desc.m_desc.SampleDesc.Count == samp_count);
+		}
+	}
+
+	framebuffer->m_depth_stencil_target = desc.m_depth_stencil_target ? desc.m_depth_stencil_target : nullptr;
 	framebuffer->m_targets.reserve(desc.m_targets.size());
 
 	for (int i = 0; i < desc.m_targets.size(); ++i)
 	{
-		if (desc.m_targets[i].has_value())
-			framebuffer->m_targets.push_back(*desc.m_targets[i]);
+		if (desc.m_targets[i])
+			framebuffer->m_targets.push_back(desc.m_targets[i]);
 	}
+
+	framebuffer->m_resolve_targets = desc.m_resolve_targets;
 
 	framebuffer->m_is_registered = true;
 }
@@ -554,6 +590,8 @@ void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_
 		assert(false && "Framebuffer is not registered!");
 		return;
 	}
+	
+	m_active_framebuffer = framebuffer;
 	m_inside_pass = true;
 
 	auto& ctx = m_dev->get_context();
@@ -565,18 +603,18 @@ void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_
 	{
 		// get target
 		auto& target = framebuffer->m_targets[i];
-		if (!target.is_valid())
+		if (!target)
 			break;
-		rtvs[i] = target.m_rtv.Get();
+		rtvs[i] = target->m_rtv.Get();
 
 		// clear target
-		ctx->ClearRenderTargetView(target.m_rtv.Get(), target.m_desc.m_render_target_clear.m_rgba.data());
+		ctx->ClearRenderTargetView(target->m_rtv.Get(), target->m_desc.m_render_target_clear.m_rgba.data());
 	}
 
 	ID3D11DepthStencilView* dsv = nullptr;
-	if (depth_tex.is_valid())
+	if (depth_tex)
 	{
-		dsv = depth_tex.m_dsv.Get();
+		dsv = depth_tex->m_dsv.Get();
 		ctx->ClearDepthStencilView(dsv, ds_clear.m_clear_flags, ds_clear.m_depth, ds_clear.m_stencil);
 	}
 
@@ -598,7 +636,8 @@ void GfxDevice::end_pass()
 	assert(m_inside_pass == true);
 	m_inside_pass = false;
 	auto& ctx = m_dev->get_context();
-	
+
+	// set render targets / raster uavs 
 	if (m_raster_rw_range_this_pass > 0)
 	{
 		ctx->OMSetRenderTargetsAndUnorderedAccessViews(
@@ -612,6 +651,18 @@ void GfxDevice::end_pass()
 	m_raster_rw_range_this_pass = 0;
 
 	ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_CS_UAV, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
+
+	// resolve any ms targets if any
+	if (!m_active_framebuffer->m_resolve_targets.empty())
+	{
+		for (int i = 0; i < m_active_framebuffer->m_targets.size(); ++i)
+		{
+			auto src = (ID3D11Texture2D*)m_active_framebuffer->m_targets[i]->m_internal_resource.Get();
+			auto dst = (ID3D11Texture2D*)m_active_framebuffer->m_resolve_targets[i]->m_internal_resource.Get();
+			auto format = m_active_framebuffer->m_targets[i]->m_desc.m_desc.Format;
+			ctx->ResolveSubresource(dst, 0, src, 0, format);
+		}
+	}
 }
 
 void GfxDevice::bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports)
@@ -801,9 +852,9 @@ void GfxDevice::bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format, U
 
 
 
-GPUTexture GfxDevice::get_backbuffer()
+GPUTexture* GfxDevice::get_backbuffer()
 {
-	return m_backbuffer;
+	return &m_backbuffer;
 }
 
 void GfxDevice::draw(UINT vertex_count, UINT start_loc)

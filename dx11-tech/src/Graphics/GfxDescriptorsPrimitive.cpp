@@ -27,7 +27,7 @@ BufferDesc BufferDesc::vertex(size_t size_in_bytes, bool dynamic)
 		return BufferDesc(CD3D11_BUFFER_DESC((UINT)size_in_bytes, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_IMMUTABLE), BufferType::eVertex);
 }
 
-TextureDesc TextureDesc::depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT mip_levels)
+TextureDesc TextureDesc::depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT mip_levels, UINT sample_count, UINT sample_quality)
 {
 	// Depth stencil
 	/*
@@ -41,11 +41,14 @@ TextureDesc TextureDesc::depth_stencil(DepthFormat format, UINT width, UINT heig
 	*/
 
 	if (format == DepthFormat::eD32)
-		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R32_TYPELESS, width, height, 1, mip_levels, bind_flags));
+		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R32_TYPELESS, width, height, 1, mip_levels, bind_flags, 
+			D3D11_USAGE_DEFAULT, 0, sample_count, sample_quality, 0));
 	else if (format == DepthFormat::eD32_S8)
-		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R32G8X24_TYPELESS, width, height, 1, mip_levels, bind_flags));
+		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R32G8X24_TYPELESS, width, height, 1, mip_levels, bind_flags, 
+			D3D11_USAGE_DEFAULT, 0, sample_count, sample_quality, 0));
 	else if (format == DepthFormat::eD24_S8)
-		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R24G8_TYPELESS, width, height, 1, mip_levels, bind_flags));
+		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R24G8_TYPELESS, width, height, 1, mip_levels, bind_flags,
+			D3D11_USAGE_DEFAULT, 0, sample_count, sample_quality, 0));
 	else
 	{
 		assert(false);
