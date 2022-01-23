@@ -108,6 +108,7 @@ private:
 	std::vector<GPUTexture*> m_resolve_targets;
 	//std::array<GPUTexture, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_targets;
 	GPUTexture* m_depth_stencil_target = nullptr;
+	GPUTexture* m_depth_stencil_resolve_target = nullptr;
 };
 
 class GraphicsPipeline 

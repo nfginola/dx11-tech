@@ -520,7 +520,13 @@ void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* fra
 				assert(desc.m_targets[i]->m_desc.m_desc.SampleDesc.Count == samp_count);
 			assert(desc.m_depth_stencil_target->m_desc.m_desc.SampleDesc.Count == samp_count);
 		}
+
+		// dsv dont necessarily have to be resolved
+		// but do resolve it if a resolve target is supplied
+		if (desc.m_depth_stencil_target_resolve)
+			framebuffer->m_depth_stencil_resolve_target = desc.m_depth_stencil_target_resolve;
 	}
+
 
 	framebuffer->m_depth_stencil_target = desc.m_depth_stencil_target ? desc.m_depth_stencil_target : nullptr;
 	framebuffer->m_targets.reserve(desc.m_targets.size());
@@ -622,7 +628,7 @@ void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_
 	{
 		ctx->OMSetRenderTargetsAndUnorderedAccessViews(
 			gfxconstants::MAX_RENDER_TARGETS, rtvs, dsv,
-			0, gfxconstants::MAX_RASTER_UAVS, m_raster_uavs.data(), nullptr);
+			0, gfxconstants::MAX_RASTER_UAVS, m_raster_uavs.data(), m_raster_uav_initial_counts.data());
 	}
 	else
 	{
@@ -650,8 +656,9 @@ void GfxDevice::end_pass()
 		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr);
 	}
 
-	// https://stackoverflow.com/questions/20300778/are-there-directx-guidelines-for-binding-and-unbinding-resources-between-draw-ca
-	ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_CS_UAV, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
+	// handle this sometime later when we implement compute shaders
+	//// https://stackoverflow.com/questions/20300778/are-there-directx-guidelines-for-binding-and-unbinding-resources-between-draw-ca
+	//ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_CS_UAV, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
 
 	// resolve any ms targets if any
 	if (!m_active_framebuffer->m_resolve_targets.empty())
@@ -664,6 +671,9 @@ void GfxDevice::end_pass()
 			ctx->ResolveSubresource(dst, 0, src, 0, format);
 		}
 	}
+
+	// TO-DO: resolve depth target using compute shader
+	// https://wickedengine.net/2016/11/13/how-to-resolve-an-msaa-depthbuffer/#comments
 
 	m_active_framebuffer = nullptr;
 }
@@ -736,7 +746,7 @@ void GfxDevice::bind_resource(UINT slot, ShaderStage stage, const GPUResource* r
 	}
 }
 
-void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource)
+void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource, UINT initial_count)
 {
 	assert(m_inside_pass == true && "Resource RWs must be bound prior to begin_pass()");
 
@@ -754,13 +764,14 @@ void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource
 	case ShaderStage::eGeometry:
 	{
 		m_raster_uavs[slot] = resource->m_uav.Get();
+		m_raster_uav_initial_counts[slot] = initial_count;
 		auto range = m_raster_rw_range_this_pass;
 		// https://github.com/assimp/assimp/issues/2271 paranthesis solves DEFINE NOMINMAX
 		m_raster_rw_range_this_pass = (std::max)(range, slot);
 		break;
 	}
 	case ShaderStage::eCompute:
-		ctx->CSSetUnorderedAccessViews(slot, 1, uavs, nullptr);
+		ctx->CSSetUnorderedAccessViews(slot, 1, uavs, &initial_count);
 		break;
 	}
 

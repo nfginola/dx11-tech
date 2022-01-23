@@ -13,7 +13,11 @@ public:
 	FramebufferDesc(
 		std::vector<GPUTexture*> render_targets,
 		GPUTexture* depth_stencil_target = nullptr,
-		std::vector<GPUTexture*> resolve_targets = {}) : m_targets(render_targets), m_depth_stencil_target(depth_stencil_target),m_resolve_targets(resolve_targets) {};
+		std::vector<GPUTexture*> resolve_targets = {},
+		GPUTexture* depth_stencil_resolve = nullptr) 
+		: 
+		m_targets(render_targets), m_depth_stencil_target(depth_stencil_target), 
+		m_resolve_targets(resolve_targets), m_depth_stencil_target_resolve(depth_stencil_resolve) {};
 
 	FramebufferDesc() = default;
 	FramebufferDesc& operator=(const FramebufferDesc&) = default;
@@ -22,7 +26,8 @@ public:
 private:
 	std::vector<GPUTexture*> m_targets;
 	std::vector<GPUTexture*> m_resolve_targets;
-	GPUTexture* m_depth_stencil_target;
+	GPUTexture* m_depth_stencil_target = nullptr;
+	GPUTexture* m_depth_stencil_target_resolve = nullptr;
 };
 
 class PipelineDesc

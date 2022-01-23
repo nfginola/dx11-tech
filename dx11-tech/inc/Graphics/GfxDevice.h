@@ -58,6 +58,8 @@ public:
 	void create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer);
 	void create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline);
 	//void create_compute_pipeline(ComputePipeline* pipeline);
+	// How the hell do you know when it is safe to Unbind UAVs from Compute Shader???
+	// https://stackoverflow.com/questions/55005420/how-to-do-a-blocking-wait-for-a-compute-shader-with-direct3d11
 
 	//void bind_compute_pipeline(const ComputePipeline* pipeline);
 	void bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
@@ -65,7 +67,7 @@ public:
 	void bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format = DXGI_FORMAT_R32_UINT, UINT offset = 0);
 	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer);
 	void bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource);
-	void bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource);
+	void bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource, UINT initial_count);
 	void bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler);
 	void bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports);
 	void bind_scissors(const std::vector<D3D11_RECT>& rects);
@@ -129,6 +131,7 @@ private:
 	GPUTexture m_backbuffer;
 
 	std::array<ID3D11UnorderedAccessView*, gfxconstants::MAX_RASTER_UAVS> m_raster_uavs;
+	std::array<UINT, gfxconstants::MAX_RASTER_UAVS> m_raster_uav_initial_counts;
 	UINT m_raster_rw_range_this_pass = 0;
 
 	bool m_inside_pass = false;

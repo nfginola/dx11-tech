@@ -45,16 +45,15 @@ Application::Application()
 			- Add Resource Naming and Command Naming (11.4?)		
 			- Add GPU query (maybe Set/EndEventMarker? 11.3)
 			- Add Pipeline cache
+			
 
-			- Add hardcoded instance buffer on slot 31 and automatically have it bound if turned on for a Pass
 
+			- Try recreating view-space positions from only depth!
 	*/
 
 
 	// setup geometry pass 
 	{
-
-
 
 		// MSAA
 		{
