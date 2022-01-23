@@ -2,17 +2,6 @@
 #include "Graphics/GfxCommon.h"
 #include "Graphics/GfxDescriptorsPrimitive.h"
 
-// Strongly typed
-template <typename T, typename Phantom>
-class NamedType
-{
-public:
-	explicit NamedType(T const& value) : m_value(value) {}
-	T get() { return m_value; }
-private:
-	T m_value;
-};
-
 
 /*
 	GPU related types/resources.
@@ -74,6 +63,15 @@ private:
 	ShaderBytecode m_blob;
 };
 
+// Strongly typed shaders for safer public interface
+// https://www.fluentcpp.com/2016/12/08/strong-types-for-strong-interfaces/
+using VertexShader = NamedType<Shader, struct VertexShaderPhantom>;
+using PixelShader = NamedType<Shader, struct PixelShaderPhantom>;
+using GeometryShader = NamedType<Shader, struct GeometryShaderPhantom>;
+using HullShader = NamedType<Shader, struct HullShaderPhantom>;
+using DomainShader = NamedType<Shader, struct DomainShaderPhantom>;
+using ComputeShader = NamedType<Shader, struct ComputeShaderPhantom>;
+
 class Sampler : public GPUType { friend class GfxDevice; };
 
 class RasterizerState : public GPUType { friend class GfxDevice; };
@@ -84,14 +82,7 @@ class BlendState : public GPUType { friend class GfxDevice; };
 
 class DepthStencilState : public GPUType { friend class GfxDevice; };
 
-// Strongly typed shaders for safer public interface
-// https://www.fluentcpp.com/2016/12/08/strong-types-for-strong-interfaces/
-using VertexShader = NamedType<Shader, struct VertexShaderPhantom>;
-using PixelShader = NamedType<Shader, struct PixelShaderPhantom>;
-using GeometryShader = NamedType<Shader, struct GeometryShaderPhantom>;
-using HullShader = NamedType<Shader, struct HullShaderPhantom>;
-using DomainShader = NamedType<Shader, struct DomainShaderPhantom>;
-using ComputeShader = NamedType<Shader, struct ComputeShaderPhantom>;
+
 
 class Framebuffer 
 {
@@ -144,3 +135,57 @@ private:
 
 class ComputePipeline {};
 
+
+
+// User can get a GPU Profiler from the GfxDevice
+class GPUProfiler
+{
+	friend class GfxDevice;
+public:
+	GPUProfiler(DXDevice* dev) : m_dev(dev) {}
+	struct FrameData
+	{
+		// return post-processed data
+		/*
+			time in seconds...
+			compilation of pipeline invocations..
+		*/
+	};
+
+	// add a scope to profile
+	void begin_profile(const std::string& name);
+	void end_profile(const std::string& name);
+
+	// only available after frame ended
+	const FrameData& get_frame_statistics();
+
+private:
+	GPUProfiler() = delete;
+	GPUProfiler& operator=(const GPUProfiler&) = delete;
+	GPUProfiler(const GPUProfiler&) = default;
+
+	// called internally by gfx dev (end frame is done before swapchain present, so theres room to visualize with the API)
+	void frame_start();
+	void frame_end();
+
+private:
+	//static constexpr UINT s_query_latency = 1;
+	DXDevice* m_dev;
+
+	struct ProfileData
+	{
+		QueryPtr disjoint;
+		QueryPtr timestamp_start;
+		QueryPtr timestamp_end;
+
+		bool query_started = false;
+		bool query_finished = false;
+	};
+
+	bool m_frame_started = false;
+	bool m_frame_finished = false;
+
+	FrameData m_frame_data;
+	std::map<std::string, ProfileData> m_profiles;
+	
+};

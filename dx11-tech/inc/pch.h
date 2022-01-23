@@ -13,6 +13,7 @@
 #include <string>
 #include <functional>
 #include <array>
+#include <map>
 
 using std::shared_ptr;
 using std::unique_ptr;

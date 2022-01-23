@@ -20,6 +20,13 @@ using DeviceContext1Ptr = ComPtr<ID3D11DeviceContext1>;		// 11_1
 using DebugPtr = ComPtr<ID3D11Debug>;
 using FactoryPtr = ComPtr<IDXGIFactory>;
 
+// Query
+using QueryPtr = ComPtr<ID3D11Query>;
+
+// Async 
+using AsyncPtr = ComPtr<ID3D11Asynchronous>;
+
+
 // Common resources
 using GPUResourcePtr = ComPtr<ID3D11Resource>;
 using Tex1DPtr = ComPtr<ID3D11Texture1D>;

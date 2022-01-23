@@ -31,6 +31,7 @@ public:
 
 	// Helpers
 	GPUTexture* get_backbuffer();
+	GPUProfiler* get_profiler();
 	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
 	void compile_shader(ShaderStage stage, const std::filesystem::path& fpath, ShaderBytecode* bytecode);
 
@@ -58,8 +59,9 @@ public:
 	void create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer);
 	void create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline);
 	//void create_compute_pipeline(ComputePipeline* pipeline);
-	// How the hell do you know when it is safe to Unbind UAVs from Compute Shader???
-	// https://stackoverflow.com/questions/55005420/how-to-do-a-blocking-wait-for-a-compute-shader-with-direct3d11
+
+
+	void set_name(const GPUType* device_child, const std::string& name);
 
 	//void bind_compute_pipeline(const ComputePipeline* pipeline);
 	void bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
@@ -73,9 +75,10 @@ public:
 	void bind_scissors(const std::vector<D3D11_RECT>& rects);
 
 
-
+	void dispatch(UINT blocks_x, UINT blocks_y, UINT blocks_z);
 	void begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
 	void end_pass();
+
 
 	void draw(UINT vertex_count, UINT start_loc = 0);
 	void draw_indexed(UINT index_count, UINT index_start = 0, UINT vertex_start = 0);
@@ -129,6 +132,7 @@ public:
 private:
 	unique_ptr<DXDevice> m_dev;
 	GPUTexture m_backbuffer;
+	unique_ptr<GPUProfiler> m_profiler;
 
 	std::array<ID3D11UnorderedAccessView*, gfxconstants::MAX_RASTER_UAVS> m_raster_uavs;
 	std::array<UINT, gfxconstants::MAX_RASTER_UAVS> m_raster_uav_initial_counts;

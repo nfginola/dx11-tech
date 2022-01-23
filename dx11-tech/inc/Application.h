@@ -17,6 +17,8 @@ public:
 private:
 	std::vector<D3D11_VIEWPORT> viewports;
 
+	GPUProfiler* m_profiler;
+
 	GPUBuffer vb_pos;
 	GPUBuffer vb_uv;
 	GPUBuffer vb_nor;

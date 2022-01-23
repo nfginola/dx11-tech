@@ -39,7 +39,8 @@ GfxDevice::GfxDevice(std::unique_ptr<DXDevice> dev) :
 	m_backbuffer.m_desc.m_render_target_clear = RenderTextureClear::black();
 	m_dev->get_bb_texture()->GetDesc(&m_backbuffer.m_desc.m_desc);
 
-
+	// Initialize profiler
+	m_profiler = make_unique<GPUProfiler>(m_dev.get());
 }
 
 GfxDevice::~GfxDevice()
@@ -49,6 +50,9 @@ GfxDevice::~GfxDevice()
 
 void GfxDevice::frame_start()
 {
+	if (m_profiler)
+		m_profiler->frame_start();
+
 	auto& ctx = m_dev->get_context();
 	ctx->RSSetScissorRects(gfxconstants::MAX_SCISSORS, (const D3D11_RECT*)gfxconstants::NULL_RESOURCE);
 
@@ -64,6 +68,8 @@ void GfxDevice::frame_start()
 
 void GfxDevice::frame_end()
 {
+	if (m_profiler)
+		m_profiler->frame_end();
 }
 
 
@@ -586,8 +592,24 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 	pipeline->m_is_registered = true;
 }
 
+void GfxDevice::set_name(const GPUType* device_child, const std::string& name)
+{
+	HRCHECK(m_dev->get_context()->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)name.size(), name.data()));
+}
 
+void GfxDevice::dispatch(UINT blocks_x, UINT blocks_y, UINT blocks_z)
+{
+	auto& ctx = m_dev->get_context();
 
+	ctx->Dispatch(blocks_x, blocks_y, blocks_z);
+
+	// https://on-demand.gputechconf.com/gtc/2010/presentations/S12312-DirectCompute-Pre-Conference-Tutorial.pdf
+	// How the hell do you know when it is safe to Unbind UAVs from Compute Shader???
+	// Ans: Check GP Discord, DirectX section, answer from jwki
+	// No need to sync with Fence
+	// https://stackoverflow.com/questions/55005420/how-to-do-a-blocking-wait-for-a-compute-shader-with-direct3d11
+	ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_CS_UAV, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
+}
 
 void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear)
 {
@@ -656,9 +678,6 @@ void GfxDevice::end_pass()
 		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr);
 	}
 
-	// handle this sometime later when we implement compute shaders
-	//// https://stackoverflow.com/questions/20300778/are-there-directx-guidelines-for-binding-and-unbinding-resources-between-draw-ca
-	//ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_CS_UAV, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
 
 	// resolve any ms targets if any
 	if (!m_active_framebuffer->m_resolve_targets.empty())
@@ -869,6 +888,11 @@ void GfxDevice::bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format, U
 GPUTexture* GfxDevice::get_backbuffer()
 {
 	return &m_backbuffer;
+}
+
+GPUProfiler* GfxDevice::get_profiler()
+{
+	return m_profiler.get();
 }
 
 void GfxDevice::draw(UINT vertex_count, UINT start_loc)

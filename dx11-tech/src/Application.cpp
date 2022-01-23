@@ -23,6 +23,7 @@ Application::Application()
 	// Initialize graphics device (singleton)
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
 	auto dev = GfxDevice::get();
+	m_profiler = dev->get_profiler();
 
 	viewports = { CD3D11_VIEWPORT(0.f, 0.f, WIDTH, HEIGHT) };
 		
@@ -40,8 +41,8 @@ Application::Application()
 			- Draw triangle with VB/IB								DONE (Non-interleaved data too!)
 			- Add HDR rendering and tone mapping					DONE (ACES tonemapping added)
 			- Enable multisampling									DONE 
-			- Add Set Resource Naming		( through device I think? )
-			- Add GPU Queries
+			- Add Set Resource Naming								DONE
+			- Add GPU Queries			
 			- Add Resource Naming and Command Naming (11.4?)		
 			- Add GPU query (maybe Set/EndEventMarker? 11.3)
 			- Add Pipeline cache
@@ -54,52 +55,17 @@ Application::Application()
 
 	// setup geometry pass 
 	{
-
-		// MSAA
-		{
-			UINT sample_count = 4;
-			UINT sample_quality = 8;
-
-			// Create multisampled render target
-			dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R8G8B8A8_UNORM, WIDTH, HEIGHT, D3D11_BIND_RENDER_TARGET,
-				1, 1, D3D11_USAGE_DEFAULT, 0, sample_count, sample_quality, 0), &r_tex_ms);	
-
-			// Create multisampled depth texture with same count (specs requirement)
-			dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, WIDTH, HEIGHT, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE,
-				1, sample_count, sample_quality), &d_32);
-
-			// Declare render target as MS target and declare backbuffer as MS resolve target
-			dev->create_framebuffer(FramebufferDesc(
-				{ &r_tex_ms }, &d_32,
-				{ dev->get_backbuffer() }),
-				&r_fb);
-		}
-
-		// Render directly
-		{
-			//// Create normal depth texture
-			//dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, WIDTH, HEIGHT, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
-			
-			//// Render directly to backbuffer
-			//dev->create_framebuffer(FramebufferDesc(
-			//	{ dev->get_backbuffer() }, &d_32),
-			//	&r_fb);
-		}
-		
-		/*
-			To turn on, uncomment code below and uncomment the final quad pass in main loop
-		*/
 		// Render to Texture
 		{
-			//// create depth tex
-			//dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, WIDTH, HEIGHT, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
+			// create depth tex
+			dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, WIDTH, HEIGHT, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
 
-			//// create render to texture (HDR)
-			//dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, WIDTH, HEIGHT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &r_tex);
+			// create render to texture (HDR)
+			dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, WIDTH, HEIGHT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &r_tex);
 
-			//dev->create_framebuffer(FramebufferDesc(
-			//	{ &r_tex }, &d_32),
-			//	&r_fb);
+			dev->create_framebuffer(FramebufferDesc(
+				{ &r_tex }, &d_32),
+				&r_fb);
 		}
 
 		// compile and create shaders
@@ -121,7 +87,7 @@ Application::Application()
 		auto layout = InputLayoutDesc()
 			.append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0)
 			.append("UV", DXGI_FORMAT_R32G32_FLOAT, 1)
-			.append("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, 3);
+			.append("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, 2);
 
 		// create pipeline
 		auto p_d = PipelineDesc()
@@ -201,6 +167,8 @@ void Application::run()
 		// gpu frame start
 		dev->frame_start();
 	
+
+		m_profiler->begin_profile("Geometry Pass");
 		// geometry pass
 		{
 			dev->bind_viewports(viewports);
@@ -209,29 +177,29 @@ void Application::run()
 
 			// draw
 			dev->bind_pipeline(&p);
-			GPUBuffer vbs[] = { vb_pos, vb_uv, GPUBuffer(), vb_nor };
-			UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), 0, sizeof(DirectX::XMFLOAT3) };
+			GPUBuffer vbs[] = { vb_pos, vb_uv, vb_nor };
+			UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
 			dev->bind_vertex_buffers(0, _countof(vbs), vbs, strides);
-			// UINT instance_buffers = { world_mat_vib.Get() };
-			// UINT instance_buf_strides = { sizeof(XMFLOAT4x4) };
-			//dev->bind_vertex_buffers(gfxconstants::MAX_INPUT_SLOTS - _countof_instance_buffers, _countof(instance_buffers), &instance_buffers, &instance_buf_strides);
 			dev->bind_index_buffer(&ib);
 			dev->draw_indexed(3);
 
 			dev->end_pass();
 		}
+		m_profiler->end_profile("Geometry Pass");
 
-		//// draw fullscreen pass
-		//{
-		//	dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
-		//	dev->bind_viewports(viewports);
 
-		//	dev->begin_pass(&fb);
-		//	dev->bind_pipeline(&r_p);
-		//	dev->draw(6);
-		//	dev->end_pass();
-		//}
+		m_profiler->begin_profile("Fullscreen Pass");
+		// draw fullscreen pass
+		{
+			dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
+			dev->bind_viewports(viewports);
 
+			dev->begin_pass(&fb);
+			dev->bind_pipeline(&r_p);
+			dev->draw(6);
+			dev->end_pass();
+		}
+		m_profiler->end_profile("Fullscreen Pass");
 
 
 

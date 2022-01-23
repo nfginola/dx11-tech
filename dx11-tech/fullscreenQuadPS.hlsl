@@ -71,8 +71,8 @@ float4 main(PixelInput input) : SV_TARGET
         Real-Time Rendering 3rd by Möller, Haines and Hoffman, p. 145:
     */
     
-    //float3 ldr_col = aces_fitted(hdr_col);
-    float3 ldr_col = hdr_col;
+    float3 ldr_col = aces_fitted(hdr_col);
+    //float3 ldr_col = hdr_col;
     
     // Gamma correction
     ldr_col = pow(abs(ldr_col), (1.f / GAMMA).xxx);

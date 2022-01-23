@@ -26,6 +26,17 @@ enum class TextureType { eNone, e1D, e2D, e3D };
 enum class DepthFormat { eD32, eD32_S8, eD24_S8 };
 enum class InputClass { ePerVertex, ePerInstance };
 
+// Strongly typed
+template <typename T, typename Phantom>
+class NamedType
+{
+public:
+	explicit NamedType(T const& value) : m_value(value) {}
+	T get() { return m_value; }
+private:
+	T m_value;
+};
+
 
 
 
