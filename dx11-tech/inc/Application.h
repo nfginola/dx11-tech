@@ -17,7 +17,11 @@ public:
 private:
 	std::vector<D3D11_VIEWPORT> viewports;
 
+	std::array<float, gfxconstants::QUERY_LATENCY> m_frame_times;
+	uint64_t m_curr_frame;
+
 	GPUProfiler* m_profiler;
+	GPUAnnotator* m_annotator;
 
 	GPUBuffer vb_pos;
 	GPUBuffer vb_uv;

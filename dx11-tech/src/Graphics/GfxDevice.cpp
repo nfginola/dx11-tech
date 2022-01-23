@@ -39,6 +39,9 @@ GfxDevice::GfxDevice(std::unique_ptr<DXDevice> dev) :
 	m_backbuffer.m_desc.m_render_target_clear = RenderTextureClear::black();
 	m_dev->get_bb_texture()->GetDesc(&m_backbuffer.m_desc.m_desc);
 
+	// Initialize annotator
+	m_annotator = make_unique<GPUAnnotator>(m_dev->get_annotation());
+
 	// Initialize profiler
 	m_profiler = make_unique<GPUProfiler>(m_dev.get());
 }
@@ -895,6 +898,11 @@ GPUProfiler* GfxDevice::get_profiler()
 	return m_profiler.get();
 }
 
+GPUAnnotator* GfxDevice::get_annotator()
+{
+	return m_annotator.get();
+}
+
 void GfxDevice::draw(UINT vertex_count, UINT start_loc)
 {
 	assert(m_inside_pass == true && "Draw call must be inside a Pass scope!");
@@ -908,6 +916,8 @@ void GfxDevice::draw_indexed(UINT index_count, UINT index_start, UINT vertex_sta
 
 void GfxDevice::present(bool vsync)
 {
+	m_profiler->begin_profile("Presentation", false, false);
 	m_dev->get_sc()->Present(vsync ? 1 : 0, 0);
+	m_profiler->end_profile("Presentation");
 }
 

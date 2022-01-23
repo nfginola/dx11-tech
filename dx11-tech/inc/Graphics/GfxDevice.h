@@ -32,6 +32,8 @@ public:
 	// Helpers
 	GPUTexture* get_backbuffer();
 	GPUProfiler* get_profiler();
+	GPUAnnotator* get_annotator();
+
 	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
 	void compile_shader(ShaderStage stage, const std::filesystem::path& fpath, ShaderBytecode* bytecode);
 
@@ -133,6 +135,7 @@ private:
 
 	GPUTexture m_backbuffer;
 	unique_ptr<GPUProfiler> m_profiler;
+	unique_ptr<GPUAnnotator> m_annotator;
 
 	std::array<ID3D11UnorderedAccessView*, gfxconstants::MAX_RASTER_UAVS> m_raster_uavs;
 	std::array<UINT, gfxconstants::MAX_RASTER_UAVS> m_raster_uav_initial_counts;

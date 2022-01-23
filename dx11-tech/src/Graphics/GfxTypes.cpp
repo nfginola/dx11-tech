@@ -1,13 +1,14 @@
 #include "pch.h"
 #include "Graphics/GfxTypes.h"
+#include "Timer.h"
 
-void GPUProfiler::begin_profile(const std::string& name, bool annotate)
+void GPUProfiler::begin_profile(const std::string& name, bool annotate, bool get_pipeline_stats)
 {
 	ProfileData& profile = m_profiles[name];
 	assert(profile.query_started == false);
 	//assert(profile.query_finished == false);
 
-    if (!profile.disjoint)
+    if (!profile.disjoint[m_curr_frame])
     {
         auto& dev = m_dev->get_device();
         D3D11_QUERY_DESC desc;
@@ -15,20 +16,30 @@ void GPUProfiler::begin_profile(const std::string& name, bool annotate)
 
         // Create two timestamp queries and a disjoint query
         desc.Query = D3D11_QUERY_TIMESTAMP;
-        HRCHECK(dev->CreateQuery(&desc, &profile.timestamp_start));
-        HRCHECK(dev->CreateQuery(&desc, &profile.timestamp_end));
+        HRCHECK(dev->CreateQuery(&desc, &profile.timestamp_start[m_curr_frame]));
+        HRCHECK(dev->CreateQuery(&desc, &profile.timestamp_end[m_curr_frame]));
 
         desc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
-        HRCHECK(dev->CreateQuery(&desc, &profile.disjoint));
+        HRCHECK(dev->CreateQuery(&desc, &profile.disjoint[m_curr_frame]));
+        
+        if (get_pipeline_stats)
+        {
+            desc.Query = D3D11_QUERY_PIPELINE_STATISTICS;
+            HRCHECK(dev->CreateQuery(&desc, &profile.pipeline_statistics[m_curr_frame]));
+        }
     }
 
     auto& ctx = m_dev->get_context();
 
     // Start a disjoint query first
-    ctx->Begin(profile.disjoint.Get());
+    ctx->Begin(profile.disjoint[m_curr_frame].Get());
 
     // Insert the start timestamp    
-    ctx->End(profile.timestamp_start.Get());
+    ctx->End(profile.timestamp_start[m_curr_frame].Get());
+
+    // Start pipeline statistics
+    if (get_pipeline_stats)
+        ctx->Begin(profile.pipeline_statistics[m_curr_frame].Get());
 
     profile.query_started = true;
 
@@ -49,10 +60,14 @@ void GPUProfiler::end_profile(const std::string& name)
     auto& ctx = m_dev->get_context();
 
     // Insert the end timestamp    
-    ctx->End(profile.timestamp_end.Get());
+    ctx->End(profile.timestamp_end[m_curr_frame].Get());
 
     // End the disjoint query
-    ctx->End(profile.disjoint.Get());
+    ctx->End(profile.disjoint[m_curr_frame].Get());
+
+    // End pipeline statistics
+    if (profile.pipeline_statistics[m_curr_frame])
+        ctx->End(profile.pipeline_statistics[m_curr_frame].Get());
 
     profile.query_started = false;
     profile.query_finished = true;
@@ -61,45 +76,86 @@ void GPUProfiler::end_profile(const std::string& name)
 const GPUProfiler::FrameData& GPUProfiler::get_frame_statistics()
 {
 	assert(m_frame_finished == true);
-	return m_frame_data;
+	return m_frame_datas[m_curr_frame]; // Get the oldest frame data (this func is called after frame_end())
 }
 
 void GPUProfiler::frame_start()
 {
+    begin_profile("Total GPU Frametime", false);
 }
 
 void GPUProfiler::frame_end()
 {
-    auto& ctx = m_dev->get_context();
+    end_profile("Total GPU Frametime");
 
+    auto& ctx = m_dev->get_context();
+    
+    // Go to "oldest frame" in list
+    ++m_curr_frame;
+    m_curr_frame = m_curr_frame % gfxconstants::QUERY_LATENCY;
+    
+    float waiting_time = 0;
     // go over each profile and extract
     for (const auto& it : m_profiles)
     {
         const auto& name = it.first;
         const auto& profile = it.second;
 
+        Timer timer;
         // Get the query data
         UINT64 start_time = 0;
-        while (ctx->GetData(profile.timestamp_start.Get(), &start_time, sizeof(start_time), 0) != S_OK);
+        if (profile.timestamp_start[m_curr_frame])
+            while (ctx->GetData(profile.timestamp_start[m_curr_frame].Get(), &start_time, sizeof(start_time), 0) != S_OK);
 
         UINT64 end_time = 0;
-        while (ctx->GetData(profile.timestamp_end.Get(), &end_time, sizeof(end_time), 0) != S_OK);
+        if (profile.timestamp_end[m_curr_frame])
+            while (ctx->GetData(profile.timestamp_end[m_curr_frame].Get(), &end_time, sizeof(end_time), 0) != S_OK);
 
-        D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
-        while (ctx->GetData(profile.disjoint.Get(), &disjointData, sizeof(disjointData), 0) != S_OK);
+        D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjointData{};
+        if (profile.disjoint[m_curr_frame])
+            while (ctx->GetData(profile.disjoint[m_curr_frame].Get(), &disjointData, sizeof(disjointData), 0) != S_OK);
+        waiting_time += timer.elapsed();
+
+        D3D11_QUERY_DATA_PIPELINE_STATISTICS pipeline_statistics{};
+        if (profile.pipeline_statistics[m_curr_frame])
+            while (ctx->GetData(profile.pipeline_statistics[m_curr_frame].Get(), &pipeline_statistics, sizeof(pipeline_statistics), 0) != S_OK);
+        waiting_time += timer.elapsed();
 
         // Convert delta to ms
         float time = 0.0f;
-        if (disjointData.Disjoint == false)
+        if (profile.disjoint[m_curr_frame] && disjointData.Disjoint == false)
         {
             UINT64 delta = end_time - start_time;
             float frequency = static_cast<float>(disjointData.Frequency);
             time = (delta / frequency) * 1000.0f;
         }
+    
+        if (profile.pipeline_statistics[m_curr_frame])
+        {
+            std::cout << pipeline_statistics.IAVertices << " : Vertices\n";
+            std::cout << pipeline_statistics.CInvocations << " : Primitives sent to rasterizer\n";
+        }
 
         std::cout << std::fixed;
         std::cout << std::setprecision(3);
-        std::cout << time << " ms : " << name << "\n";
+        std::cout << time << " ms : " << name << "\n\n";
     }
+    std::cout << waiting_time * 1000.f << " ms : Waiting for Query\n";
+    
     std::cout << "\n";
+}
+
+void GPUAnnotator::begin_event(const std::string& name)
+{
+    m_annotation->BeginEvent(utils::to_wstr(name).c_str());
+}
+
+void GPUAnnotator::end_event()
+{
+    m_annotation->EndEvent();
+}
+
+void GPUAnnotator::set_marker(const std::string& name)
+{
+    m_annotation->SetMarker(utils::to_wstr(name).c_str());
 }

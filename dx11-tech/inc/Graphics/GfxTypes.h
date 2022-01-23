@@ -84,6 +84,7 @@ class DepthStencilState : public GPUType { friend class GfxDevice; };
 
 
 
+
 class Framebuffer 
 {
 	friend class GfxDevice;
@@ -137,7 +138,30 @@ class ComputePipeline {};
 
 
 
+// User can get an annotator from the GfxDevice
+class GPUAnnotator
+{
+public:
+	GPUAnnotator(AnnotationPtr annotator) : m_annotation(annotator) {}
+
+	void begin_event(const std::string& name);
+	void end_event();
+	void set_marker(const std::string& name);
+
+private:
+	GPUAnnotator() = delete;
+	GPUAnnotator& operator=(const GPUAnnotator&) = delete;
+	GPUAnnotator(const GPUAnnotator&) = default;
+
+private:
+	AnnotationPtr m_annotation;
+};
+
 // User can get a GPU Profiler from the GfxDevice
+// Uses the internal annotator from DXDevice, not the user exposed GPUAnnotator
+// References:
+// https://www.reedbeta.com/blog/gpu-profiling-101/
+// https://mynameismjp.wordpress.com/2011/10/13/profiling-in-dx11-with-queries/
 class GPUProfiler
 {
 	friend class GfxDevice;
@@ -159,8 +183,9 @@ public:
 	};
 
 	// add a scope to profile
-	void begin_profile(const std::string& name, bool annotate = true);
+	void begin_profile(const std::string& name, bool annotate = true, bool get_pipeline_stats = true);
 	void end_profile(const std::string& name);
+
 
 	// only available after frame ended
 	const FrameData& get_frame_statistics();
@@ -175,14 +200,14 @@ private:
 	void frame_end();
 
 private:
-	//static constexpr UINT s_query_latency = 1;
 	DXDevice* m_dev;
 
 	struct ProfileData
 	{
-		QueryPtr disjoint;
-		QueryPtr timestamp_start;
-		QueryPtr timestamp_end;
+		std::array<QueryPtr, gfxconstants::QUERY_LATENCY> disjoint;
+		std::array<QueryPtr, gfxconstants::QUERY_LATENCY> timestamp_start;
+		std::array<QueryPtr, gfxconstants::QUERY_LATENCY> timestamp_end;
+		std::array<QueryPtr, gfxconstants::QUERY_LATENCY> pipeline_statistics;
 
 		bool query_started = false;
 		bool query_finished = false;
@@ -192,7 +217,8 @@ private:
 	bool m_frame_started = false;
 	bool m_frame_finished = false;
 
-	FrameData m_frame_data;
+	std::array<FrameData, gfxconstants::QUERY_LATENCY> m_frame_datas{};
 	std::map<std::string, ProfileData> m_profiles;
+	uint64_t m_curr_frame = 0;
 	
 };

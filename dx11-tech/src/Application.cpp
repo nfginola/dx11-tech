@@ -24,6 +24,7 @@ Application::Application()
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
 	auto dev = GfxDevice::get();
 	m_profiler = dev->get_profiler();
+	m_annotator = dev->get_annotator();
 
 	viewports = { CD3D11_VIEWPORT(0.f, 0.f, WIDTH, HEIGHT) };
 		
@@ -44,9 +45,9 @@ Application::Application()
 			- Add Set Resource Naming								DONE
 			- Add Set/EndEventMarker? 11.3 (What is that)			DONE
 				- We used the ID3DUserDefinedAnnotation!			DONE
-			- Add GPU Queries for Timestamp and Pipeline Stats		WIP
-			- Add Command Naming (11.4?) (PIX EVENT??)		
-			- Add Pipeline cache
+			- Add GPU Queries for Timestamp and Pipeline Stats		DONE
+			- Add Command Naming (11.4?) (PIX EVENT??)				DONE (ID3DUserDefinedAnnotate!)
+			- Add Pipeline cache			
 			
 			- Try recreating view-space positions from only depth!
 	*/
@@ -132,14 +133,17 @@ void Application::run()
 
 	while (m_win->is_alive() && m_app_alive)
 	{
+		std::cout << "=================\n";
+		//std::cout << "fps: " << 1.f / sec_elapsed << "\n";
+		std::cout << m_frame_times[m_curr_frame] * 1000.f << " ms : Main Loop Frametime" << "\n";
+
+
 		while (m_paused);
 
 		Timer frame_timer;
 		m_win->pump_messages();
 		m_input->begin();
 		
-
-
 
 
 		// take input 
@@ -183,13 +187,19 @@ void Application::run()
 			UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
 			dev->bind_vertex_buffers(0, _countof(vbs), vbs, strides);
 			dev->bind_index_buffer(&ib);
-			dev->draw_indexed(3);
+	
+			m_annotator->begin_event("Draw Triangles");
+			// if we dont do much work here, fullscreen pass takes a weird amount of time! (~5 ms!!) (probably overhead)
+			for (int i = 0; i < 5000; ++i)
+				dev->draw_indexed(3);
+			m_annotator->end_event();
 
 			dev->end_pass();
 		}
 		m_profiler->end_profile("Geometry Pass");
 
 
+		// When writing to the backbuffer, it seems like there is a lot of overhead
 		m_profiler->begin_profile("Fullscreen Pass");
 		// draw fullscreen pass
 		{
@@ -198,25 +208,26 @@ void Application::run()
 
 			dev->begin_pass(&fb);
 			dev->bind_pipeline(&r_p);
-			dev->draw(6);
+			for (int i = 0; i < 500; ++i)
+				dev->draw(6);
 			dev->end_pass();
 		}
 		m_profiler->end_profile("Fullscreen Pass");
-
-
-
-
-
-		m_input->end();
-
-		// gpu frame end (does it help placing it at the end?)
+	
 		// when vsync is on, presents waits for vertical blank (hence it is blocking)
-		// we can utilize that time between the block and vertical blank by placing Present at the end.
+		// we can utilize that time between the block and vertical blank by placing other miscellaneous end functions BEFORE present!
+		m_input->end();
+	
+		//m_profiler->begin_profile("Swapchain Present");
 		dev->present();
+		//m_profiler->end_profile("Swapchain Present");
+		
 		dev->frame_end();
 
-		auto sec_elapsed = frame_timer.elapsed();
-		//std::cout << "fps: " << 1.f / sec_elapsed << std::endl;
+		// multibuffer frametimes
+		m_frame_times[m_curr_frame] = frame_timer.elapsed();
+		++m_curr_frame;
+		m_curr_frame = m_curr_frame % gfxconstants::QUERY_LATENCY;
 	}
 }
 
