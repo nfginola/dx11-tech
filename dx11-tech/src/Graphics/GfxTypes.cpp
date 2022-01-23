@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Graphics/GfxTypes.h"
 
-void GPUProfiler::begin_profile(const std::string& name)
+void GPUProfiler::begin_profile(const std::string& name, bool annotate)
 {
 	ProfileData& profile = m_profiles[name];
 	assert(profile.query_started == false);
@@ -32,6 +32,9 @@ void GPUProfiler::begin_profile(const std::string& name)
 
     profile.query_started = true;
 
+    profile.annotate = annotate;
+    if (annotate)
+        m_dev->get_annotation()->BeginEvent(utils::to_wstr(name.c_str()).c_str());
 }
 
 void GPUProfiler::end_profile(const std::string& name)
@@ -39,6 +42,9 @@ void GPUProfiler::end_profile(const std::string& name)
     ProfileData& profile = m_profiles[name];
     assert(profile.query_started == true);
     //assert(profile.query_finished == false);
+
+    if (profile.annotate)
+        m_dev->get_annotation()->EndEvent();
 
     auto& ctx = m_dev->get_context();
 

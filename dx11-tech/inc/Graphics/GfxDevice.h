@@ -93,7 +93,6 @@ public:
 		UpdateSubresource
 	
 	Second prio:
-		ResolveSubresource
 		Begin
 		End
 		GetData
@@ -131,6 +130,7 @@ public:
 
 private:
 	unique_ptr<DXDevice> m_dev;
+
 	GPUTexture m_backbuffer;
 	unique_ptr<GPUProfiler> m_profiler;
 

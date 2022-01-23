@@ -42,16 +42,20 @@ Application::Application()
 			- Add HDR rendering and tone mapping					DONE (ACES tonemapping added)
 			- Enable multisampling									DONE 
 			- Add Set Resource Naming								DONE
-			- Add GPU Queries			
-			- Add Resource Naming and Command Naming (11.4?)		
-			- Add GPU query (maybe Set/EndEventMarker? 11.3)
+			- Add Set/EndEventMarker? 11.3 (What is that)			DONE
+				- We used the ID3DUserDefinedAnnotation!			DONE
+			- Add GPU Queries for Timestamp and Pipeline Stats		WIP
+			- Add Command Naming (11.4?) (PIX EVENT??)		
 			- Add Pipeline cache
 			
-
-
 			- Try recreating view-space positions from only depth!
 	*/
 
+	// depth pre-pass
+	{
+		// try using depth-prepass to help with overdraw
+		// but do this after youve loaded in models and have Pipeline Statistics so we can compare the invocations!
+	}
 
 	// setup geometry pass 
 	{
@@ -95,7 +99,6 @@ Application::Application()
 			.set_input_layout(layout);
 		dev->create_pipeline(p_d, &p);
 	}
-
 
 	// fullscreen quad pass to backbuffer
 	{
@@ -167,7 +170,6 @@ void Application::run()
 		// gpu frame start
 		dev->frame_start();
 	
-
 		m_profiler->begin_profile("Geometry Pass");
 		// geometry pass
 		{

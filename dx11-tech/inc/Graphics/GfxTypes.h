@@ -149,11 +149,17 @@ public:
 		/*
 			time in seconds...
 			compilation of pipeline invocations..
+
+			GPUElapsed
+			CPUElapsed (waiting time for getting Data)
+
+			D3D11_QUERY_DATA_PIPELINE_STATISTICS 
+
 		*/
 	};
 
 	// add a scope to profile
-	void begin_profile(const std::string& name);
+	void begin_profile(const std::string& name, bool annotate = true);
 	void end_profile(const std::string& name);
 
 	// only available after frame ended
@@ -180,6 +186,7 @@ private:
 
 		bool query_started = false;
 		bool query_finished = false;
+		bool annotate = false;
 	};
 
 	bool m_frame_started = false;

@@ -506,9 +506,12 @@ void GfxDevice::create_shader(ShaderStage stage, const ShaderBytecode& bytecode,
 
 void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer)
 {
-	assert(desc.m_targets.size() > 0);
+	bool render_targets_exist = true;
+	if (desc.m_targets.size() == 0)
+		render_targets_exist = false;
 
-	// if multisamp on, sanitize
+
+	if (render_targets_exist && desc.m_depth_stencil_target)
 	{
 		const auto& d3d_desc_0 = desc.m_targets[0];
 		/*
@@ -516,6 +519,8 @@ void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* fra
 			If render targets use multisample anti-aliasing, all bound render targets and depth buffer
 			must be the same form of multisample resource (that is, the sample counts must be the same).
 		*/
+
+		// if multisamp on, sanitize
 		if (d3d_desc_0->m_desc.m_desc.SampleDesc.Count > 1)
 		{
 			assert(desc.m_targets.size() == desc.m_resolve_targets.size()); // check that resolve targets exists for all render targets
@@ -527,22 +532,22 @@ void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* fra
 			assert(desc.m_depth_stencil_target->m_desc.m_desc.SampleDesc.Count == samp_count);
 		}
 
-		// dsv dont necessarily have to be resolved
-		// but do resolve it if a resolve target is supplied
-		if (desc.m_depth_stencil_target_resolve)
-			framebuffer->m_depth_stencil_resolve_target = desc.m_depth_stencil_target_resolve;
 	}
 
-
+	// Add depth-stencil target
 	framebuffer->m_depth_stencil_target = desc.m_depth_stencil_target ? desc.m_depth_stencil_target : nullptr;
-	framebuffer->m_targets.reserve(desc.m_targets.size());
+	// dsv dont necessarily have to be resolved
+	// but do resolve it if a resolve target is supplied
+	if (desc.m_depth_stencil_target_resolve)
+		framebuffer->m_depth_stencil_resolve_target = desc.m_depth_stencil_target_resolve;
 
+	// Add render targets
+	framebuffer->m_targets.reserve(desc.m_targets.size());
 	for (int i = 0; i < desc.m_targets.size(); ++i)
 	{
 		if (desc.m_targets[i])
 			framebuffer->m_targets.push_back(desc.m_targets[i]);
 	}
-
 	framebuffer->m_resolve_targets = desc.m_resolve_targets;
 
 	framebuffer->m_is_registered = true;
@@ -560,13 +565,8 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 	HRCHECK(dev->CreateBlendState1(&desc.m_blend_desc.m_blend_desc,
 		(ID3D11BlendState1**)pipeline->m_blend.m_internal_resource.ReleaseAndGetAddressOf()));
 
-	// create depth stencil state
-	// explicitly avoid creation if desc not supplied --> avoid depth-stencil clear
-	//if (desc.m_depth_stencil_desc.has_value())
-	//{
 	HRCHECK(dev->CreateDepthStencilState(&desc.m_depth_stencil_desc.m_depth_stencil_desc,
 		(ID3D11DepthStencilState**)pipeline->m_depth_stencil.m_internal_resource.ReleaseAndGetAddressOf()));
-	//}
 
 	// create input layout (duplicates may be created here, we will ignore this for simplicity)
 	if (!desc.m_input_desc.m_input_descs.empty())

@@ -50,6 +50,9 @@ DXDevice::DXDevice(HWND hwnd, int bbWidth, int bbHeight) :
 	create_swapchain(hwnd, bbWidth, bbHeight);
 	create_bb_target();
 
+	// Grab annotation
+	HRCHECK(m_context->QueryInterface(__uuidof(ID3DUserDefinedAnnotation), (void**)m_annotation.GetAddressOf()));
+
 	// Prevent DXGI from responding to Mode Changes and Alt + Enter (We will handle this ourselves)
 	m_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER);		// orig
 	//m_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES);
@@ -216,6 +219,11 @@ const RtvPtr& DXDevice::get_bb_target() const
 const D3D11_VIEWPORT& DXDevice::get_bb_viewport() const
 {
 	return m_bbViewport;
+}
+
+const AnnotationPtr DXDevice::get_annotation() const
+{
+	return m_annotation;
 }
 
 const DXGI_SWAP_CHAIN_DESC& DXDevice::get_sc_desc() const

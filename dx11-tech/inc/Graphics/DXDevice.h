@@ -26,6 +26,9 @@ using QueryPtr = ComPtr<ID3D11Query>;
 // Async 
 using AsyncPtr = ComPtr<ID3D11Asynchronous>;
 
+// Event annotation
+using AnnotationPtr = ComPtr<ID3DUserDefinedAnnotation>;
+
 
 // Common resources
 using GPUResourcePtr = ComPtr<ID3D11Resource>;
@@ -89,6 +92,7 @@ public:
 	const RtvPtr& get_bb_target() const;
 	const D3D11_VIEWPORT& get_bb_viewport() const;
 
+	const AnnotationPtr get_annotation() const;
 
 private:
 	void create_device_and_context();
@@ -112,6 +116,8 @@ private:
 	Tex2DPtr m_bbTex;
 	RtvPtr m_bbView;
 	D3D11_VIEWPORT m_bbViewport;
+
+	AnnotationPtr m_annotation;
 
 	std::vector<DXGI_MODE_DESC> m_available_display_modes;
 };
