@@ -46,9 +46,21 @@ Application::Application()
 			- Add Set/EndEventMarker? 11.3 (What is that)			DONE
 				- We used the ID3DUserDefinedAnnotation!			DONE
 			- Add GPU Queries for Timestamp and Pipeline Stats		DONE
-			- Add Command Naming (11.4?) (PIX EVENT??)				DONE (ID3DUserDefinedAnnotate!)
-			- Add Pipeline cache			
-			
+				- Add a GetData() to retrieve useful data			TO-DO
+
+			- Add Map and UpdateSubresource							TO-DO
+				- Use std::copy instead of memcpy/std::memcpy!
+
+			- Add Perspective Camera (normal depth, no reversed)	TO-DO
+				- Add moving and looking around
+
+			- Add Pipeline cache									TO-DO
+
+			- Bind Persistent Samplers (on the last slots stages)	TO-DO
+				- Check MJP samples and DXTK for Common Samplers
+				- Remember that shadows use diff. samplers
+
+
 			- Try recreating view-space positions from only depth!
 	*/
 
@@ -135,8 +147,7 @@ void Application::run()
 	{
 		std::cout << "=================\n";
 		//std::cout << "fps: " << 1.f / sec_elapsed << "\n";
-		std::cout << m_frame_times[m_curr_frame] * 1000.f << " ms : Main Loop Frametime" << "\n";
-
+		std::cout << m_frame_times[m_curr_frame] * 1000.f << " ms : Main Loop Frametime" << "\n\n";
 
 		while (m_paused);
 
@@ -189,17 +200,15 @@ void Application::run()
 			dev->bind_index_buffer(&ib);
 	
 			m_annotator->begin_event("Draw Triangles");
-			// if we dont do much work here, fullscreen pass takes a weird amount of time! (~5 ms!!) (probably overhead)
-			for (int i = 0; i < 5000; ++i)
-				dev->draw_indexed(3);
+			// if we dont do much work here, fullscreen pass takes a lot of time! (probably overhead)
+			//for (int i = 0; i < 6000; ++i)
+			dev->draw_indexed(3);
 			m_annotator->end_event();
 
 			dev->end_pass();
 		}
 		m_profiler->end_profile("Geometry Pass");
 
-
-		// When writing to the backbuffer, it seems like there is a lot of overhead
 		m_profiler->begin_profile("Fullscreen Pass");
 		// draw fullscreen pass
 		{
@@ -208,8 +217,8 @@ void Application::run()
 
 			dev->begin_pass(&fb);
 			dev->bind_pipeline(&r_p);
-			for (int i = 0; i < 500; ++i)
-				dev->draw(6);
+			//for (int i = 0; i < 100; ++i)
+			dev->draw(6);
 			dev->end_pass();
 		}
 		m_profiler->end_profile("Fullscreen Pass");
@@ -218,11 +227,11 @@ void Application::run()
 		// we can utilize that time between the block and vertical blank by placing other miscellaneous end functions BEFORE present!
 		m_input->end();
 	
-		//m_profiler->begin_profile("Swapchain Present");
-		dev->present();
-		//m_profiler->end_profile("Swapchain Present");
-		
+		dev->present();		
 		dev->frame_end();
+
+		// we should grab data from GPU Profiler here and store in a multibuffered frame statistics container
+		// grab data..
 
 		// multibuffer frametimes
 		m_frame_times[m_curr_frame] = frame_timer.elapsed();
