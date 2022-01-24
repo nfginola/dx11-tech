@@ -15,10 +15,21 @@ public:
 	void run();
 
 private:
+
 	std::vector<D3D11_VIEWPORT> viewports;
 
-	std::array<float, gfxconstants::QUERY_LATENCY> m_frame_times;
-	uint64_t m_curr_frame;
+
+	/*  We can encapsulate this into some class ... */
+	static constexpr UINT s_averaging_frames = 300;
+	std::map<std::string, std::array<float, s_averaging_frames>> m_data_times;		// GPU Frame times for each profile
+	GPUProfiler::FrameData avg_gpu_time;											// Lazy initialized structure for GPU times averaging per profile
+	std::array<float, s_averaging_frames> m_frame_times;							// CPU Frame times
+	bool is_first = true;															// Lazy initialization checker
+	/*  We can encapsulate this into some class ... */
+
+
+	uint64_t m_curr_frame = 0;												
+
 
 	GPUProfiler* m_profiler;
 	GPUAnnotator* m_annotator;

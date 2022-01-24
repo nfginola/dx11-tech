@@ -9,9 +9,9 @@ PipelineDesc& PipelineDesc::set_shaders(VertexShader vs, PixelShader ps, std::op
 
 	m_vs = vs.get();
 	m_ps = ps.get();
-	m_gs = Shader();
-	m_hs = Shader();
-	m_ds = Shader();
+	m_gs = {};
+	m_hs = {};
+	m_ds = {};
 	
 	if (gs.has_value())
 	{

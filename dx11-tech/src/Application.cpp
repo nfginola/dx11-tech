@@ -4,6 +4,8 @@
 
 #include "Input.h"
 #include "Timer.h"
+#include <numeric>
+#include <execution>
 
 Application::Application()
 {
@@ -46,7 +48,15 @@ Application::Application()
 			- Add Set/EndEventMarker? 11.3 (What is that)			DONE
 				- We used the ID3DUserDefinedAnnotation!			DONE
 			- Add GPU Queries for Timestamp and Pipeline Stats		DONE
-				- Add a GetData() to retrieve useful data			TO-DO
+				- Add a GetData() to retrieve useful data			DONE
+				- Add time averaging for timestamp and CPU			DONE
+					- Over 500 frames?							
+
+			- Add shader hot reloading!								DONE
+				- Do this through pipeline hot reloading
+				- Check comment below by the input code
+
+			- Encapsulate Profiler somehow							TO-DO
 
 			- Add Map and UpdateSubresource							TO-DO
 				- Use std::copy instead of memcpy/std::memcpy!
@@ -54,11 +64,21 @@ Application::Application()
 			- Add Perspective Camera (normal depth, no reversed)	TO-DO
 				- Add moving and looking around
 
-			- Add Pipeline cache									TO-DO
-
 			- Bind Persistent Samplers (on the last slots stages)	TO-DO
 				- Check MJP samples and DXTK for Common Samplers
 				- Remember that shadows use diff. samplers
+
+			- Add a Model class										TO-DO
+				- Simply has Meshes and Materials (1:1 mapping)
+
+			- Add a Simple Entity which holds a World Matrix		TO-DO
+				- Holds a pointer to an existing Model (Flyweight)	
+
+
+
+			- Add Pipeline cache									TO-DO
+
+	
 
 
 			- Try recreating view-space positions from only depth!
@@ -132,6 +152,9 @@ Application::Application()
 		dev->create_sampler(SamplerDesc(), &def_samp);
 		dev->bind_sampler(0, ShaderStage::ePixel, &def_samp);
 	}
+
+	std::cout << std::fixed;
+	std::cout << std::setprecision(3);
 }
 
 Application::~Application()
@@ -139,46 +162,66 @@ Application::~Application()
 	GfxDevice::shutdown();
 }
 
+
+
 void Application::run()
 {
 	auto dev = GfxDevice::get();
 
 	while (m_win->is_alive() && m_app_alive)
 	{
-		std::cout << "=================\n";
-		//std::cout << "fps: " << 1.f / sec_elapsed << "\n";
-		std::cout << m_frame_times[m_curr_frame] * 1000.f << " ms : Main Loop Frametime" << "\n\n";
+		Timer frame_timer;
+
+		// Calculate CPU and GPU average times
+		/*
+			This can be encapsulated...
+		*/
+		if (m_curr_frame > s_averaging_frames)
+		{
+			// calc average cpu time
+			float avg_cpu_frametime = std::reduce(std::execution::par_unseq, m_frame_times.begin(), m_frame_times.end()) / s_averaging_frames;
+			
+			// calc average gpu times per profile
+			for (const auto& profile : m_data_times)
+			{
+				const auto& name = profile.first;
+				const auto& times = profile.second;
+
+				// average
+				avg_gpu_time.profiles[name].second = std::reduce(std::execution::par_unseq, times.begin(), times.end()) / s_averaging_frames;
+			}
+
+			// display cpu frametime
+			std::cout << "======= " << "*** Main Loop Frametime" << " =======" << "\n";
+			std::cout << avg_cpu_frametime << " ms" << "\n\n";
+
+			// display gpu frametime
+			for (const auto& profile : avg_gpu_time.profiles)
+			{
+				std::cout << "======= " << profile.first << " =======" << "\n";
+				std::cout << profile.second.second << " ms" << "\n";
+
+				if (profile.second.first.has_value())
+				{
+					std::cout << profile.second.first->IAVertices << " : Vertices\n";
+					std::cout << profile.second.first->CInvocations << " : Primitives sent to rasterizer\n";
+				}
+				std::cout << "\n";
+			}
+			std::cout << "\n";
+		}
+
 
 		while (m_paused);
 
-		Timer frame_timer;
 		m_win->pump_messages();
 		m_input->begin();
 		
-
-
 		// take input 
 		{
-			if (m_input->lmb_down())
+			if (m_input->key_pressed(Keys::R))
 			{
-				std::cout << m_input->get_mouse_position().first << ", " << m_input->get_mouse_position().second << std::endl;
-				//std::cout << m_input->get_mouse_dt().first << ", " << m_input->get_mouse_dt().second << std::endl;
-			}
-			if (m_input->key_pressed(Keys::Left))
-			{
-				viewports[0].Width -= 40;
-			}
-			if (m_input->key_pressed(Keys::Right))
-			{
-				viewports[0].Width += 40;
-			}
-			if (m_input->key_pressed(Keys::Up))
-			{
-				viewports[0].Height -= 40;
-			}
-			if (m_input->key_pressed(Keys::Down))
-			{
-				viewports[0].Height += 40;
+				dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
 			}
 		}
 
@@ -201,8 +244,8 @@ void Application::run()
 	
 			m_annotator->begin_event("Draw Triangles");
 			// if we dont do much work here, fullscreen pass takes a lot of time! (probably overhead)
-			//for (int i = 0; i < 6000; ++i)
-			dev->draw_indexed(3);
+			for (int i = 0; i < 6000; ++i)
+				dev->draw_indexed(3);
 			m_annotator->end_event();
 
 			dev->end_pass();
@@ -230,13 +273,42 @@ void Application::run()
 		dev->present();		
 		dev->frame_end();
 
-		// we should grab data from GPU Profiler here and store in a multibuffered frame statistics container
-		// grab data..
 
-		// multibuffer frametimes
-		m_frame_times[m_curr_frame] = frame_timer.elapsed();
-		++m_curr_frame;
-		m_curr_frame = m_curr_frame % gfxconstants::QUERY_LATENCY;
+
+
+
+
+
+
+		// TO-DO Profiler can be encapsulated...
+		{
+			// grab cpu frame time
+			m_frame_times[(m_curr_frame + gfxconstants::QUERY_LATENCY) % s_averaging_frames] = frame_timer.elapsed();
+
+			// grab gpu frame times
+			auto& gpu_frame_stats = m_profiler->get_frame_statistics();
+			for (const auto& profile : gpu_frame_stats.profiles)
+			{
+				const auto& name = profile.first;
+				const auto& time = profile.second.second;
+
+				auto it = m_data_times.find(name);
+				if (it == m_data_times.end())
+					m_data_times.insert({ name, { time } });
+				else
+					it->second[m_curr_frame % s_averaging_frames] = time;
+			}
+
+			// lazy init persistent data structure
+			if (is_first)
+			{
+				avg_gpu_time = gpu_frame_stats;
+				is_first = false;
+			}
+
+			m_curr_frame++;
+		}
+
 	}
 }
 

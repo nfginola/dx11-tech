@@ -71,6 +71,7 @@ void GPUProfiler::end_profile(const std::string& name)
 
     profile.query_started = false;
     profile.query_finished = true;
+    m_frame_finished = true;
 }
 
 const GPUProfiler::FrameData& GPUProfiler::get_frame_statistics()
@@ -81,12 +82,12 @@ const GPUProfiler::FrameData& GPUProfiler::get_frame_statistics()
 
 void GPUProfiler::frame_start()
 {
-    begin_profile("Total GPU Frametime", false);
+    begin_profile("*** Total GPU Frametime", false);
 }
 
 void GPUProfiler::frame_end()
 {
-    end_profile("Total GPU Frametime");
+    end_profile("*** Total GPU Frametime");
 
     auto& ctx = m_dev->get_context();
     
@@ -96,6 +97,7 @@ void GPUProfiler::frame_end()
     
     float waiting_time = 0;
     // go over each profile and extract
+    FrameData frame_data{};
     for (const auto& it : m_profiles)
     {
         const auto& name = it.first;
@@ -116,9 +118,9 @@ void GPUProfiler::frame_end()
             while (ctx->GetData(profile.disjoint[m_curr_frame].Get(), &disjointData, sizeof(disjointData), 0) != S_OK);
         waiting_time += timer.elapsed();
 
-        D3D11_QUERY_DATA_PIPELINE_STATISTICS pipeline_statistics{};
+        D3D11_QUERY_DATA_PIPELINE_STATISTICS pipeline_stats{};
         if (profile.pipeline_statistics[m_curr_frame])
-            while (ctx->GetData(profile.pipeline_statistics[m_curr_frame].Get(), &pipeline_statistics, sizeof(pipeline_statistics), 0) != S_OK);
+            while (ctx->GetData(profile.pipeline_statistics[m_curr_frame].Get(), &pipeline_stats, sizeof(pipeline_stats), 0) != S_OK);
         waiting_time += timer.elapsed();
 
         // Convert delta to ms
@@ -129,20 +131,15 @@ void GPUProfiler::frame_end()
             float frequency = static_cast<float>(disjointData.Frequency);
             time = (delta / frequency) * 1000.0f;
         }
-    
-        if (profile.pipeline_statistics[m_curr_frame])
-        {
-            std::cout << pipeline_statistics.IAVertices << " : Vertices\n";
-            std::cout << pipeline_statistics.CInvocations << " : Primitives sent to rasterizer\n";
-        }
 
-        std::cout << std::fixed;
-        std::cout << std::setprecision(3);
-        std::cout << time << " ms : " << name << "\n\n";
+        if (pipeline_stats.PSInvocations != 0)
+            frame_data.profiles.insert({ name, { pipeline_stats, time }  });
+        else
+            frame_data.profiles.insert({ name, { {}, time } });
     }
-    std::cout << waiting_time * 1000.f << " ms : Waiting for Query\n";
-    
-    std::cout << "\n";
+
+    frame_data.query_waiting_time = waiting_time;
+    m_frame_datas[m_curr_frame] = frame_data;
 }
 
 void GPUAnnotator::begin_event(const std::string& name)

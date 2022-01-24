@@ -68,6 +68,9 @@ private:
 struct ShaderBytecode
 {
 	shared_ptr<std::vector<uint8_t>> code;
+	std::string fname;
+	// filepath -- std::string -- either .hlsl or .cso
+	// we can use the extension to check if the pipeline is reloadable
 };
 
 

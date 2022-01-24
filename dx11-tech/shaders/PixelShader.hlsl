@@ -10,6 +10,8 @@ float4 main(PixelInput input) : SV_TARGET
 {
     float3 col = input.normal;
     
+    //return float4(0.f, 1.f, 0.f, 1.f);
+    
     return float4(col, 1.f);
 	//return float4(1.0f, 1.0f, 1.0f, 1.0f);
 }

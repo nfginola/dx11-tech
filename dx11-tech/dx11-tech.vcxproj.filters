@@ -112,9 +112,12 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="VertexShader.hlsl" />
-    <FxCompile Include="PixelShader.hlsl" />
-    <FxCompile Include="fullscreenQuadVS.hlsl" />
-    <FxCompile Include="fullscreenQuadPS.hlsl" />
+    <FxCompile Include="shaders\VertexShader.hlsl" />
+    <FxCompile Include="shaders\PixelShader.hlsl" />
+    <FxCompile Include="shaders\fullscreenQuadVS.hlsl" />
+    <FxCompile Include="shaders\fullscreenQuadPS.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\TonemappingAlgorithms.hlsli" />
   </ItemGroup>
 </Project>

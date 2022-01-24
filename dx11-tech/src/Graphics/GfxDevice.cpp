@@ -10,6 +10,7 @@ namespace gfxconstants
 	const void* const NULL_RESOURCE[gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS] = {};
 }
 
+
 void GfxDevice::initialize(unique_ptr<DXDevice> dev)
 {
 	if (!s_gfx_device)
@@ -77,14 +78,14 @@ void GfxDevice::frame_end()
 
 
 
-void GfxDevice::compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader)
+void GfxDevice::compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname, Shader* shader)
 {
 	ShaderBytecode bc;
-	compile_shader(stage, fpath, &bc);
+	compile_shader(stage, fname, &bc);
 	create_shader(stage, bc, shader);
 }
 
-void GfxDevice::compile_shader(ShaderStage stage, const std::filesystem::path& fpath, ShaderBytecode* bytecode)
+void GfxDevice::compile_shader(ShaderStage stage, const std::filesystem::path& fname, ShaderBytecode* bytecode)
 {
 	std::string target;
 	switch (stage)
@@ -114,12 +115,15 @@ void GfxDevice::compile_shader(ShaderStage stage, const std::filesystem::path& f
 	flags |= D3DCOMPILE_DEBUG;
 #endif
 
+	auto new_target = std::string(gfxconstants::SHADER_DIRECTORY) + fname.string();
+	auto new_fpath = std::filesystem::path(new_target);
+
 	BlobPtr shader_blob;
 	BlobPtr error_blob;
 	auto HR = D3DCompileFromFile(
-		fpath.wstring().c_str(),
+		new_fpath.wstring().c_str(),
 		nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE, // This default include handler includes files that are relative to the current directory
 		"main",
 		target.c_str(),
 		flags, 0,
@@ -139,6 +143,64 @@ void GfxDevice::compile_shader(ShaderStage stage, const std::filesystem::path& f
 	bytecode->code = std::make_shared<std::vector<uint8_t>>();
 	bytecode->code->resize(shader_blob->GetBufferSize());
 	std::memcpy(bytecode->code->data(), shader_blob->GetBufferPointer(), shader_blob->GetBufferSize());
+	bytecode->fname = fname.string();
+}
+
+void GfxDevice::recompile_pipeline_shaders_by_name(const std::string& name)
+{
+	/*
+		using the current solution with the map can lead to a dangling pointer!!
+		all pipelines created must be kept alive or else recompilation will iterate over 
+		pipelines that are potentially dead.
+	*/
+	if (!m_reloading_on)
+		return;
+
+	auto fname = name + std::string(".hlsl");		// append extension
+
+	// grab all the pipeline states connected with the shader name
+	auto it = m_loaded_pipelines.find(fname);
+	if (it == m_loaded_pipelines.end())
+	{
+		assert(false);
+	}
+	auto& pipelines = it->second;
+
+	const auto& sample_pipeline = pipelines[0];
+
+	// get filenames to all shaders in the pipelines
+	const auto& vs_name = sample_pipeline->m_vs.m_blob.fname;
+	const auto& ps_name = sample_pipeline->m_ps.m_blob.fname;
+	const auto& gs_name = sample_pipeline->m_gs.m_blob.fname;
+	const auto& hs_name = sample_pipeline->m_hs.m_blob.fname;
+	const auto& ds_name = sample_pipeline->m_ds.m_blob.fname;
+
+	// compile shaders
+	Shader vs, ps, gs, ds, hs;
+	compile_and_create_shader(ShaderStage::eVertex, vs_name, &vs);
+	compile_and_create_shader(ShaderStage::ePixel, ps_name, &ps);
+
+	if (!gs_name.empty())
+		compile_and_create_shader(ShaderStage::eGeometry, gs_name, &gs);
+
+	if (!hs_name.empty())
+		compile_and_create_shader(ShaderStage::eHull, hs_name, &hs);
+
+	if (!ds_name.empty())
+		compile_and_create_shader(ShaderStage::eDomain, ds_name, &ds);
+
+	/*
+		dangling pointer possible if Pipeline is destroyed outside.
+		Ignoring for now
+	*/
+	for (auto& pipeline : pipelines)
+	{
+		pipeline->m_vs = vs;
+		pipeline->m_ps = ps;
+		pipeline->m_gs = gs;
+		pipeline->m_hs = hs;
+		pipeline->m_ds = ds;
+	}
 }
 
 void GfxDevice::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres)
@@ -505,6 +567,8 @@ void GfxDevice::create_shader(ShaderStage stage, const ShaderBytecode& bytecode,
 		shader->m_stage = ShaderStage::eCompute;
 		break;
 	}
+
+	shader->m_blob = bytecode;
 }
 
 void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer)
@@ -582,15 +646,46 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 			(ID3D11InputLayout**)pipeline->m_input_layout.m_internal_resource.ReleaseAndGetAddressOf()));
 	}
 
-	// add shaders
+	auto load_to_cache = [&](const std::string& fname)
+	{
+		auto it = m_loaded_pipelines.find(fname);
+		if (it != m_loaded_pipelines.end())
+			it->second.push_back(pipeline);
+		else
+			m_loaded_pipelines.insert({ fname, { pipeline } });
+	};
+
+	// add shaders and add pipeline to lookup table
 	pipeline->m_vs = desc.m_vs;
 	pipeline->m_ps = desc.m_ps;
+
+	if (m_reloading_on)
+	{
+		load_to_cache(desc.m_vs.m_blob.fname);
+		load_to_cache(desc.m_ps.m_blob.fname);
+	}
+
+
 	if (desc.m_gs.has_value())
+	{
 		pipeline->m_gs = *desc.m_gs;
+		if (m_reloading_on)
+			load_to_cache(desc.m_gs->m_blob.fname);
+	
+	}
 	if (desc.m_hs.has_value())
+	{
 		pipeline->m_hs = *desc.m_hs;
+		if (m_reloading_on)
+			load_to_cache(desc.m_hs->m_blob.fname);
+
+	}
 	if (desc.m_ds.has_value())
+	{
 		pipeline->m_ds = *desc.m_ds;
+		if (m_reloading_on)
+			load_to_cache(desc.m_ds->m_blob.fname);
+	}
 
 	pipeline->m_is_registered = true;
 }

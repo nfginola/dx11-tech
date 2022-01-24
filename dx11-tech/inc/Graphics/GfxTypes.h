@@ -108,6 +108,7 @@ class GraphicsPipeline
 	friend class GfxDevice;
 public:
 	GraphicsPipeline() = default;
+	~GraphicsPipeline() = default;
 private:
 	GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
 	GraphicsPipeline(const GraphicsPipeline&) = default;
@@ -169,17 +170,8 @@ public:
 	GPUProfiler(DXDevice* dev) : m_dev(dev) {}
 	struct FrameData
 	{
-		// return post-processed data
-		/*
-			time in seconds...
-			compilation of pipeline invocations..
-
-			GPUElapsed
-			CPUElapsed (waiting time for getting Data)
-
-			D3D11_QUERY_DATA_PIPELINE_STATISTICS 
-
-		*/
+		std::map<std::string, std::pair<std::optional<D3D11_QUERY_DATA_PIPELINE_STATISTICS>, float>> profiles;
+		float query_waiting_time = 0.f;
 	};
 
 	// add a scope to profile

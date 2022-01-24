@@ -34,8 +34,9 @@ public:
 	GPUProfiler* get_profiler();
 	GPUAnnotator* get_annotator();
 
-	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fpath, Shader* shader);
-	void compile_shader(ShaderStage stage, const std::filesystem::path& fpath, ShaderBytecode* bytecode);
+	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname, Shader* shader);
+	void compile_shader(ShaderStage stage, const std::filesystem::path& fname, ShaderBytecode* bytecode);
+	void recompile_pipeline_shaders_by_name(const std::string& name);
 
 	/*
 	Idea:
@@ -118,6 +119,7 @@ public:
 		DrawInstancedIndirect
 	*/
 
+
 public:
 	static void initialize(unique_ptr<DXDevice> dev);
 	static void shutdown();
@@ -142,9 +144,10 @@ private:
 	UINT m_raster_rw_range_this_pass = 0;
 
 	bool m_inside_pass = false;
-
 	const Framebuffer* m_active_framebuffer = nullptr;
 
+	std::map<std::string, std::vector<GraphicsPipeline*>> m_loaded_pipelines;
+	bool m_reloading_on = true;
 
 };
 
