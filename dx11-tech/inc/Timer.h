@@ -13,6 +13,8 @@ public:
 	Timer();
 	float elapsed(Unit unit = Unit::Milliseconds) const;
 
+	void restart();
+
 private:
 	std::chrono::steady_clock::time_point m_start;
 

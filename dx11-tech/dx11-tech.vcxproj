@@ -161,6 +161,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\CPUProfiler.cpp" />
+    <ClCompile Include="src\FrameProfiler.cpp" />
     <ClCompile Include="src\Graphics\GfxDescriptorsAbstraction.cpp" />
     <ClCompile Include="src\Graphics\GfxHelperTypes.cpp" />
     <ClCompile Include="src\Graphics\GfxTypes.cpp" />
@@ -184,6 +186,9 @@
     <ClCompile Include="src\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="inc\CPUProfiler.h" />
+    <ClInclude Include="inc\FrameProfiler.h" />
+    <ClInclude Include="inc\Globals.h" />
     <ClInclude Include="inc\Graphics\GfxDescriptorsAbstraction.h" />
     <ClInclude Include="inc\Graphics\GfxHelperTypes.h" />
     <ClInclude Include="inc\Graphics\GfxTypes.h" />

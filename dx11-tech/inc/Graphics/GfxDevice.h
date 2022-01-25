@@ -18,6 +18,8 @@
 class GfxDevice
 {
 public:
+	//static GfxDevice* dev;
+
 	/*
 		To-do
 			- Pipeline Cache
@@ -121,7 +123,7 @@ public:
 
 
 public:
-	static void initialize(unique_ptr<DXDevice> dev);
+	static void initialize(unique_ptr<DXDevice> dx_device);
 	static void shutdown();
 	static GfxDevice* get();
 

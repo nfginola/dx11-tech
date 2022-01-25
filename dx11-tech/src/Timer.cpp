@@ -21,3 +21,8 @@ float Timer::elapsed(Unit unit) const
 		return diff.count();	// Default in seconds
 	}
 }
+
+void Timer::restart()
+{
+	m_start = std::chrono::high_resolution_clock::now();
+}

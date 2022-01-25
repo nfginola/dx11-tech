@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/GfxDevice.h"
+#include "Globals.h"
 
 
 class Application
@@ -15,12 +16,17 @@ public:
 	void run();
 
 private:
+	LRESULT custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+private:
 
 	std::vector<D3D11_VIEWPORT> viewports;
 
+	class FrameProfiler* pf = nullptr;
+
 
 	/*  We can encapsulate this into some class ... */
-	static constexpr UINT s_averaging_frames = 300;
+	static constexpr UINT s_averaging_frames = 500;
 	std::map<std::string, std::array<float, s_averaging_frames>> m_data_times;		// GPU Frame times for each profile
 	GPUProfiler::FrameData avg_gpu_time;											// Lazy initialized structure for GPU times averaging per profile
 	std::array<float, s_averaging_frames> m_frame_times;							// CPU Frame times
@@ -30,20 +36,15 @@ private:
 
 	uint64_t m_curr_frame = 0;												
 
-
-	GPUProfiler* m_profiler;
-	GPUAnnotator* m_annotator;
-
+	// triangle (temporary)
 	GPUBuffer vb_pos;
 	GPUBuffer vb_uv;
 	GPUBuffer vb_nor;
 	GPUBuffer ib;
 
 	GPUTexture d_32;
-
+	GPUTexture r_tex;		// render to texture 
 	Framebuffer r_fb;		
-	GPUTexture r_tex_ms;	// render to texture multi-sample
-	GPUTexture r_tex;		// render to texture resolve
 	GraphicsPipeline p;		
 
 	Framebuffer fb;			// render to backbuffer
@@ -57,7 +58,7 @@ private:
 	unique_ptr<class Window> m_win;
 	unique_ptr<class Input> m_input;
 
-	LRESULT custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
 
 };
 

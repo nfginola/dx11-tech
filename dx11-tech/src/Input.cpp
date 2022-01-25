@@ -47,7 +47,7 @@ void Input::process_mouse(UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 			s_raw_input_data = new BYTE[dwSize];
 			s_raw_input_data_size = dwSize;
-			std::cout << "raw input buffer init with size " << dwSize << "\n";
+			//std::cout << "raw input buffer init with size " << dwSize << "\n";
 		}
 		else if (dwSize > s_raw_input_data_size)
 		{
@@ -55,7 +55,7 @@ void Input::process_mouse(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			delete[] s_raw_input_data;
 			s_raw_input_data = new BYTE[dwSize];
 			s_raw_input_data_size = dwSize;
-			std::cout << "raw input buffer resize\n";
+			//std::cout << "raw input buffer resize\n";
 		}
 
 		if (s_raw_input_data == NULL)
