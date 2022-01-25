@@ -5,6 +5,10 @@
 #include "Timer.h"
 
 // Important that Globals is defined last, as the extern members need to be defined!
+// We can define GfxGlobals.h if we want to have a separation layer later 
+// Maybe we would like to have like WickedEngine where we have a Renderer.cpp and Renderer.hpp with all static functions
+// And only allow GfxGlobals in that Renderer.cpp
+// Just an idea.
 #include "Globals.h"
 
 Application::Application()
@@ -49,7 +53,7 @@ Application::Application()
 			- Encapsulate Profiler									DONE
 				- Averaging takes time, what to do?					NEGLIGIBLE, CHECK TIMER IN FrameProfiler
 
-			- Use fmt for printing									TO-DO
+			- Use fmt for printing									DONE (linked as a VS Project dependency)
 				- https://github.com/fmtlib/fmt
 
 			- Add Map and UpdateSubresource							TO-DO
@@ -71,12 +75,18 @@ Application::Application()
 			- Add a Simple Entity which holds a World Matrix		TO-DO
 				- Holds a pointer to an existing Model (Flyweight)	
 
+			- Check out JSON format and see if it is useful			TO-DO
+				- Check out nlohmanns JSON parser
 
 
 			- Add Pipeline cache									TO-DO
-
-	
-
+				- Check prev_pipeline
+				- Also, use prev_ps to determine whether or not to
+				  bind the new VS AND Input Layout!
+				  They are connected!
+					- Even though we duplicate Input Layouts
+					  We can avoid binding the same ones
+					  at least.
 
 			- Try recreating view-space positions from only depth!
 	*/
@@ -195,7 +205,7 @@ void Application::run()
 	
 			gfx::annotator->begin_event("Draw Triangles");
 			// if we dont do much work here, fullscreen pass takes a lot of time! (probably overhead)
-			//for (int i = 0; i < 6000; ++i)
+			//for (int i = 0; i < 3000; ++i)
 			gfx::dev->draw_indexed(3);
 			gfx::annotator->end_event();
 			gfx::dev->end_pass();

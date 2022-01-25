@@ -5,6 +5,7 @@
 #include "Graphics/GfxVertexTypes.h"
 #include "Graphics/GfxTypes.h"
 #include "Graphics/GfxHelperTypes.h"
+#include "Graphics/GPUProfiler.h"
 
 /*
 	Once performance has been measured, only then should we allow binding multiple resources instead of single slot bindings.
@@ -45,6 +46,13 @@ public:
 		is the users responsibility to keep them alive.
 	
 		At the moment, no pipelines are allowed to die for this helper to work.
+
+		We should create a PipelineManager where we store the map.
+		And expose the interfaces:
+			- create_pipeline(desc, name)				--> Pipeline stored internally in map		(string, Pipeline)
+			- recompile_pipeline_shaders_by_name		--> Map with shader names to pipelines		(string, vector<Pipeline*>)
+			- get(name)									--> Get named pipeline
+
 	*/
 	void recompile_pipeline_shaders_by_name(const std::string& name);
 

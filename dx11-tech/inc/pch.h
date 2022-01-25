@@ -20,8 +20,13 @@ using std::unique_ptr;
 using std::make_unique;
 using std::make_shared;
 
+#include "Utilities.h"
+
+// DXTK
 #include <SimpleMath.h>
 
-#include "Utilities.h"
+// FMT
+#include "fmt/core.h"
+#include "fmt/color.h"
 
 

@@ -20,15 +20,36 @@ void FrameProfiler::shutdown()
 		delete perf::profiler;
 }
 
-void FrameProfiler::begin_scope(const std::string& name, bool annotate, bool get_pipeline_stats)
+
+void FrameProfiler::begin_scope(const std::string& name, uint64_t flags)
 {
 	m_cpu->begin(name);
-	m_gpu->begin(name, annotate, get_pipeline_stats);
+	m_gpu->begin(name, flags & PROFILER_GPU_ANNOTATE, flags & PROFILER_GPU_GET_PIPELINE_STATS);
 }
 
 void FrameProfiler::end_scope(const std::string& name)
 {
 	m_cpu->end(name);
+	m_gpu->end(name);
+}
+
+void FrameProfiler::begin_cpu_scope(const std::string& name)
+{
+	m_cpu->begin(name);
+}
+
+void FrameProfiler::end_cpu_scope(const std::string& name)
+{
+	m_cpu->end(name);
+}
+
+void FrameProfiler::begin_gpu_scope(const std::string& name, uint64_t flags)
+{
+	m_gpu->begin(name, flags & PROFILER_GPU_ANNOTATE, flags & PROFILER_GPU_GET_PIPELINE_STATS);
+}
+
+void FrameProfiler::end_gpu_scope(const std::string& name)
+{
 	m_gpu->end(name);
 }
 
@@ -57,10 +78,9 @@ void FrameProfiler::frame_end()
 	m_cpu->frame_start();
 
 	// Note that calculating the averages takes quite some time!
-	//Timer time;
+	m_cpu->begin("Frame Averaging Overhead");
 	calculate_averages();
-	//auto elapsed = time.elapsed();
-	//std::cout << "avg calc elapsed: " << elapsed << " ms\n";
+	m_cpu->end("Frame Averaging Overhead");
 
 	// Add full frame profile
 	for (const auto& averages : m_avg_gpu_times.profiles)
@@ -125,13 +145,18 @@ void FrameProfiler::calculate_averages()
 {
 	if (m_curr_frame > s_averaging_frames)
 	{
+		/*
+			Note that std::execution::seq is much faster than par_unseq for our use case.
+			Probably since we dont have that many elements and its the threading overhead we see!
+		*/
+
 		// calc average cpu times per profile
 		for (const auto& profile : m_frame_times)
 		{
 			const auto& name = profile.first;
 			const auto& times = profile.second;
 
-			m_avg_cpu_times.profiles[name] = std::reduce(std::execution::par_unseq, times.begin(), times.end()) / s_averaging_frames;
+			m_avg_cpu_times.profiles[name] = std::reduce(std::execution::seq, times.begin(), times.end()) / s_averaging_frames;
 		}
 
 		// calc average gpu times per profile
@@ -141,7 +166,7 @@ void FrameProfiler::calculate_averages()
 			const auto& times = profile.second;
 
 			// average
-			m_avg_gpu_times.profiles[name].second = std::reduce(std::execution::par_unseq, times.begin(), times.end()) / s_averaging_frames;
+			m_avg_gpu_times.profiles[name].second = std::reduce(std::execution::seq, times.begin(), times.end()) / s_averaging_frames;
 		}
 	}
 }
@@ -153,34 +178,25 @@ void FrameProfiler::print_frame_results()
 		return;
 
 	// display cpu frametime
-	//std::cout << "======= " << "*** Main Loop Frametime" << " =======" << "\n";
-	//std::cout << m_avg_cpu_frame_time << " ms" << "\n\n";
-
-	// display cpu frametime
-	//std::cout << " ////////////// CPU TIMES '\\\\\\\\\\\\\\\\\\\\\\\'\n";
 	for (const auto& profile : m_avg_cpu_times.profiles)
 	{
-		std::cout << "======= CPU: " << profile.first << " =======" << "\n";
-		std::cout << profile.second << " ms" << "\n";
-
-		std::cout << "\n";
-	}
+		fmt::print("======= CPU: {} =======\n{:.3f} ms\n\n", profile.first, profile.second);
+	}	
 
 	// display gpu frametime
-	//std::cout << " ////////////// GPU TIMES '\\\\\\\\\\\\\\\'\n";
 	for (const auto& profile : m_avg_gpu_times.profiles)
 	{
-		std::cout << "======= GPU: " << profile.first << " =======" << "\n";
-		std::cout << profile.second.second << " ms" << "\n";
+		fmt::print("======= GPU: {} =======\n{:.3f} ms\n", profile.first, profile.second.second);
 
 		if (profile.second.first.has_value())
 		{
-			std::cout << profile.second.first->IAVertices << " : Vertices\n";
-			std::cout << profile.second.first->CInvocations << " : Primitives sent to rasterizer\n";
+			fmt::print("{} : Vertices\n{} Primitives sent to rasterizer\n",
+				profile.second.first->IAPrimitives,
+				profile.second.first->CInvocations);
 		}
-		std::cout << "\n";
+		fmt::print("\n");
 	}
-	std::cout << "\n";
+	fmt::print("\n");
 }
 
 

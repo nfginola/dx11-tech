@@ -34,7 +34,7 @@ float4 main(PixelInput input) : SV_TARGET
 
  
     // Gamma correction
-        ldr_col = pow(abs(ldr_col), (1.f / GAMMA).xxx);
+    ldr_col = pow(abs(ldr_col), (1.f / GAMMA).xxx);
     
     return float4(ldr_col, 1.f);
 }

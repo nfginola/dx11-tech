@@ -1,12 +1,24 @@
 #pragma once
-#include "Graphics/GfxTypes.h"
+#include "Graphics/GPUProfiler.h"
 #include "CPUProfiler.h"
+
+enum ProfilerFlags
+{
+	PROFILER_GPU_ANNOTATE,
+	PROFILER_GPU_GET_PIPELINE_STATS
+};
 
 class FrameProfiler
 {
 public:
 	static void initialize(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu);
 	static void shutdown();
+
+	FrameProfiler() = delete;
+	FrameProfiler(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu) : m_cpu(std::move(cpu)), m_gpu(gpu) {}
+
+	FrameProfiler& operator=(const FrameProfiler&) = delete;
+	FrameProfiler(const FrameProfiler&) = delete;
 
 	struct Profile
 	{
@@ -21,14 +33,19 @@ public:
 		std::map<std::string, Profile> profiles;
 	};
 
-	FrameProfiler() = delete;
-	FrameProfiler(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu) : m_cpu(std::move(cpu)), m_gpu(gpu) {}
-
-	FrameProfiler& operator=(const FrameProfiler&) = delete;
-	FrameProfiler(const FrameProfiler&) = delete;
-
-	void begin_scope(const std::string& name, bool annotate = true, bool get_pipeline_stats = true);
+	/*
+		Tracks both CPU and GPU (default)
+	*/
+	void begin_scope(const std::string& name, uint64_t flags = PROFILER_GPU_ANNOTATE | PROFILER_GPU_GET_PIPELINE_STATS);
 	void end_scope(const std::string& name);
+
+	/*
+		Independent CPU/GPU scopes if user would like to simply track one of them for a given scope
+	*/
+	void begin_cpu_scope(const std::string& name);
+	void end_cpu_scope(const std::string& name);
+	void begin_gpu_scope(const std::string& name, uint64_t flags = PROFILER_GPU_ANNOTATE | PROFILER_GPU_GET_PIPELINE_STATS);
+	void end_gpu_scope(const std::string& name);
 
 	const FrameData& get_frame_statistics();
 
