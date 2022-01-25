@@ -45,6 +45,8 @@ private:
 	// linear minmagmip
 	Sampler def_samp;	
 
+	uint64_t m_curr_frame = 0;
+
 
 
 

@@ -97,7 +97,12 @@ void FrameProfiler::frame_end()
 		//profile.avg_cpu_time = 
 	}
 	
-	print_frame_results();
+	m_cpu->begin("Printing Overhead");
+	if (m_curr_frame % s_print_frame_freq == 0)
+	{
+		print_frame_results();
+	}
+	m_cpu->end("Printing Overhead");
 
 	m_frame_started = false;
 	m_frame_finished = true;
@@ -181,13 +186,15 @@ void FrameProfiler::print_frame_results()
 	// display cpu frametime
 	for (const auto& profile : m_avg_cpu_times.profiles)
 	{
-		fmt::print("======= CPU: {} =======\n{:.3f} ms\n\n", profile.first, profile.second);
+		fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, 
+			"======= CPU: {} =======\n{:.3f} ms\n\n", profile.first, profile.second);
 	}	
 
 	// display gpu frametime
 	for (const auto& profile : m_avg_gpu_times.profiles)
 	{
-		fmt::print("======= GPU: {} =======\n{:.3f} ms\n", profile.first, profile.second.second);
+		fmt::print(fg(fmt::color::steel_blue) | fmt::emphasis::bold,
+			"======= GPU: {} =======\n{:.3f} ms\n", profile.first, profile.second.second);
 
 		if (profile.second.first.has_value())
 		{

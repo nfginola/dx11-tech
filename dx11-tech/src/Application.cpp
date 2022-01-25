@@ -177,22 +177,26 @@ void Application::run()
 	while (m_win->is_alive() && m_app_alive)
 	{
 		perf::profiler->frame_start();
+
+		// Block here if paused
 		while (m_paused);
-		m_win->pump_messages();
-		m_input->begin();
-		
-		// Update input
+
 		{
-			auto _ = FrameProfiler::ScopedCPU("Input");
-			if (m_input->key_pressed(Keys::R))
-			{
-				gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
-			}
+			auto _ = FrameProfiler::ScopedCPU("WM Pump");
+			m_win->pump_messages();
 		}
-
-
+		
+		m_input->begin();
+		// Update input
+		if (m_input->key_pressed(Keys::R))
+		{
+			gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
+		}
+		
 		// Update graphics
 		gfx::dev->frame_start();
+		perf::profiler->begin_cpu_scope("On GPU");
+
 		{
 			auto _ = FrameProfiler::Scoped("Geometry Pass");
 			gfx::dev->begin_pass(&r_fb);
@@ -229,8 +233,11 @@ void Application::run()
 	
 		gfx::dev->present();
 		gfx::dev->frame_end();
+		perf::profiler->end_cpu_scope("On GPU");
 
 		perf::profiler->frame_end();
+		
+		++m_curr_frame;
 	}
 }
 
