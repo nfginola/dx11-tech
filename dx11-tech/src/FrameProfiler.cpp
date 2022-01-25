@@ -3,6 +3,23 @@
 #include <numeric>
 #include <execution>
 
+namespace perf
+{
+	FrameProfiler* profiler = nullptr;
+}
+
+void FrameProfiler::initialize(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu)
+{
+	if (!perf::profiler)
+		perf::profiler = new FrameProfiler(std::move(cpu), gpu);
+}
+
+void FrameProfiler::shutdown()
+{
+	if (perf::profiler)
+		delete perf::profiler;
+}
+
 void FrameProfiler::begin(const std::string& name, bool annotate, bool get_pipeline_stats)
 {
 	m_cpu->begin(name);
@@ -32,13 +49,12 @@ void FrameProfiler::frame_end()
 {
 	m_cpu->frame_end();
 	// GPU externally ended by GfxDevice
-	m_cpu->end("*** Full Frame");
 
 	grab_data();
 
 	// CPU started immediately to capture the computations inbetween frame_end() and frame_start()
+	// Otherwise the time taken to calculate averages is not included! (And its substantial!)
 	m_cpu->frame_start();
-	m_cpu->begin("*** Full Frame");
 
 	// Note that calculating the averages takes a lot of time!
 	calculate_averages();
@@ -140,18 +156,20 @@ void FrameProfiler::print_frame_results()
 	//std::cout << m_avg_cpu_frame_time << " ms" << "\n\n";
 
 	// display cpu frametime
+	//std::cout << " ////////////// CPU TIMES '\\\\\\\\\\\\\\\\\\\\\\\'\n";
 	for (const auto& profile : m_avg_cpu_times.profiles)
 	{
-		std::cout << "======= " << profile.first << " =======" << "\n";
+		std::cout << "======= CPU: " << profile.first << " =======" << "\n";
 		std::cout << profile.second << " ms" << "\n";
 
 		std::cout << "\n";
 	}
 
 	// display gpu frametime
+	//std::cout << " ////////////// GPU TIMES '\\\\\\\\\\\\\\\'\n";
 	for (const auto& profile : m_avg_gpu_times.profiles)
 	{
-		std::cout << "======= " << profile.first << " =======" << "\n";
+		std::cout << "======= GPU: " << profile.first << " =======" << "\n";
 		std::cout << profile.second.second << " ms" << "\n";
 
 		if (profile.second.first.has_value())

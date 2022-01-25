@@ -5,6 +5,9 @@
 class FrameProfiler
 {
 public:
+	static void initialize(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu);
+	static void shutdown();
+
 	struct Profile
 	{
 		float avg_gpu_time;
@@ -17,7 +20,7 @@ public:
 	};
 
 	FrameProfiler() = delete;
-	FrameProfiler(CPUProfiler* cpu, GPUProfiler* gpu) : m_cpu(cpu), m_gpu(gpu) {}
+	FrameProfiler(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu) : m_cpu(std::move(cpu)), m_gpu(gpu) {}
 
 	FrameProfiler& operator=(const FrameProfiler&) = delete;
 	FrameProfiler(const FrameProfiler&) = delete;
@@ -38,7 +41,7 @@ private:
 	void grab_data();
 
 private:
-	CPUProfiler* m_cpu;
+	unique_ptr<CPUProfiler> m_cpu;
 	GPUProfiler* m_gpu;
 
 	static constexpr UINT s_averaging_frames = 500;
@@ -53,8 +56,8 @@ private:
 
 	FrameData m_frame_data;
 
-	bool m_frame_started;
-	bool m_frame_finished;
+	bool m_frame_started = false;
+	bool m_frame_finished = true;;
 
 	uint64_t m_curr_frame = 0;
 

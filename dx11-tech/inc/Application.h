@@ -1,7 +1,5 @@
 #pragma once
-
 #include "Graphics/GfxDevice.h"
-#include "Globals.h"
 
 
 class Application
@@ -22,7 +20,6 @@ private:
 
 	std::vector<D3D11_VIEWPORT> viewports;
 
-	class FrameProfiler* pf = nullptr;
 
 
 	/*  We can encapsulate this into some class ... */

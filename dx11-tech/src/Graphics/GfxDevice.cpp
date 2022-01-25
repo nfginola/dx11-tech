@@ -10,7 +10,6 @@
 namespace gfx
 { 
 	GfxDevice* dev = nullptr;  
-	GPUProfiler* profiler = nullptr;
 	GPUAnnotator* annotator = nullptr;
 }
 
@@ -33,7 +32,6 @@ void GfxDevice::initialize(unique_ptr<DXDevice> dx_device)
 	else
 		assert(false);	// dont try initializing multiple times..
 
-	gfx::profiler = gfx::dev->get_profiler();
 	gfx::annotator = gfx::dev->get_annotator();
 }
 
@@ -48,14 +46,13 @@ void GfxDevice::shutdown()
 		gfx::dev = nullptr;
 	}
 	gfx::annotator = nullptr;
-	gfx::annotator = nullptr;
 }
 
-GfxDevice* GfxDevice::get()
-{
-	//return s_gfx_device;
-	return gfx::dev;
-}
+//GfxDevice* GfxDevice::get()
+//{
+//	//return s_gfx_device;
+//	return gfx::dev;
+//}
 
 GfxDevice::GfxDevice(std::unique_ptr<DXDevice> dev) :
 	m_dev(std::move(dev))

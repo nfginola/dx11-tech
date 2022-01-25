@@ -24,12 +24,14 @@ const CPUProfiler::FrameData& CPUProfiler::get_frame_statistics()
 
 void CPUProfiler::frame_start()
 {
+	begin("*** Full Frame ***");
 	m_frame_started = true;
 	m_frame_finished = false;
 }
 
 void CPUProfiler::frame_end()
 {
+	end("*** Full Frame ***");
 	m_frame_started = false;
 	m_frame_finished = true;
 

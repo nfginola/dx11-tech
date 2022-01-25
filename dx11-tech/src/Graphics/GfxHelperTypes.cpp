@@ -82,12 +82,12 @@ const GPUProfiler::FrameData& GPUProfiler::get_frame_statistics()
 
 void GPUProfiler::frame_start()
 {
-    begin("*** Total GPU Frametime", false);
+    begin("*** Full Frame ***", false);
 }
 
 void GPUProfiler::frame_end()
 {
-    end("*** Total GPU Frametime");
+    end("*** Full Frame ***");
 
     auto& ctx = m_dev->get_context();
 

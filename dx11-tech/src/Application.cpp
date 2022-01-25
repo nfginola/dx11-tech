@@ -7,8 +7,10 @@
 #include <numeric>
 #include <execution>
 
-#include "CPUProfiler.h"
 #include "FrameProfiler.h"
+
+// Important that Globals is defined last, as the extern comes from already defined members!
+#include "Globals.h"
 
 Application::Application()
 {
@@ -25,10 +27,10 @@ Application::Application()
 	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, WIN_WIDTH, WIN_HEIGHT);
 	m_input = make_unique<Input>(m_win->get_hwnd());
 	
-	// Initialize graphics gfx::device (singleton)
+	// Initialize
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
-	
-	pf = new FrameProfiler(new CPUProfiler(), gfx::profiler);
+	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
+
 
 	/*
 		
@@ -39,7 +41,7 @@ Application::Application()
 			- Add HDR rendering and tone mapping					DONE (ACES tonemapping added)
 			- Enable multisampling									DONE 
 			- Add Set Resource Naming								DONE
-			- Add Set/Engfx::deventMarker? 11.3 (What is that)			DONE
+			- Add Set/Engfx::deventMarker? 11.3 (What is that)		DONE
 				- We used the ID3DUserDefinedAnnotation!			DONE
 			- Add GPU Queries for Timestamp and Pipeline Stats		DONE
 				- Add a GetData() to retrieve useful data			DONE
@@ -50,7 +52,8 @@ Application::Application()
 				- Do this through pipeline hot reloading
 				- Check comment below by the input code
 
-			- Encapsulate Profiler somehow							TO-DO
+			- Encapsulate Profiler somehow							DONE
+				- Averaging takes time, what to do?					QUESTION
 
 			- Add Map and UpdateSubresource							TO-DO
 				- Use std::copy instead of memcpy/std::memcpy!
@@ -158,6 +161,7 @@ Application::Application()
 
 Application::~Application()
 {
+	FrameProfiler::shutdown();
 	GfxDevice::shutdown();
 }
 
@@ -167,60 +171,9 @@ void Application::run()
 {
 	while (m_win->is_alive() && m_app_alive)
 	{
-		pf->frame_start();
+		FrameProfiler* fp = nullptr;
 
-		//Timer frame_timer;
-
-		// Calculate CPU and GPU average times
-		/*
-			This can be encapsulated...
-			Some class should be able to give back averages:
-
-			struct ProfilerAverages (or some other name)
-			{ 
-				internal std map in the class (the lazy initialized one)
-				avg_cpu_frame
-			}
-		*/
-		//Timer frame_timer;
-		//{
-		//	if (m_curr_frame > s_averaging_frames)
-		//	{
-		//		// calc average cpu time
-		//		float avg_cpu_frametime = std::reduce(std::execution::par_unseq, m_frame_times.begin(), m_frame_times.end()) / s_averaging_frames;
-
-		//		// calc average gpu times per profile
-		//		for (const auto& profile : m_data_times)
-		//		{
-		//			const auto& name = profile.first;
-		//			const auto& times = profile.second;
-
-		//			// average
-		//			avg_gpu_time.profiles[name].second = std::reduce(std::execution::par_unseq, times.begin(), times.end()) / s_averaging_frames;
-		//		}
-
-		//		// display cpu frametime
-		//		std::cout << "======= " << "*** Main Loop Frametime" << " =======" << "\n";
-		//		std::cout << avg_cpu_frametime << " ms" << "\n\n";
-
-		//		// display gpu frametime
-		//		for (const auto& profile : avg_gpu_time.profiles)
-		//		{
-		//			std::cout << "======= " << profile.first << " =======" << "\n";
-		//			std::cout << profile.second.second << " ms" << "\n";
-
-		//			if (profile.second.first.has_value())
-		//			{
-		//				std::cout << profile.second.first->IAVertices << " : Vertices\n";
-		//				std::cout << profile.second.first->CInvocations << " : Primitives sent to rasterizer\n";
-		//			}
-		//			std::cout << "\n";
-		//		}
-		//		std::cout << "\n";
-		//	}
-		//}
-
-
+		perf::profiler->frame_start();
 
 		while (m_paused);
 
@@ -238,7 +191,8 @@ void Application::run()
 		// gpu frame start
 		gfx::dev->frame_start();
 	
-		gfx::profiler->begin("Geometry Pass");
+		//gfx::profiler->begin("Geometry Pass");
+		perf::profiler->begin("Geometry Pass");
 		// geometry pass
 		{
 			gfx::dev->begin_pass(&r_fb);
@@ -257,9 +211,12 @@ void Application::run()
 			gfx::annotator->end_event();
 			gfx::dev->end_pass();
 		}
-		gfx::profiler->end("Geometry Pass");
+		perf::profiler->end("Geometry Pass");
 
-		gfx::profiler->begin("Fullscreen Pass");
+		//gfx::profiler->end("Geometry Pass");
+
+		//gfx::profiler->begin("Fullscreen Pass");
+		perf::profiler->begin("Fullscreen Pass");
 		// draw fullscreen pass
 		{
 			gfx::dev->begin_pass(&fb);
@@ -270,7 +227,8 @@ void Application::run()
 			gfx::dev->draw(6);
 			gfx::dev->end_pass();
 		}
-		gfx::profiler->end("Fullscreen Pass");
+		perf::profiler->end("Fullscreen Pass");
+		//gfx::profiler->end("Fullscreen Pass");
 	
 		// when vsync is on, presents waits for vertical blank (hence it is blocking)
 		// we can utilize that time between the block and vertical blank by placing other miscellaneous end functions BEFORE present!
@@ -279,42 +237,8 @@ void Application::run()
 		gfx::dev->present();
 		gfx::dev->frame_end();
 
-
-
-
-
-
-		// TO-DO Profiler can be encapsulated...
-		//{
-		//	// grab cpu frame time
-		//	m_frame_times[(m_curr_frame + gfxconstants::QUERY_LATENCY) % s_averaging_frames] = frame_timer.elapsed();
-
-		//	// grab gpu frame times
-		//	auto& gpu_frame_stats = gfx::profiler->get_frame_statistics();
-		//	for (const auto& profile : gpu_frame_stats.profiles)
-		//	{
-		//		const auto& name = profile.first;
-		//		const auto& time = profile.second.second;
-
-		//		auto it = m_data_times.find(name);
-		//		if (it == m_data_times.end())
-		//			m_data_times.insert({ name, { time } });
-		//		else
-		//			it->second[m_curr_frame % s_averaging_frames] = time;
-		//	}
-
-		//	// lazy init persistent data structure
-		//	if (is_first)
-		//	{
-		//		avg_gpu_time = gpu_frame_stats;
-		//		is_first = false;
-		//	}
-
-		//	m_curr_frame++;
-		//}
-		pf->frame_end();
-		pf->print_frame_results();
-
+		perf::profiler->frame_end();
+		perf::profiler->print_frame_results();
 	}
 }
 
