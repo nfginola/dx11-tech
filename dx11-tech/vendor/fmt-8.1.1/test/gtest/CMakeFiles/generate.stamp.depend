@@ -1,9 +1,0 @@
-# CMake generation dependency list for this directory.
-C:/Program Files/CMake/share/cmake-3.21/Modules/CheckCXXSourceCompiles.cmake
-C:/Program Files/CMake/share/cmake-3.21/Modules/CheckIncludeFile.cxx.in
-C:/Program Files/CMake/share/cmake-3.21/Modules/CheckIncludeFileCXX.cmake
-C:/Program Files/CMake/share/cmake-3.21/Modules/CheckLibraryExists.cmake
-C:/Program Files/CMake/share/cmake-3.21/Modules/FindPackageHandleStandardArgs.cmake
-C:/Program Files/CMake/share/cmake-3.21/Modules/FindPackageMessage.cmake
-C:/Program Files/CMake/share/cmake-3.21/Modules/FindThreads.cmake
-D:/Github/dx11-tech/dx11-tech/vendor/fmt-8.1.1/test/gtest/CMakeLists.txt
