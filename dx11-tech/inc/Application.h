@@ -1,5 +1,7 @@
 #pragma once
 #include "Graphics/GfxDevice.h"
+#include "FrameProfiler.h"
+
 
 
 class Application

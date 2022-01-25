@@ -1,13 +1,8 @@
 #include "pch.h"
 #include "Application.h"
 #include "Window.h"
-
 #include "Input.h"
 #include "Timer.h"
-#include <numeric>
-#include <execution>
-
-#include "FrameProfiler.h"
 
 // Important that Globals is defined last, as the extern comes from already defined members!
 #include "Globals.h"
@@ -54,6 +49,9 @@ Application::Application()
 
 			- Encapsulate Profiler somehow							DONE
 				- Averaging takes time, what to do?					QUESTION
+
+			- Use fmt for printing									TO-DO
+				- https://github.com/fmtlib/fmt
 
 			- Add Map and UpdateSubresource							TO-DO
 				- Use std::copy instead of memcpy/std::memcpy!
