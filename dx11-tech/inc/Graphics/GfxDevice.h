@@ -38,6 +38,14 @@ public:
 
 	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname, Shader* shader);
 	void compile_shader(ShaderStage stage, const std::filesystem::path& fname, ShaderBytecode* bytecode);
+
+	/*
+		This function may fail if a pipeline previously created is dropped.
+		GfxDevice holds a non-owning pointer to the pipelines created, meaning it 
+		is the users responsibility to keep them alive.
+	
+		At the moment, no pipelines are allowed to die for this helper to work.
+	*/
 	void recompile_pipeline_shaders_by_name(const std::string& name);
 
 	/*

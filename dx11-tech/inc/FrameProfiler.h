@@ -12,6 +12,8 @@ public:
 	{
 		float avg_gpu_time;
 		float avg_cpu_time;
+
+		// Pipeline statistics.. add sometime later
 	};
 
 	struct FrameData
@@ -25,26 +27,26 @@ public:
 	FrameProfiler& operator=(const FrameProfiler&) = delete;
 	FrameProfiler(const FrameProfiler&) = delete;
 
-	void begin(const std::string& name, bool annotate = true, bool get_pipeline_stats = true);
-	void end(const std::string& name);
+	void begin_scope(const std::string& name, bool annotate = true, bool get_pipeline_stats = true);
+	void end_scope(const std::string& name);
 
 	const FrameData& get_frame_statistics();
 
 	void frame_start();
 	void frame_end();
 
-	// temp
-	void print_frame_results();
-
 private:
 	void calculate_averages();
 	void grab_data();
 
+	// temp
+	void print_frame_results();
+
 private:
+	static constexpr UINT s_averaging_frames = 500;		// Averaging over X frames
+
 	unique_ptr<CPUProfiler> m_cpu;
 	GPUProfiler* m_gpu;
-
-	static constexpr UINT s_averaging_frames = 500;
 
 	std::map<std::string, std::array<float, s_averaging_frames>> m_data_times;		// GPU Frame times for each profile
 	GPUProfiler::FrameData m_avg_gpu_times;											// Lazy initialized structure for GPU times averaging per profile
@@ -61,7 +63,6 @@ private:
 
 	uint64_t m_curr_frame = 0;
 
-	//Timer m_full_frame_timer;
 
 };
 

@@ -4,7 +4,7 @@
 #include "Input.h"
 #include "Timer.h"
 
-// Important that Globals is defined last, as the extern comes from already defined members!
+// Important that Globals is defined last, as the extern members need to be defined!
 #include "Globals.h"
 
 Application::Application()
@@ -22,10 +22,9 @@ Application::Application()
 	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, WIN_WIDTH, WIN_HEIGHT);
 	m_input = make_unique<Input>(m_win->get_hwnd());
 	
-	// Initialize
+	// Initialize singletons (with clear dependencies)
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
 	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
-
 
 	/*
 		
@@ -36,7 +35,7 @@ Application::Application()
 			- Add HDR rendering and tone mapping					DONE (ACES tonemapping added)
 			- Enable multisampling									DONE 
 			- Add Set Resource Naming								DONE
-			- Add Set/Engfx::deventMarker? 11.3 (What is that)		DONE
+			- Add Set/End EventMarker? 11.3 (What is that)			DONE
 				- We used the ID3DUserDefinedAnnotation!			DONE
 			- Add GPU Queries for Timestamp and Pipeline Stats		DONE
 				- Add a GetData() to retrieve useful data			DONE
@@ -47,8 +46,8 @@ Application::Application()
 				- Do this through pipeline hot reloading
 				- Check comment below by the input code
 
-			- Encapsulate Profiler somehow							DONE
-				- Averaging takes time, what to do?					QUESTION
+			- Encapsulate Profiler									DONE
+				- Averaging takes time, what to do?					NEGLIGIBLE, CHECK TIMER IN FrameProfiler
 
 			- Use fmt for printing									TO-DO
 				- https://github.com/fmtlib/fmt
@@ -169,29 +168,21 @@ void Application::run()
 {
 	while (m_win->is_alive() && m_app_alive)
 	{
-		FrameProfiler* fp = nullptr;
-
 		perf::profiler->frame_start();
-
 		while (m_paused);
-
 		m_win->pump_messages();
 		m_input->begin();
 		
-		// take input 
+		// Update input
+		if (m_input->key_pressed(Keys::R))
 		{
-			if (m_input->key_pressed(Keys::R))
-			{
-				gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
-			}
+			gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
 		}
 
-		// gpu frame start
+		// Update graphics
 		gfx::dev->frame_start();
 	
-		//gfx::profiler->begin("Geometry Pass");
-		perf::profiler->begin("Geometry Pass");
-		// geometry pass
+		perf::profiler->begin_scope("Geometry Pass");
 		{
 			gfx::dev->begin_pass(&r_fb);
 			gfx::dev->bind_viewports(viewports);
@@ -209,13 +200,9 @@ void Application::run()
 			gfx::annotator->end_event();
 			gfx::dev->end_pass();
 		}
-		perf::profiler->end("Geometry Pass");
+		perf::profiler->end_scope("Geometry Pass");
 
-		//gfx::profiler->end("Geometry Pass");
-
-		//gfx::profiler->begin("Fullscreen Pass");
-		perf::profiler->begin("Fullscreen Pass");
-		// draw fullscreen pass
+		perf::profiler->begin_scope("Fullscreen Pass");
 		{
 			gfx::dev->begin_pass(&fb);
 			gfx::dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
@@ -225,8 +212,7 @@ void Application::run()
 			gfx::dev->draw(6);
 			gfx::dev->end_pass();
 		}
-		perf::profiler->end("Fullscreen Pass");
-		//gfx::profiler->end("Fullscreen Pass");
+		perf::profiler->end_scope("Fullscreen Pass");
 	
 		// when vsync is on, presents waits for vertical blank (hence it is blocking)
 		// we can utilize that time between the block and vertical blank by placing other miscellaneous end functions BEFORE present!
@@ -236,7 +222,6 @@ void Application::run()
 		gfx::dev->frame_end();
 
 		perf::profiler->frame_end();
-		perf::profiler->print_frame_results();
 	}
 }
 
