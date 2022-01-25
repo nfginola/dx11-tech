@@ -45,6 +45,7 @@ void FrameProfiler::end_cpu_scope(const std::string& name)
 
 void FrameProfiler::begin_gpu_scope(const std::string& name, uint64_t flags)
 {
+
 	m_gpu->begin(name, flags & PROFILER_GPU_ANNOTATE, flags & PROFILER_GPU_GET_PIPELINE_STATS);
 }
 
@@ -199,4 +200,41 @@ void FrameProfiler::print_frame_results()
 	fmt::print("\n");
 }
 
+FrameProfiler::Scoped::Scoped(const std::string& name, uint64_t flags) :
+	m_name(name)
+{
+	assert(perf::profiler != nullptr);
+	perf::profiler->begin_scope(name, flags);
+}
 
+FrameProfiler::Scoped::~Scoped()
+{
+	assert(perf::profiler != nullptr);
+	perf::profiler->end_scope(m_name);
+}
+
+FrameProfiler::ScopedCPU::ScopedCPU(const std::string& name) :
+	m_name(name)
+{
+	assert(perf::profiler != nullptr);
+	perf::profiler->begin_cpu_scope(name);
+}
+
+FrameProfiler::ScopedCPU::~ScopedCPU()
+{
+	assert(perf::profiler != nullptr);
+	perf::profiler->end_cpu_scope(m_name);
+}
+
+FrameProfiler::ScopedGPU::ScopedGPU(const std::string& name, uint64_t flags) :
+	m_name(name)
+{
+	assert(perf::profiler != nullptr);
+	perf::profiler->begin_gpu_scope(name, flags);
+}
+
+FrameProfiler::ScopedGPU::~ScopedGPU()
+{
+	assert(perf::profiler != nullptr);
+	perf::profiler->end_gpu_scope(m_name);
+}

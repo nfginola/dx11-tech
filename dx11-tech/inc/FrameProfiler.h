@@ -4,12 +4,67 @@
 
 enum ProfilerFlags
 {
-	PROFILER_GPU_ANNOTATE,
-	PROFILER_GPU_GET_PIPELINE_STATS
+	PROFILER_GPU_ANNOTATE				= 1,
+	PROFILER_GPU_GET_PIPELINE_STATS		= 2 << 0
 };
+
+/*
+	Maybe add a stack based tracker for CPU and GPU respectively so we can keep track of scope nesting.
+	Features for later.
+
+	Use the profiler functions for fine grained scopes
+	Use the Scope helpers for coarse-grained scopes where utilizing a scope { } doesn't harm readability
+*/
 
 class FrameProfiler
 {
+public:
+
+public:
+	// Scoped helpers
+	class Scoped
+	{
+	public:
+		Scoped() = delete;
+		Scoped& operator=(const Scoped&) = delete;
+		Scoped(const Scoped&) = delete;
+	
+		// Scoped CPU and GPU profiler
+		Scoped(const std::string& name, uint64_t flags = PROFILER_GPU_ANNOTATE | PROFILER_GPU_GET_PIPELINE_STATS);
+		~Scoped();
+
+	private:
+		std::string m_name;
+	};
+
+	class ScopedCPU
+	{
+	public:
+		ScopedCPU() = delete;
+		ScopedCPU& operator=(const ScopedCPU&) = delete;
+		ScopedCPU(const ScopedCPU&) = delete;
+
+		ScopedCPU(const std::string& name);
+		~ScopedCPU();
+
+	private:
+		std::string m_name;
+	};
+
+	class ScopedGPU
+	{
+	public:
+		ScopedGPU() = delete;
+		ScopedGPU& operator=(const ScopedGPU&) = delete;
+		ScopedGPU(const ScopedGPU&) = delete;
+
+		ScopedGPU(const std::string& name, uint64_t flags = PROFILER_GPU_ANNOTATE | PROFILER_GPU_GET_PIPELINE_STATS);
+		~ScopedGPU();
+
+	private:
+		std::string m_name;
+	};
+
 public:
 	static void initialize(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu);
 	static void shutdown();
@@ -82,4 +137,5 @@ private:
 
 
 };
+
 

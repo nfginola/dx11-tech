@@ -65,19 +65,20 @@ Application::Application()
 			- Add ImGUI docking branch								TO-DO
 				- https://github.com/ocornut/imgui/wiki/Docking
 
-			- Bind Persistent Samplers (on the last slots stages)	TO-DO
-				- Check MJP samples and DXTK for Common Samplers
-				- Remember that shadows use diff. samplers
-
 			- Add a Model class										TO-DO
 				- Simply has Meshes and Materials (1:1 mapping)
+				- Later down the line, we want to reformat for
+					instancing.
 
 			- Add a Simple Entity which holds a World Matrix		TO-DO
 				- Holds a pointer to an existing Model (Flyweight)	
 
+			- Bind Persistent Samplers (on the last slots stages)	TO-DO
+				- Check MJP samples and DXTK for Common Samplers
+				- Remember that shadows use diff. samplers
+
 			- Check out JSON format and see if it is useful			TO-DO
 				- Check out nlohmanns JSON parser
-
 
 			- Add Pipeline cache									TO-DO
 				- Check prev_pipeline
@@ -161,9 +162,6 @@ Application::Application()
 		gfx::dev->create_sampler(SamplerDesc(), &def_samp);
 		gfx::dev->bind_sampler(0, ShaderStage::ePixel, &def_samp);
 	}
-
-	std::cout << std::fixed;
-	std::cout << std::setprecision(3);
 }
 
 Application::~Application()
@@ -184,16 +182,19 @@ void Application::run()
 		m_input->begin();
 		
 		// Update input
-		if (m_input->key_pressed(Keys::R))
 		{
-			gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
+			auto _ = FrameProfiler::ScopedCPU("Input");
+			if (m_input->key_pressed(Keys::R))
+			{
+				gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
+			}
 		}
+
 
 		// Update graphics
 		gfx::dev->frame_start();
-	
-		perf::profiler->begin_scope("Geometry Pass");
 		{
+			auto _ = FrameProfiler::Scoped("Geometry Pass");
 			gfx::dev->begin_pass(&r_fb);
 			gfx::dev->bind_viewports(viewports);
 			// draw
@@ -210,10 +211,9 @@ void Application::run()
 			gfx::annotator->end_event();
 			gfx::dev->end_pass();
 		}
-		perf::profiler->end_scope("Geometry Pass");
 
-		perf::profiler->begin_scope("Fullscreen Pass");
 		{
+			auto _ = FrameProfiler::Scoped("Fullscreen Pass");
 			gfx::dev->begin_pass(&fb);
 			gfx::dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
 			gfx::dev->bind_viewports(viewports);
@@ -222,7 +222,6 @@ void Application::run()
 			gfx::dev->draw(6);
 			gfx::dev->end_pass();
 		}
-		perf::profiler->end_scope("Fullscreen Pass");
 	
 		// when vsync is on, presents waits for vertical blank (hence it is blocking)
 		// we can utilize that time between the block and vertical blank by placing other miscellaneous end functions BEFORE present!

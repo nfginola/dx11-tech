@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "Graphics/GfxDevice.h"
-#include "Graphics/GfxCommon.h"
 
 // Globals
 namespace gfx
@@ -44,11 +43,7 @@ void GfxDevice::shutdown()
 	gfx::annotator = nullptr;
 }
 
-//GfxDevice* GfxDevice::get()
-//{
-//	//return s_gfx_device;
-//	return gfx::dev;
-//}
+
 
 GfxDevice::GfxDevice(std::unique_ptr<DXDevice> dev) :
 	m_dev(std::move(dev))
@@ -155,7 +150,7 @@ void GfxDevice::compile_shader(ShaderStage stage, const std::filesystem::path& f
 		{
 			OutputDebugStringA((char*)error_blob->GetBufferPointer());
 			std::cout << (char*)error_blob->GetBufferPointer() << "\n";
-			assert(false);
+			//assert(false);
 			return;
 		}
 	}
@@ -215,8 +210,10 @@ void GfxDevice::recompile_pipeline_shaders_by_name(const std::string& name)
 	*/
 	for (auto& pipeline : pipelines)
 	{
-		pipeline->m_vs = vs;
-		pipeline->m_ps = ps;
+		if (vs.is_valid())
+			pipeline->m_vs = vs;
+		if (ps.is_valid())
+			pipeline->m_ps = ps;
 		pipeline->m_gs = gs;
 		pipeline->m_hs = hs;
 		pipeline->m_ds = ds;
@@ -559,6 +556,12 @@ void GfxDevice::create_sampler(const SamplerDesc& desc, Sampler* sampler)
 
 void GfxDevice::create_shader(ShaderStage stage, const ShaderBytecode& bytecode, Shader* shader)
 {
+	if (!bytecode.code)
+	{
+		//assert(false);
+		return;
+	}
+
 	switch (stage)
 	{
 	case ShaderStage::eVertex:

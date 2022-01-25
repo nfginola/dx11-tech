@@ -32,7 +32,6 @@ float4 main(PixelInput input) : SV_TARGET
     float3 ldr_col = aces_fitted(hdr_col);
     //float3 ldr_col = hdr_col;
 
- 
     // Gamma correction
     ldr_col = pow(abs(ldr_col), (1.f / GAMMA).xxx);
     
