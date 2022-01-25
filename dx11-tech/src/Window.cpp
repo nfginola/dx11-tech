@@ -70,8 +70,8 @@ void Window::make_window()
 		classID.c_str(),				// Class name (identifier)
 		title.c_str(),					// Window title 
 		m_style,						// Window style 
-		350,								// Window x-pos
-		140,								// Window y-pos 
+		135,							// Window x-pos
+		70,								// Window y-pos 
 
 		// This will be resized to our desired client dimensions later
 		CW_USEDEFAULT,					// Default width

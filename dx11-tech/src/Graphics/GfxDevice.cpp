@@ -2,10 +2,6 @@
 #include "Graphics/GfxDevice.h"
 #include "Graphics/GfxCommon.h"
 
-//static GfxDevice* s_gfx_device = nullptr;
-
-//GfxDevice* GfxDevice::dev = nullptr;
-
 // Globals
 namespace gfx
 { 

@@ -10,12 +10,12 @@
 Application::Application()
 {
 	// Window render area dimension
-	constexpr UINT WIN_WIDTH = 1920;
-	constexpr UINT WIN_HEIGHT = 1080;
+	constexpr UINT WIN_WIDTH = 2176;
+	constexpr UINT WIN_HEIGHT = 1224;
 
 	// Resolution
-	constexpr UINT WIDTH = 1280;
-	constexpr UINT HEIGHT = 720;
+	constexpr UINT WIDTH = 1920;
+	constexpr UINT HEIGHT = 1080;
 
 	// Window and Input
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
