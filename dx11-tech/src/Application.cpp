@@ -201,12 +201,15 @@ void Application::run()
 		m_cb_dat.proj_mat = m_cam->get_proj_mat();
 
 		// Update per draw
+		// https://developer.nvidia.com/content/constant-buffers-without-constant-pain-0
 		/*
-			We are forced to have padding here since the next constant we can set on the CBuffer is
-			256 bytes! We are forced to jump in 256 byte increments at least
+			Maybe its not such a good idea to do this now for draw calls (premature optimization).
+			Lets just stick with the normal cbuffers for now.
+
+			Each CBElement is aligned(256)
 		*/
 		m_cb_elements[0].world_mat = DirectX::XMMatrixTranslation(2.f, 0.f, 0.f);
-		m_cb_elements[4].world_mat = DirectX::XMMatrixTranslation(-2.f, 0.f, 0.f);
+		m_cb_elements[1].world_mat = DirectX::XMMatrixTranslation(-2.f, 0.f, 0.f);
 
 		// Update graphics
 		gfx::dev->frame_start();
@@ -217,10 +220,12 @@ void Application::run()
 		gfx::dev->map_copy(&m_cb_per_frame, SubresourceData(&m_cb_dat, sizeof(m_cb_dat)));
 		perf::profiler->end_cpu_scope("PerFrameData Upload");
 
+		// Bind per frame data
+		gfx::dev->bind_constant_buffer(0, ShaderStage::eVertex, &m_cb_per_frame, 0);
+
 		// Upload per draw data to GPU at once
 		gfx::dev->map_copy(&m_big_cb, SubresourceData(m_cb_elements.data(), m_cb_elements.size() * sizeof(m_cb_elements[0])));
 
-		gfx::dev->bind_constant_buffer(0, ShaderStage::eVertex, &m_cb_per_frame, 0);
 		{
 			auto _ = FrameProfiler::Scoped("Geometry Pass");
 			gfx::dev->begin_pass(&r_fb);

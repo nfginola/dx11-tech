@@ -39,11 +39,11 @@ private:
 		DirectX::XMMATRIX view_mat, proj_mat;
 	} m_cb_dat;
 
-	struct CBElement
+	struct alignas(256) CBElement
 	{
 		DirectX::XMMATRIX world_mat;
 	};
-	std::array<CBElement, 5> m_cb_elements;
+	std::array<CBElement, 2> m_cb_elements;
 
 	// cbuffer
 	GPUBuffer m_cb_per_frame;
