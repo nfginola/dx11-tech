@@ -165,6 +165,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\PerspectiveCamera.cpp" />
     <ClCompile Include="src\CPUProfiler.cpp" />
     <ClCompile Include="src\FrameProfiler.cpp" />
     <ClCompile Include="src\Graphics\GfxDescriptorsAbstraction.cpp" />
@@ -210,6 +211,7 @@
     <ClInclude Include="inc\Input.h" />
     <ClInclude Include="inc\Timer.h" />
     <ClInclude Include="inc\Graphics\GfxCommon.h" />
+    <ClInclude Include="inc\PerspectiveCamera.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\DirectXTK\DirectXTK_Desktop_2019_Win10.vcxproj">

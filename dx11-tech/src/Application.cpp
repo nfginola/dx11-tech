@@ -11,6 +11,8 @@
 // Just an idea.
 #include "Globals.h"
 
+#include "PerspectiveCamera.h"
+
 Application::Application()
 {
 	// Window render area dimension
@@ -29,6 +31,8 @@ Application::Application()
 	// Initialize singletons (with clear dependencies)
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
 	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
+
+	m_cam = make_unique<PerspectiveCamera>(70.f, (float)WIDTH/HEIGHT);
 
 	/*
 		
@@ -56,11 +60,11 @@ Application::Application()
 			- Use fmt for printing									DONE (linked as a VS Project dependency)
 				- https://github.com/fmtlib/fmt
 
-			- Add Map and UpdateSubresource							TO-DO
-				- Use std::copy instead of memcpy/std::memcpy!
+			- Add Map and UpdateSubresource							DONE
 
-			- Add Perspective Camera (normal depth, no reversed)	TO-DO
-				- Add moving and looking around
+			- Add Perspective Camera (normal depth, no reversed)	DONE
+			
+			- Add moving and looking around							TO-DO
 
 			- Add ImGUI docking branch								TO-DO
 				- https://github.com/ocornut/imgui/wiki/Docking
@@ -114,6 +118,12 @@ Application::Application()
 				{ &r_tex }, &d_32),
 				&r_fb);
 		}
+		
+		// make cbuffer
+		gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)), &m_cb_per_frame);
+
+		gfx::dev->create_buffer(BufferDesc::constant(512), &m_big_cb);	// x2 256
+
 
 		// compile and create shaders
 		Shader vs, ps;
@@ -170,8 +180,6 @@ Application::~Application()
 	GfxDevice::shutdown();
 }
 
-
-
 void Application::run()
 {
 	while (m_win->is_alive() && m_app_alive)
@@ -185,18 +193,34 @@ void Application::run()
 			auto _ = FrameProfiler::ScopedCPU("WM Pump");
 			m_win->pump_messages();
 		}
-		
-		m_input->begin();
-		// Update input
-		if (m_input->key_pressed(Keys::R))
-		{
-			gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
-		}
-		
+
+		update();
+
+		// Update persistent per frame data
+		m_cb_dat.view_mat = m_cam->get_view_mat();
+		m_cb_dat.proj_mat = m_cam->get_proj_mat();
+
+		// Update per draw
+		/*
+			We are forced to have padding here since the next constant we can set on the CBuffer is
+			256 bytes! We are forced to jump in 256 byte increments at least
+		*/
+		m_cb_elements[0].world_mat = DirectX::XMMatrixTranslation(2.f, 0.f, 0.f);
+		m_cb_elements[4].world_mat = DirectX::XMMatrixTranslation(-2.f, 0.f, 0.f);
+
 		// Update graphics
 		gfx::dev->frame_start();
 		perf::profiler->begin_cpu_scope("On GPU");
 
+		// Upload per frame data to GPU
+		perf::profiler->begin_cpu_scope("PerFrameData Upload");
+		gfx::dev->map_copy(&m_cb_per_frame, SubresourceData(&m_cb_dat, sizeof(m_cb_dat)));
+		perf::profiler->end_cpu_scope("PerFrameData Upload");
+
+		// Upload per draw data to GPU at once
+		gfx::dev->map_copy(&m_big_cb, SubresourceData(m_cb_elements.data(), m_cb_elements.size() * sizeof(m_cb_elements[0])));
+
+		gfx::dev->bind_constant_buffer(0, ShaderStage::eVertex, &m_cb_per_frame, 0);
 		{
 			auto _ = FrameProfiler::Scoped("Geometry Pass");
 			gfx::dev->begin_pass(&r_fb);
@@ -211,6 +235,9 @@ void Application::run()
 			gfx::annotator->begin_event("Draw Triangles");
 			// if we dont do much work here, fullscreen pass takes a lot of time! (probably overhead)
 			//for (int i = 0; i < 3000; ++i)
+			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 0);
+			gfx::dev->draw_indexed(3);
+			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 1);
 			gfx::dev->draw_indexed(3);
 			gfx::annotator->end_event();
 			gfx::dev->end_pass();
@@ -371,4 +398,30 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	}
 
 	return 0;
+}
+
+void Application::update()
+{
+	// Update input
+	m_input->begin();
+	if (m_input->key_pressed(Keys::R))
+	{
+		gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
+	}
+	if (m_input->key_pressed(Keys::W))
+	{
+		m_cam->set_position(0.f, 5.f, -5.f);
+	}
+	if (m_input->key_pressed(Keys::A))
+	{
+		m_cam->set_position(-5.f, 0.f, -5.f);
+	}
+	if (m_input->key_pressed(Keys::S))
+	{
+		m_cam->set_position(0.f, -5.f, -5.f);
+	}
+	if (m_input->key_pressed(Keys::D))
+	{
+		m_cam->set_position(5.f, 0.f, -5.f);
+	}
 }

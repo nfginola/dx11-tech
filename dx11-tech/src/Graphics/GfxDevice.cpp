@@ -83,6 +83,13 @@ void GfxDevice::frame_start()
 	ctx->GSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
 	ctx->PSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
 	ctx->CSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS - 64, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
+
+	//ctx->VSSetConstantBuffers(0, gfxconstants::MAX_CB_SLOTS, (ID3D11Buffer* const*)gfxconstants::NULL_RESOURCE);
+	//ctx->HSSetConstantBuffers(0, gfxconstants::MAX_CB_SLOTS, (ID3D11Buffer* const*)gfxconstants::NULL_RESOURCE);
+	//ctx->DSSetConstantBuffers(0, gfxconstants::MAX_CB_SLOTS, (ID3D11Buffer* const*)gfxconstants::NULL_RESOURCE);
+	//ctx->GSSetConstantBuffers(0, gfxconstants::MAX_CB_SLOTS, (ID3D11Buffer* const*)gfxconstants::NULL_RESOURCE);
+	//ctx->PSSetConstantBuffers(0, gfxconstants::MAX_CB_SLOTS, (ID3D11Buffer* const*)gfxconstants::NULL_RESOURCE);
+	//ctx->CSSetConstantBuffers(0, gfxconstants::MAX_CB_SLOTS, (ID3D11Buffer* const*)gfxconstants::NULL_RESOURCE);
 }
 
 void GfxDevice::frame_end()
@@ -125,9 +132,13 @@ void GfxDevice::compile_shader(ShaderStage stage, const std::filesystem::path& f
 		break;
 	}
 
-	UINT flags = D3DCOMPILE_WARNINGS_ARE_ERRORS | D3DCOMPILE_ENABLE_STRICTNESS;
+	// Column major packing generally more efficient
+	// https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/d3dcompile-constants
+	UINT flags = D3DCOMPILE_WARNINGS_ARE_ERRORS | D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR;
 #if defined( DEBUG ) || defined( _DEBUG )
-	flags |= D3DCOMPILE_DEBUG;
+	flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+	flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
 
 	auto new_target = std::string(gfxconstants::SHADER_DIRECTORY) + fname.string();
@@ -713,6 +724,7 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 	pipeline->m_is_registered = true;
 }
 
+
 void GfxDevice::set_name(const GPUType* device_child, const std::string& name)
 {
 	HRCHECK(m_dev->get_context()->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)name.size(), name.data()));
@@ -830,30 +842,39 @@ void GfxDevice::bind_scissors(const std::vector<D3D11_RECT>& rects)
 	ctx->RSSetScissorRects((UINT)rects.size(), rects.data());
 }
 
-void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer)
+void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer, UINT offset_256s, UINT range_256s)
 {
 	ID3D11Buffer* cbs[] = { (ID3D11Buffer*)buffer->m_internal_resource.Get() };
 	auto& ctx = m_dev->get_context();
 
+	UINT first_constant = offset_256s * 16;
+	UINT num_constants = range_256s * 16;
+
 	switch (stage)
 	{
 	case ShaderStage::eVertex:
-		ctx->VSSetConstantBuffers(slot, 1, cbs);
+		//ctx->VSSetConstantBuffers(slot, 1, cbs);
+		ctx->VSSetConstantBuffers1(slot, 1, cbs, &first_constant, &num_constants);
 		break;
 	case ShaderStage::ePixel:
-		ctx->PSSetConstantBuffers(slot, 1, cbs);
+		//ctx->PSSetConstantBuffers(slot, 1, cbs);
+		ctx->PSSetConstantBuffers1(slot, 1, cbs, &first_constant, &num_constants);
 		break;
 	case ShaderStage::eHull:
-		ctx->HSSetConstantBuffers(slot, 1, cbs);
+		//ctx->HSSetConstantBuffers(slot, 1, cbs);
+		ctx->HSSetConstantBuffers1(slot, 1, cbs, &first_constant, &num_constants);
 		break;
 	case ShaderStage::eDomain:
-		ctx->DSSetConstantBuffers(slot, 1, cbs);
+		//ctx->DSSetConstantBuffers(slot, 1, cbs);
+		ctx->DSSetConstantBuffers1(slot, 1, cbs, &first_constant, &num_constants);
 		break;
 	case ShaderStage::eGeometry:
-		ctx->GSSetConstantBuffers(slot, 1, cbs);
+		//ctx->GSSetConstantBuffers(slot, 1, cbs);
+		ctx->GSSetConstantBuffers1(slot, 1, cbs, &first_constant, &num_constants);
 		break;
 	case ShaderStage::eCompute:
-		ctx->CSSetConstantBuffers(slot, 1, cbs);
+		//ctx->CSSetConstantBuffers(slot, 1, cbs);
+		ctx->CSSetConstantBuffers1(slot, 1, cbs, &first_constant, &num_constants);
 		break;
 	}
 }
@@ -943,6 +964,22 @@ void GfxDevice::bind_sampler(UINT slot, ShaderStage stage, const Sampler* sample
 		ctx->CSSetSamplers(slot, 1, samplers);
 		break;
 	}
+}
+
+void GfxDevice::update_subresource(const GPUResource* dst, const SubresourceData& data, const D3D11_BOX& dst_box, UINT dst_subres_idx)
+{
+	m_dev->get_context()->UpdateSubresource((ID3D11Resource*)dst->m_internal_resource.Get(),
+		dst_subres_idx, &dst_box, data.m_subres.pSysMem, data.m_subres.SysMemPitch, data.m_subres.SysMemSlicePitch);
+}
+
+void GfxDevice::map_copy(const GPUResource* dst, const SubresourceData& data, D3D11_MAP map_type, UINT dst_subres_idx)
+{
+	assert(data.m_subres.pSysMem != nullptr && data.m_subres.SysMemPitch != 0);
+	auto& ctx = m_dev->get_context();
+	D3D11_MAPPED_SUBRESOURCE mapped_subres{};
+	HRCHECK(ctx->Map((ID3D11Resource*)dst->m_internal_resource.Get(), dst_subres_idx, map_type, 0, &mapped_subres));
+	std::memcpy(mapped_subres.pData, data.m_subres.pSysMem, data.m_subres.SysMemPitch);		// not handling slice pitch for now
+	ctx->Unmap((ID3D11Resource*)dst->m_internal_resource.Get(), dst_subres_idx);
 }
 
 void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor, UINT stencil_ref)

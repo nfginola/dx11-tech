@@ -40,6 +40,8 @@ public:
 	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname, Shader* shader);
 	void compile_shader(ShaderStage stage, const std::filesystem::path& fname, ShaderBytecode* bytecode);
 
+	void set_name(const GPUType* device_child, const std::string& name);
+
 	/*
 		This function may fail if a pipeline previously created is dropped.
 		GfxDevice holds a non-owning pointer to the pipelines created, meaning it 
@@ -81,14 +83,20 @@ public:
 	void create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline);
 	//void create_compute_pipeline(ComputePipeline* pipeline);
 
-
-	void set_name(const GPUType* device_child, const std::string& name);
+	// copies CPU data to subres at non-mappable memory
+	void update_subresource(const GPUResource* dst, const SubresourceData& data, const D3D11_BOX& dst_box, UINT dst_subres_idx = 0);
+	void map_copy(const GPUResource* dst, const SubresourceData& data, D3D11_MAP map_type = D3D11_MAP_WRITE_DISCARD, UINT dst_subres_idx = 0);
 
 	//void bind_compute_pipeline(const ComputePipeline* pipeline);
 	void bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
 	void bind_vertex_buffers(UINT start_slot, UINT count, const GPUBuffer* buffers, UINT* strides, UINT* offsets = nullptr);
 	void bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format = DXGI_FORMAT_R32_UINT, UINT offset = 0);
-	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer);
+
+	// https://developer.nvidia.com/content/constant-buffers-without-constant-pain-0
+	// Use the giant constant buffer thingy for per draw data! (not instancing, thats a different buffer which is passed through VB)
+	// We have 256 bytes per draw (16 floats!) 
+	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer, UINT offset_256s = 0, UINT range_256s = 1);
+	
 	void bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource);
 	void bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource, UINT initial_count);
 	void bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler);

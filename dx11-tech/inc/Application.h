@@ -16,6 +16,8 @@ public:
 private:
 	LRESULT custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+	void update();
+
 private:
 	bool m_paused = false;
 	bool m_app_alive = true;
@@ -31,6 +33,23 @@ private:
 	GPUBuffer vb_uv;
 	GPUBuffer vb_nor;
 	GPUBuffer ib;
+
+	struct PerFrameData
+	{
+		DirectX::XMMATRIX view_mat, proj_mat;
+	} m_cb_dat;
+
+	struct CBElement
+	{
+		DirectX::XMMATRIX world_mat;
+	};
+	std::array<CBElement, 5> m_cb_elements;
+
+	// cbuffer
+	GPUBuffer m_cb_per_frame;
+	GPUBuffer m_big_cb;
+
+	unique_ptr<class Camera> m_cam;
 
 	// render to texture 
 	GPUTexture d_32;
