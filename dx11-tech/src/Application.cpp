@@ -11,7 +11,7 @@
 // Just an idea.
 #include "Globals.h"
 
-#include "PerspectiveCamera.h"
+#include "FPCamera.h"
 
 Application::Application()
 {
@@ -32,7 +32,7 @@ Application::Application()
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
 	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
 
-	m_cam = make_unique<PerspectiveCamera>(70.f, (float)WIDTH/HEIGHT);
+	m_cam = make_unique<FPCamera>(70.f, (float)WIDTH/HEIGHT);
 
 	/*
 		
@@ -224,7 +224,9 @@ void Application::run()
 		gfx::dev->bind_constant_buffer(0, ShaderStage::eVertex, &m_cb_per_frame, 0);
 
 		// Upload per draw data to GPU at once
+		perf::profiler->begin_cpu_scope("PerDraw CB Upload");
 		gfx::dev->map_copy(&m_big_cb, SubresourceData(m_cb_elements.data(), m_cb_elements.size() * sizeof(m_cb_elements[0])));
+		perf::profiler->end_cpu_scope("PerDraw CB Upload");
 
 		{
 			auto _ = FrameProfiler::Scoped("Geometry Pass");
@@ -429,4 +431,16 @@ void Application::update()
 	{
 		m_cam->set_position(5.f, 0.f, -5.f);
 	}
+
+	if (m_input->lmb_down())
+	{
+		fmt::print("x dt: {} || y dt: {}\n", m_input->get_mouse_dt().first, m_input->get_mouse_dt().second);
+	}
+	/*
+		x --> right pos, left neg
+		y --> up neg, down pos
+
+		theta = theta + 
+	
+	*/
 }

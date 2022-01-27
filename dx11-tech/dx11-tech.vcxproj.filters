@@ -72,7 +72,7 @@
     <ClCompile Include="src\Graphics\GPUProfiler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\PerspectiveCamera.cpp">
+    <ClCompile Include="src\FPCamera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -134,7 +134,7 @@
     <ClInclude Include="inc\Graphics\GPUProfiler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\PerspectiveCamera.h">
+    <ClInclude Include="inc\FPCamera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -398,7 +398,10 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 	
 		// Auto-gen mips
 		if (d3d_desc.MiscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS)
+		{
+			assert(d3d_desc.BindFlags & D3D11_BIND_RENDER_TARGET);
 			m_dev->get_context()->GenerateMips(texture->m_srv.Get());
+		}
 
 	}
 	
