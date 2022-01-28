@@ -16,7 +16,7 @@ public:
 private:
 	LRESULT custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-	void update();
+	void update(float dt);
 
 private:
 	bool m_paused = false;
@@ -49,7 +49,7 @@ private:
 	GPUBuffer m_cb_per_frame;
 	GPUBuffer m_big_cb;
 
-	unique_ptr<class Camera> m_cam;
+	unique_ptr<class FPCamera> m_cam;
 
 	// render to texture 
 	GPUTexture d_32;

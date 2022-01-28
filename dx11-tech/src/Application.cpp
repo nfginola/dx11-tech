@@ -180,10 +180,20 @@ Application::~Application()
 	GfxDevice::shutdown();
 }
 
+float pitch = 0.f;
+float yaw = 90.f;		// start looking at Z
+
+float to_radians(float deg)
+{
+	return 	DirectX::XMConvertToRadians(deg);
+}
+
 void Application::run()
 {
+	float dt = 0.f;
 	while (m_win->is_alive() && m_app_alive)
 	{
+		Timer frame_time;
 		perf::profiler->frame_start();
 
 		// Block here if paused
@@ -194,7 +204,10 @@ void Application::run()
 			m_win->pump_messages();
 		}
 
-		update();
+		m_input->begin();
+			
+		// Update CPU states
+		update(dt);
 
 		// Update persistent per frame data
 		m_cb_dat.view_mat = m_cam->get_view_mat();
@@ -270,6 +283,7 @@ void Application::run()
 		perf::profiler->end_cpu_scope("On GPU");
 
 		perf::profiler->frame_end();
+		dt = frame_time.elapsed(Timer::Unit::Seconds);
 		
 		++m_curr_frame;
 	}
@@ -407,10 +421,17 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	return 0;
 }
 
-void Application::update()
+
+
+void Application::update(float dt)
 {
-	// Update input
-	m_input->begin();
+	if (m_input->lmb_down())
+	{
+		m_cam->set_position(0.f, 0.f, -5.f);
+		auto [x_delta, y_delta] = m_input->get_mouse_dt();
+		m_cam->update_orientation(x_delta, y_delta, dt);
+	}
+
 	if (m_input->key_pressed(Keys::R))
 	{
 		gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
@@ -432,15 +453,7 @@ void Application::update()
 		m_cam->set_position(5.f, 0.f, -5.f);
 	}
 
-	if (m_input->lmb_down())
-	{
-		fmt::print("x dt: {} || y dt: {}\n", m_input->get_mouse_dt().first, m_input->get_mouse_dt().second);
-	}
-	/*
-		x --> right pos, left neg
-		y --> up neg, down pos
 
-		theta = theta + 
-	
-	*/
+
+
 }
