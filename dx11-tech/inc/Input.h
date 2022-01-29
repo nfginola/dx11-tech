@@ -45,7 +45,7 @@ public:
 
 	int get_scroll_value() const;
 	std::pair<int, int> get_mouse_position() const;
-	const std::pair<int, int>& get_mouse_dt() const;
+	const std::pair<int, int>& get_mouse_delta() const;
 
 	// Keyboard
 	bool key_pressed(Keys key) const;

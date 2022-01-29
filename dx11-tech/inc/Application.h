@@ -49,7 +49,8 @@ private:
 	GPUBuffer m_cb_per_frame;
 	GPUBuffer m_big_cb;
 
-	unique_ptr<class FPCamera> m_cam;
+	unique_ptr<class FPCController> m_camera_controller;
+	unique_ptr<class FPPCamera> m_cam;
 
 	// render to texture 
 	GPUTexture d_32;

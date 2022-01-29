@@ -23,5 +23,9 @@ protected:
 	DirectX::SimpleMath::Vector4 m_position;
 	DirectX::SimpleMath::Matrix m_view_mat, m_proj_mat;
 
+	DirectX::SimpleMath::Vector4 m_lookat_pos;
+
+
+
 };
 

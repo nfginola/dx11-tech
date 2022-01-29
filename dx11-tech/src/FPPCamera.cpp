@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "FPCamera.h"
+#include "FPPCamera.h"
 
-FPCamera::FPCamera(float fov_deg, float aspect_ratio, float near_plane, float far_plane, bool reversed_depth)
+FPPCamera::FPPCamera(float fov_deg, float aspect_ratio, float near_plane, float far_plane, bool reversed_depth)
 {
 	// Create persp mat
 	m_proj_mat = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(fov_deg), aspect_ratio, near_plane, far_plane);
@@ -10,7 +10,7 @@ FPCamera::FPCamera(float fov_deg, float aspect_ratio, float near_plane, float fa
 
 }
 
-void FPCamera::update_orientation(float mouse_x_delta, float mouse_y_delta, float dt)
+void FPPCamera::update_orientation(float mouse_x_delta, float mouse_y_delta, float dt)
 {
 	/*
 		Given h = 1
@@ -76,10 +76,11 @@ void FPCamera::update_orientation(float mouse_x_delta, float mouse_y_delta, floa
 
 	*/
 
-	float sensitivity = 21.f;
+	m_yaw -= mouse_x_delta * m_sensitivity * dt;
 
-	m_yaw -= mouse_x_delta * sensitivity * dt;
-	m_pitch += -mouse_y_delta * sensitivity * dt;	// Delta Y is positive downwards by default
+	// Delta Y is positive downwards by default, therefore we add negative of Y delta to pitch
+	// (Positive pitch is rotation around X/Z using RH rule)
+	m_pitch += -mouse_y_delta * m_sensitivity * dt;	
 
 	// Restrict 
 	if (m_pitch > 89.f)
@@ -111,45 +112,51 @@ void FPCamera::update_orientation(float mouse_x_delta, float mouse_y_delta, floa
 	m_right_dir.y = 0.f;		// Disable y contrib 
 	m_right_dir.z = cos(DirectX::XMConvertToRadians(m_pitch)) * sin(DirectX::XMConvertToRadians(m_yaw - s_yaw_offset));
 	m_right_dir.Normalize();
-
 	
 	// Compute look at pos according to direction
 	m_lookat_pos = m_position + m_lookat_dir;
 
-	//fmt::print("look pos: [{}, {}, {}]\n", x, y, z);
-
-	m_view_mat = DirectX::XMMatrixLookAtLH(
-		m_position,
-		m_lookat_pos,
-		s_world_up);
+	//m_view_mat = DirectX::XMMatrixLookAtLH(
+	//	m_position,
+	//	m_lookat_pos,
+	//	s_world_up);
 }
 
 
-void FPCamera::update_position(float right_fac, float up_fac, float forward_fac, float dt)
+void FPPCamera::update_position(float right_fac, float up_fac, float forward_fac, float dt)
 {
+	assert(right_fac <= 1.f && right_fac >= -1.f);
+	assert(up_fac <= 1.f && up_fac >= -1.f);
+	assert(forward_fac <= 1.f && forward_fac >= -1.f);
+
 	auto sideway_contrib = right_fac * m_right_dir;
 	auto vert_contrib = up_fac * m_up_dir;
 	auto frontback_contrib = forward_fac * m_lookat_dir;
 
-	fmt::print("sideway contrib: [{}, {}, {}]\n", sideway_contrib.x, sideway_contrib.y, sideway_contrib.z);
-	//fmt::print("frontba contrib: [{}, {}, {}]\n", frontback_contrib.x, frontback_contrib.y, frontback_contrib.z);
-	//fmt::print("vertica contrib: [{}, {}, {}]\n", vert_contrib.x, vert_contrib.y, vert_contrib.z);
-
 	auto total_contrib = sideway_contrib + frontback_contrib + vert_contrib;
 	total_contrib.Normalize();
-	m_position += total_contrib * m_speed * dt;
 
-	// Recalc orientation
+	m_position += total_contrib * m_move_speed * dt;
+
+	// Adjust lookat pos using new position
 	m_lookat_pos = m_position + m_lookat_dir;
 
+	//m_view_mat = DirectX::XMMatrixLookAtLH(
+	//	m_position,
+	//	m_lookat_pos,
+	//	s_world_up);
+}
+
+void FPPCamera::update_matrices()
+{
 	m_view_mat = DirectX::XMMatrixLookAtLH(
 		m_position,
 		m_lookat_pos,
 		s_world_up);
 }
 
-void FPCamera::set_speed(float speed)
+void FPPCamera::set_speed(float speed)
 {
-	m_speed = speed;
+	m_move_speed = speed;
 }
 

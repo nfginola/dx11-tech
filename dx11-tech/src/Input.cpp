@@ -237,7 +237,7 @@ std::pair<int, int> Input::get_mouse_position() const
 		return m_screen_pos_curr;
 	}
 }
-const std::pair<int, int>& Input::get_mouse_dt() const
+const std::pair<int, int>& Input::get_mouse_delta() const
 {
 	return m_mouse_dt;
 }

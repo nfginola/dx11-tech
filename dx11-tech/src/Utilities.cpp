@@ -35,4 +35,23 @@ namespace utils
 		file.close();
 		return buffer;
 	}
+
+	void constrained_incr(float& num, float min, float max)
+	{
+		++num;
+		num = (std::max)((std::min)(num, max), min);
+	}
+
+	void constrained_decr(float& num, float min, float max)
+	{
+		--num;
+		num = (std::max)((std::min)(num, max), min);
+	}
+
+	float constrained_add(float lh, float rh, float min, float max)
+	{
+		lh += rh;
+		lh = (std::max)((std::min)(lh, max), min);
+		return lh;
+	}
 }

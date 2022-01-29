@@ -72,7 +72,10 @@
     <ClCompile Include="src\Graphics\GPUProfiler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\FPCamera.cpp">
+    <ClCompile Include="src\FPPCamera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\FPCController.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -134,7 +137,10 @@
     <ClInclude Include="inc\Graphics\GPUProfiler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\FPCamera.h">
+    <ClInclude Include="inc\FPPCamera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\FPCController.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

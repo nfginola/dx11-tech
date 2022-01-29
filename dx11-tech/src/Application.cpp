@@ -11,7 +11,8 @@
 // Just an idea.
 #include "Globals.h"
 
-#include "FPCamera.h"
+#include "FPCController.h"
+#include "FPPCamera.h"
 
 Application::Application()
 {
@@ -32,9 +33,13 @@ Application::Application()
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
 	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
 
-	m_cam = make_unique<FPCamera>(80.f, (float)WIDTH/HEIGHT);
+	// Create perspective camera
+	m_cam = make_unique<FPPCamera>(80.f, (float)WIDTH/HEIGHT);
 	m_cam->set_position(0.f, 0.f, -5.f);
 
+	// Create camera controller and attach camera
+	m_camera_controller = make_unique<FPCController>(m_input.get());
+	m_camera_controller->set_camera(m_cam.get());
 
 	/*
 		
@@ -66,7 +71,9 @@ Application::Application()
 
 			- Add Perspective Camera (normal depth, no reversed)	DONE
 			
-			- Add moving and looking around							TO-DO
+			- Add moving and looking around							DONE
+
+			- Refactor camera using a FP Controller					TO-DO
 
 			- Add ImGUI docking branch								TO-DO
 				- https://github.com/ocornut/imgui/wiki/Docking
@@ -229,7 +236,7 @@ void Application::run()
 		gfx::dev->bind_constant_buffer(0, ShaderStage::eVertex, &m_cb_per_frame, 0);
 
 		// Upload per draw data to GPU at once
-		gfx::dev->map_copy(&m_big_cb, SubresourceData(m_cb_elements.data(), m_cb_elements.size() * sizeof(m_cb_elements[0])));
+		gfx::dev->map_copy(&m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
 
 		{
 			auto _ = FrameProfiler::Scoped("Geometry Pass");
@@ -412,55 +419,9 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	return 0;
 }
 
-
-float fwd = 0.f;
-float up = 0.f;
-float right = 0.f;
-float init_speed = 7.f;
-
-void constrained_incr(float& num, float min, float max)
-{
-	++num;
-	num = (std::max)((std::min)(num, max), min);
-}
-
-void constrained_decr(float& num, float min, float max)
-{
-	--num;
-	num = (std::max)((std::min)(num, max), min);
-}
-
-void control_player(FPCamera* cam, Input* input, float dt)
-{
-	fwd = 0.f;
-	up = 0.f;
-	right = 0.f;
-
-	if (input->lmb_down())
-	{
-		auto [x_delta, y_delta] = input->get_mouse_dt();
-		cam->update_orientation(x_delta, y_delta, dt);
-	}
-
-	if (input->key_down(Keys::W))			constrained_incr(fwd, -1.f, 1.f);
-	if (input->key_down(Keys::S))			constrained_decr(fwd, -1.f, 1.f);
-	if (input->key_down(Keys::D))			constrained_incr(right, -1.f, 1.f);
-	if (input->key_down(Keys::A))			constrained_decr(right, -1.f, 1.f);
-	if (input->key_down(Keys::E))			constrained_incr(up, -1.f, 1.f);
-	if (input->key_down(Keys::LeftShift))	constrained_decr(up, -1.f, 1.f);
-
-	// [0, 120, 240, ..] --> [0, 1, 2, ..]
-	auto scroll_val = (input->get_scroll_value() / 120.f) * 1.35f;
-	cam->set_speed((std::max)(init_speed + scroll_val, 2.f));
-	//fmt::print("scroll val: {}\n", scroll_val);
-
-	cam->update_position(right, up, fwd, dt);
-}
-
 void Application::update(float dt)
 {
-	control_player(m_cam.get(), m_input.get(), dt);
-
+	m_camera_controller->update(dt);
 
 	if (m_input->key_pressed(Keys::R))
 	{

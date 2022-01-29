@@ -1,11 +1,11 @@
 #pragma once
 #include "Camera.h"
 
-class FPCamera final : public Camera
+class FPPCamera final : public Camera
 {
 public:
-	FPCamera(float fov_deg, float aspect_ratio, float near_plane = 0.1f, float far_plane = 100.f, bool reversed_depth = false);
-	~FPCamera() = default;
+	FPPCamera(float fov_deg, float aspect_ratio, float near_plane = 0.1f, float far_plane = 100.f, bool reversed_depth = false);
+	~FPPCamera() = default;
 
 	void update_orientation(float mouse_x_delta, float mouse_y_delta, float dt);
 
@@ -23,24 +23,23 @@ public:
 	*/
 	void update_position(float right_fac, float up_fac, float forward_fac, float dt);
 
-	void set_speed(float speed);
+	void update_matrices();
 
+	void set_speed(float speed);
 
 private:
 	// Used to offset yaw so the default viewing point is in forward Z.
 	static constexpr float s_yaw_offset = 90.f;
-
-	float m_speed = 7.f;
-	float m_yaw = s_yaw_offset;
-	float m_pitch = 0.f;
-
-	DirectX::SimpleMath::Vector4 m_lookat_pos;
 
 	// local in world
 	DirectX::SimpleMath::Vector4 m_lookat_dir = s_world_forward;
 	DirectX::SimpleMath::Vector4 m_right_dir = s_world_right;
 	DirectX::SimpleMath::Vector4 m_up_dir = -s_world_up;
 
+	float m_sensitivity = 12.3f;
+	float m_move_speed = 7.f;
+	float m_yaw = s_yaw_offset;
+	float m_pitch = 0.f;
 
 };
 
