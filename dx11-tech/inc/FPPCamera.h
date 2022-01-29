@@ -26,6 +26,7 @@ public:
 	void update_matrices();
 
 	void set_speed(float speed);
+	void set_sensitivity(float sens);
 
 private:
 	// Used to offset yaw so the default viewing point is in forward Z.

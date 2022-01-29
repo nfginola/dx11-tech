@@ -36,8 +36,12 @@ Application::Application()
 	// Create perspective camera
 	m_cam = make_unique<FPPCamera>(80.f, (float)WIDTH/HEIGHT);
 	m_cam->set_position(0.f, 0.f, -5.f);
+	
+	// Create secondary camera
+	m_cam2 = make_unique<FPPCamera>(80.f, (float)WIDTH / HEIGHT);
+	m_cam2->set_position(0.f, 0.f, -15.f);
 
-	// Create camera controller and attach camera
+	// Create camera controller and attach main camera
 	m_camera_controller = make_unique<FPCController>(m_input.get());
 	m_camera_controller->set_camera(m_cam.get());
 
@@ -199,7 +203,8 @@ void Application::run()
 
 		// Block here if paused
 		while (m_paused);
-
+		
+		// Check window message pumping overhead
 		{
 			auto _ = FrameProfiler::ScopedCPU("WM Pump");
 			m_win->pump_messages();
@@ -211,8 +216,8 @@ void Application::run()
 		update(dt);
 
 		// Update persistent per frame data
-		m_cb_dat.view_mat = m_cam->get_view_mat();
-		m_cb_dat.proj_mat = m_cam->get_proj_mat();
+		m_cb_dat.view_mat = m_camera_controller->get_active_camera()->get_view_mat();
+		m_cb_dat.proj_mat = m_camera_controller->get_active_camera()->get_proj_mat();
 
 		// Update per draw
 		// https://developer.nvidia.com/content/constant-buffers-without-constant-pain-0
@@ -421,10 +426,13 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
 void Application::update(float dt)
 {
-	m_camera_controller->update(dt);
+	// Possess different cameras
+	if (m_input->key_pressed(Keys::D1))		m_camera_controller->set_camera(m_cam.get());
+	if (m_input->key_pressed(Keys::D2))		m_camera_controller->set_camera(m_cam2.get());
 
-	if (m_input->key_pressed(Keys::R))
-	{
-		gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
-	}
+	// Shader reload test
+	if (m_input->key_pressed(Keys::R))		gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
+
+	// Update camera controller
+	m_camera_controller->update(dt);
 }

@@ -160,3 +160,9 @@ void FPPCamera::set_speed(float speed)
 	m_move_speed = speed;
 }
 
+void FPPCamera::set_sensitivity(float sens)
+{
+	m_sensitivity = sens;
+}
+
+

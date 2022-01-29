@@ -51,6 +51,7 @@ private:
 
 	unique_ptr<class FPCController> m_camera_controller;
 	unique_ptr<class FPPCamera> m_cam;
+	unique_ptr<class FPPCamera> m_cam2;
 
 	// render to texture 
 	GPUTexture d_32;

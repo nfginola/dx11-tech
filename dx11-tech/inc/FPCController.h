@@ -10,6 +10,8 @@ public:
 	*/
 	void set_camera(class FPPCamera* cam);
 
+	class Camera* get_active_camera();
+
 	void update(float dt);
 
 private:
@@ -29,6 +31,12 @@ private:
 
 	// Base speed
 	float m_init_speed = 7.f;
+	float m_min_speed = 2.f;
+	float m_max_speed = 11.f;
+
+	// Sensitivity
+	float m_mouse_sens = 12.3f;
+	
 
 
 
