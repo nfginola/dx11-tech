@@ -16,9 +16,9 @@ protected:
 	Camera();
 
 	// LH system
-	static constexpr DirectX::SimpleMath::Vector3 s_world_up = { 0.f, 1.f, 0.f };
-	static constexpr DirectX::SimpleMath::Vector3 s_world_right = { 1.f, 0.f, 0.f };
-	static constexpr DirectX::SimpleMath::Vector3 s_world_forward = { 0.f, 0.f, 1.f };
+	static constexpr DirectX::SimpleMath::Vector4 s_world_up = { 0.f, 1.f, 0.f, 0.f };
+	static constexpr DirectX::SimpleMath::Vector4 s_world_right = { 1.f, 0.f, 0.f, 0.f };
+	static constexpr DirectX::SimpleMath::Vector4 s_world_forward = { 0.f, 0.f, 1.f, 0.f };
 
 	DirectX::SimpleMath::Vector4 m_position;
 	DirectX::SimpleMath::Matrix m_view_mat, m_proj_mat;

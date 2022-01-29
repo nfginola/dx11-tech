@@ -1074,8 +1074,8 @@ void GfxDevice::draw_indexed(UINT index_count, UINT index_start, UINT vertex_sta
 
 void GfxDevice::present(bool vsync)
 {
-	m_profiler->begin("Presentation", false, false);
+	//m_profiler->begin("Presentation", false, false);
 	m_dev->get_sc()->Present(vsync ? 1 : 0, 0);
-	m_profiler->end("Presentation");
+	//m_profiler->end("Presentation");
 }
 

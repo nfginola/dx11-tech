@@ -32,7 +32,9 @@ Application::Application()
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
 	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
 
-	m_cam = make_unique<FPCamera>(70.f, (float)WIDTH/HEIGHT);
+	m_cam = make_unique<FPCamera>(80.f, (float)WIDTH/HEIGHT);
+	m_cam->set_position(0.f, 0.f, -5.f);
+
 
 	/*
 		
@@ -180,14 +182,6 @@ Application::~Application()
 	GfxDevice::shutdown();
 }
 
-float pitch = 0.f;
-float yaw = 90.f;		// start looking at Z
-
-float to_radians(float deg)
-{
-	return 	DirectX::XMConvertToRadians(deg);
-}
-
 void Application::run()
 {
 	float dt = 0.f;
@@ -225,21 +219,17 @@ void Application::run()
 		m_cb_elements[1].world_mat = DirectX::XMMatrixTranslation(-2.f, 0.f, 0.f);
 
 		// Update graphics
-		gfx::dev->frame_start();
 		perf::profiler->begin_cpu_scope("On GPU");
+		gfx::dev->frame_start();
 
 		// Upload per frame data to GPU
-		perf::profiler->begin_cpu_scope("PerFrameData Upload");
 		gfx::dev->map_copy(&m_cb_per_frame, SubresourceData(&m_cb_dat, sizeof(m_cb_dat)));
-		perf::profiler->end_cpu_scope("PerFrameData Upload");
 
 		// Bind per frame data
 		gfx::dev->bind_constant_buffer(0, ShaderStage::eVertex, &m_cb_per_frame, 0);
 
 		// Upload per draw data to GPU at once
-		perf::profiler->begin_cpu_scope("PerDraw CB Upload");
 		gfx::dev->map_copy(&m_big_cb, SubresourceData(m_cb_elements.data(), m_cb_elements.size() * sizeof(m_cb_elements[0])));
-		perf::profiler->end_cpu_scope("PerDraw CB Upload");
 
 		{
 			auto _ = FrameProfiler::Scoped("Geometry Pass");
@@ -253,8 +243,6 @@ void Application::run()
 			gfx::dev->bind_index_buffer(&ib);
 	
 			gfx::annotator->begin_event("Draw Triangles");
-			// if we dont do much work here, fullscreen pass takes a lot of time! (probably overhead)
-			//for (int i = 0; i < 3000; ++i)
 			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 0);
 			gfx::dev->draw_indexed(3);
 			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 1);
@@ -269,7 +257,6 @@ void Application::run()
 			gfx::dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
 			gfx::dev->bind_viewports(viewports);
 			gfx::dev->bind_pipeline(&r_p);
-			//for (int i = 0; i < 100; ++i)
 			gfx::dev->draw(6);
 			gfx::dev->end_pass();
 		}
@@ -278,7 +265,11 @@ void Application::run()
 		// we can utilize that time between the block and vertical blank by placing other miscellaneous end functions BEFORE present!
 		m_input->end();
 	
-		gfx::dev->present();
+		// Check present block CPU block (if vsync)
+		{
+			auto _ = FrameProfiler::Scoped("Presentation");
+			gfx::dev->present();
+		}
 		gfx::dev->frame_end();
 		perf::profiler->end_cpu_scope("On GPU");
 
@@ -422,38 +413,57 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 }
 
 
+float fwd = 0.f;
+float up = 0.f;
+float right = 0.f;
+float init_speed = 7.f;
+
+void constrained_incr(float& num, float min, float max)
+{
+	++num;
+	num = (std::max)((std::min)(num, max), min);
+}
+
+void constrained_decr(float& num, float min, float max)
+{
+	--num;
+	num = (std::max)((std::min)(num, max), min);
+}
+
+void control_player(FPCamera* cam, Input* input, float dt)
+{
+	fwd = 0.f;
+	up = 0.f;
+	right = 0.f;
+
+	if (input->lmb_down())
+	{
+		auto [x_delta, y_delta] = input->get_mouse_dt();
+		cam->update_orientation(x_delta, y_delta, dt);
+	}
+
+	if (input->key_down(Keys::W))			constrained_incr(fwd, -1.f, 1.f);
+	if (input->key_down(Keys::S))			constrained_decr(fwd, -1.f, 1.f);
+	if (input->key_down(Keys::D))			constrained_incr(right, -1.f, 1.f);
+	if (input->key_down(Keys::A))			constrained_decr(right, -1.f, 1.f);
+	if (input->key_down(Keys::E))			constrained_incr(up, -1.f, 1.f);
+	if (input->key_down(Keys::LeftShift))	constrained_decr(up, -1.f, 1.f);
+
+	// [0, 120, 240, ..] --> [0, 1, 2, ..]
+	auto scroll_val = (input->get_scroll_value() / 120.f) * 1.35f;
+	cam->set_speed((std::max)(init_speed + scroll_val, 2.f));
+	//fmt::print("scroll val: {}\n", scroll_val);
+
+	cam->update_position(right, up, fwd, dt);
+}
 
 void Application::update(float dt)
 {
-	if (m_input->lmb_down())
-	{
-		m_cam->set_position(0.f, 0.f, -5.f);
-		auto [x_delta, y_delta] = m_input->get_mouse_dt();
-		m_cam->update_orientation(x_delta, y_delta, dt);
-	}
+	control_player(m_cam.get(), m_input.get(), dt);
+
 
 	if (m_input->key_pressed(Keys::R))
 	{
 		gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
 	}
-	if (m_input->key_pressed(Keys::W))
-	{
-		m_cam->set_position(0.f, 5.f, -5.f);
-	}
-	if (m_input->key_pressed(Keys::A))
-	{
-		m_cam->set_position(-5.f, 0.f, -5.f);
-	}
-	if (m_input->key_pressed(Keys::S))
-	{
-		m_cam->set_position(0.f, -5.f, -5.f);
-	}
-	if (m_input->key_pressed(Keys::D))
-	{
-		m_cam->set_position(5.f, 0.f, -5.f);
-	}
-
-
-
-
 }
