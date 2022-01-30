@@ -21,7 +21,7 @@ void FPCController::update(float dt)
 	m_up_state = 0.f;
 	m_right_state = 0.f;
 
-	if (m_input->lmb_down())
+	if (m_input->rmb_down())
 	{
 		m_input->set_mouse_mode(MouseMode::Relative);	// Hide mouse
 		auto [x_delta, y_delta] = m_input->get_mouse_delta();
@@ -29,7 +29,7 @@ void FPCController::update(float dt)
 	}
 
 	// Unhide mouse
-	if (m_input->lmb_released())		m_input->set_mouse_mode(MouseMode::Absolute);
+	if (m_input->rmb_released())		m_input->set_mouse_mode(MouseMode::Absolute);
 
 	/*
 		[-1, 1] is the constraint of the direction arguments to update_position()

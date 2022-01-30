@@ -7,6 +7,9 @@ namespace gfx
 	
 	// GPU command scope annotator
 	extern class GPUAnnotator* annotator;
+
+	// ImGUI device
+	extern class ImGuiDevice* imgui;
 }
 
 namespace perf

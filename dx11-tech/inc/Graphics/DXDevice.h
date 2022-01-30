@@ -69,7 +69,6 @@ bool HRCHECK(HRESULT hr);
 class DXDevice
 {
 
-
 public:
 	DXDevice(HWND hwnd, int bbWidth, int bbHeight);
 	~DXDevice();

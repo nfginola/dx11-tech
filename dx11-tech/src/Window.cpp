@@ -33,7 +33,14 @@ Window::~Window()
 void Window::pump_messages() const
 {
 	MSG msg = { };
-	while (PeekMessageW(&msg, m_hwnd, 0, 0, PM_REMOVE))
+	/*
+		If hWnd is NULL, PeekMessage retrieves messages for any window that belongs to the current thread, 
+		and any messages on the current thread's message queue whose hwnd value is NULL (see the MSG structure). 
+		Therefore if hWnd is NULL, both window messages and thread messages are processed.
+
+		This is VERY important for ImGUI docking branch where we can have multiple windows!
+	*/
+	while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);

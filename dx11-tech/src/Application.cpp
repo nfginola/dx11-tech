@@ -3,6 +3,10 @@
 #include "Window.h"
 #include "Input.h"
 #include "Timer.h"
+#include "Graphics/ImGuiDevice.h"
+
+#include "FPCController.h"
+#include "FPPCamera.h"
 
 // Important that Globals is defined last, as the extern members need to be defined!
 // We can define GfxGlobals.h if we want to have a separation layer later 
@@ -11,27 +15,25 @@
 // Just an idea.
 #include "Globals.h"
 
-#include "FPCController.h"
-#include "FPPCamera.h"
-
 Application::Application()
 {
 	// Window render area dimension
-	constexpr UINT WIN_WIDTH = 2176;
-	constexpr UINT WIN_HEIGHT = 1224;
+	constexpr UINT WIN_WIDTH = 1920;
+	constexpr UINT WIN_HEIGHT = 1080;
 
 	// Resolution
-	constexpr UINT WIDTH = 1920;
-	constexpr UINT HEIGHT = 1080;
+	constexpr UINT WIDTH = WIN_WIDTH;
+	constexpr UINT HEIGHT = WIN_HEIGHT;
 
 	// Window and Input
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
-	m_win = make_unique<Window>(GetModuleHandle(nullptr), win_proc, WIN_WIDTH, WIN_HEIGHT);
+	m_win = make_unique<Window>(GetModuleHandle(NULL), win_proc, WIN_WIDTH, WIN_HEIGHT);
 	m_input = make_unique<Input>(m_win->get_hwnd());
 	
 	// Initialize singletons (with clear dependencies)
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
 	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
+	ImGuiDevice::initialize(gfx::dev);
 
 	// Create perspective camera
 	m_cam = make_unique<FPPCamera>(80.f, (float)WIDTH/HEIGHT);
@@ -41,7 +43,7 @@ Application::Application()
 	m_cam2 = make_unique<FPPCamera>(80.f, (float)WIDTH / HEIGHT);
 	m_cam2->set_position(0.f, 0.f, -15.f);
 
-	// Create camera controller and attach main camera
+	// Create a First-Person Camera Controller and attach a First-Person Perspective camera
 	m_camera_controller = make_unique<FPCController>(m_input.get());
 	m_camera_controller->set_camera(m_cam.get());
 
@@ -77,9 +79,9 @@ Application::Application()
 			
 			- Add moving and looking around							DONE
 
-			- Refactor camera using a FP Controller					TO-DO
+			- Refactor camera using a FP Controller					DONE
 
-			- Add ImGUI docking branch								TO-DO
+			- Add ImGUI docking branch								DONE
 				- https://github.com/ocornut/imgui/wiki/Docking
 
 			- Add a Model class										TO-DO
@@ -189,6 +191,7 @@ Application::Application()
 
 Application::~Application()
 {
+	ImGuiDevice::shutdown();
 	FrameProfiler::shutdown();
 	GfxDevice::shutdown();
 }
@@ -209,6 +212,9 @@ void Application::run()
 			auto _ = FrameProfiler::ScopedCPU("WM Pump");
 			m_win->pump_messages();
 		}
+		// Break as soon as possible
+		if (!m_app_alive || !m_win->is_alive())
+			break;
 
 		m_input->begin();
 			
@@ -231,8 +237,8 @@ void Application::run()
 		m_cb_elements[1].world_mat = DirectX::XMMatrixTranslation(-2.f, 0.f, 0.f);
 
 		// Update graphics
-		perf::profiler->begin_cpu_scope("On GPU");
 		gfx::dev->frame_start();
+		gfx::imgui->begin_frame();
 
 		// Upload per frame data to GPU
 		gfx::dev->map_copy(&m_cb_per_frame, SubresourceData(&m_cb_dat, sizeof(m_cb_dat)));
@@ -270,26 +276,48 @@ void Application::run()
 			gfx::dev->bind_viewports(viewports);
 			gfx::dev->bind_pipeline(&r_p);
 			gfx::dev->draw(6);
+
+			// Declare things to draw UI overlay
+			bool show_demo_window = true;
+			ImGui::ShowDemoWindow(&show_demo_window);
+
+			ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+
+			ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+			ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+			ImGui::Checkbox("Another Window", &show_demo_window);
+
+			ImGui::SameLine();
+
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+			ImGui::End();
+			gfx::imgui->draw();		// Draw overlay
+
 			gfx::dev->end_pass();
-		}
-	
+		}	
+
 		// when vsync is on, presents waits for vertical blank (hence it is blocking)
 		// we can utilize that time between the block and vertical blank by placing other miscellaneous end functions BEFORE present!
 		m_input->end();
-	
+
 		// Check present block CPU block (if vsync)
 		{
 			auto _ = FrameProfiler::Scoped("Presentation");
 			gfx::dev->present();
 		}
+
+		gfx::imgui->end_frame();
 		gfx::dev->frame_end();
-		perf::profiler->end_cpu_scope("On GPU");
 
 		perf::profiler->frame_end();
 		dt = frame_time.elapsed(Timer::Unit::Seconds);
 		
 		++m_curr_frame;
 	}
+
+
+
+
 }
 
 LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -299,17 +327,10 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 		We may want to consider having an Engine custom_win_proc which have defaults
 		and the application win_proc can extend it. 
 		Essentailly the same method as we are doing with the Window and Application
-	
 	*/
 
-	//if (m_appIsAlive && m_engine)
-	//{
-	//	auto imGuiFunc = m_engine->GetImGuiHook();
-	//	if (imGuiFunc)
-	//	{
-	//		imGuiFunc(hwnd, uMsg, wParam, lParam);
-	//	}
-	//}
+	if (gfx::imgui->win_proc(hwnd, uMsg, wParam, lParam))
+		return true;
 
 	switch (uMsg)
 	{
@@ -421,7 +442,7 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	}
 	}
 
-	return 0;
+	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 void Application::update(float dt)

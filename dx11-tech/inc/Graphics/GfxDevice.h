@@ -18,6 +18,8 @@
 */
 class GfxDevice
 {
+	friend class ImGuiDevice;
+	friend class Application;		// temp
 public:
 	//static GfxDevice* dev;
 

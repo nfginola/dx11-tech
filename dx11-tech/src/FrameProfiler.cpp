@@ -97,6 +97,9 @@ void FrameProfiler::frame_end()
 		//profile.avg_cpu_time = 
 	}
 	
+	/*
+		Temporary, this is not DT fixed
+	*/
 	m_cpu->begin("Printing Overhead");
 	if (m_curr_frame % s_print_frame_freq == 0)
 	{

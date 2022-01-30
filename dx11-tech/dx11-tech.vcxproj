@@ -130,7 +130,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)vendor\fmt-8.1.1\include;$(ProjectDir)vendor\DirectXTK\Inc;$(ProjectDir)shaders;$(ProjectDir)inc;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)vendor\imgui-docking\backends;$(ProjectDir)vendor\imgui-docking;$(ProjectDir)vendor\fmt-8.1.1\include;$(ProjectDir)vendor\DirectXTK\Inc;$(ProjectDir)shaders;$(ProjectDir)inc</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -150,7 +150,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)vendor\fmt-8.1.1\include;$(ProjectDir)vendor\DirectXTK\Inc;$(ProjectDir)shaders;$(ProjectDir)inc;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)vendor\imgui-docking\backends;$(ProjectDir)vendor\imgui-docking;$(ProjectDir)vendor\fmt-8.1.1\include;$(ProjectDir)vendor\DirectXTK\Inc;$(ProjectDir)shaders;$(ProjectDir)inc</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -165,6 +165,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Graphics\ImGuiDevice.cpp" />
     <ClCompile Include="src\FPCController.cpp" />
     <ClCompile Include="src\FPPCamera.cpp" />
     <ClCompile Include="src\CPUProfiler.cpp" />
@@ -191,8 +192,44 @@
     <ClCompile Include="src\Utilities.cpp" />
     <ClCompile Include="src\Window.cpp" />
     <ClCompile Include="src\Timer.cpp" />
+    <ClCompile Include="vendor\imgui-docking\backends\imgui_impl_dx11.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui-docking\backends\imgui_impl_win32.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui-docking\imgui.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui-docking\imgui_demo.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui-docking\imgui_draw.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui-docking\imgui_tables.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui-docking\imgui_widgets.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </PrecompiledHeaderFile>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="inc\Graphics\ImGuiDevice.h" />
     <ClInclude Include="inc\FPCController.h" />
     <ClInclude Include="inc\CPUProfiler.h" />
     <ClInclude Include="inc\FrameProfiler.h" />
@@ -214,6 +251,14 @@
     <ClInclude Include="inc\Timer.h" />
     <ClInclude Include="inc\Graphics\GfxCommon.h" />
     <ClInclude Include="inc\FPPCamera.h" />
+    <ClInclude Include="vendor\imgui-docking\backends\imgui_impl_dx11.h" />
+    <ClInclude Include="vendor\imgui-docking\backends\imgui_impl_win32.h" />
+    <ClInclude Include="vendor\imgui-docking\imconfig.h" />
+    <ClInclude Include="vendor\imgui-docking\imgui.h" />
+    <ClInclude Include="vendor\imgui-docking\imgui_internal.h" />
+    <ClInclude Include="vendor\imgui-docking\imstb_rectpack.h" />
+    <ClInclude Include="vendor\imgui-docking\imstb_textedit.h" />
+    <ClInclude Include="vendor\imgui-docking\imstb_truetype.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\DirectXTK\DirectXTK_Desktop_2019_Win10.vcxproj">
