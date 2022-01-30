@@ -19,6 +19,7 @@ enum ProfilerFlags
 class FrameProfiler
 {
 public:
+	static constexpr UINT s_averaging_frames = 350;		// Averaging over X frames
 
 public:
 	// Scoped helpers
@@ -70,11 +71,15 @@ public:
 	static void shutdown();
 
 	FrameProfiler() = delete;
-	FrameProfiler(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu) : m_cpu(std::move(cpu)), m_gpu(gpu) {}
+	FrameProfiler(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu);
+
 
 	FrameProfiler& operator=(const FrameProfiler&) = delete;
 	FrameProfiler(const FrameProfiler&) = delete;
 
+	/*
+		Average of a profile over the past 's_averaging_frames' frames
+	*/
 	struct Profile
 	{
 		float avg_gpu_time;
@@ -111,34 +116,25 @@ private:
 	void calculate_averages();
 	void gather_data(const CPUProfiler::FrameData& cpu_frame_stats, const GPUProfiler::FrameData& gpu_frame_stats);
 
-	// temp
-	void print_frame_results();
-
 private:
-	// Maybe we want to apply some delta time to both below
-	// Meaning we average over past X seconds and print every Y seconds?
-	static constexpr UINT s_print_frame_freq = 170;		// Print every X frames
-	static constexpr UINT s_averaging_frames = 350;		// Averaging over X frames
 
 	unique_ptr<CPUProfiler> m_cpu;
 	GPUProfiler* m_gpu;
 
-	std::map<std::string, std::array<float, s_averaging_frames>> m_data_times;		// GPU Frame times for each profile
-	GPUProfiler::FrameData m_avg_gpu_times;											// Lazy initialized structure for GPU times averaging per profile
-	
-	std::map<std::string, std::array<float, s_averaging_frames>> m_frame_times{};	// CPU times
+	// GPU times
+	std::map<std::string, std::array<float, s_averaging_frames>> m_gpu_times;		// GPU Frame times for each profile
+	GPUProfiler::FrameData m_avg_gpu_times;	
+
+	// CPU times
+	std::map<std::string, std::array<float, s_averaging_frames>> m_cpu_times{};		
 	CPUProfiler::FrameData m_avg_cpu_times;
 
+	FrameData m_frame_data;															// Time averages for frames in range [X - 499, X]
+	
 	bool m_is_first = true;															// Lazy initialization checker
-
-	FrameData m_frame_data;
-
 	bool m_frame_started = false;
 	bool m_frame_finished = true;;
-
 	uint64_t m_curr_frame = 0;
-
-
 };
 
 

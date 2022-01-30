@@ -13,7 +13,7 @@ public:
 	GPUProfiler(DXDevice* dev) : m_dev(dev) {}
 	struct FrameData
 	{
-		std::map<std::string, std::pair<std::optional<D3D11_QUERY_DATA_PIPELINE_STATISTICS>, float>> profiles;
+		std::map<std::string, float> profiles;
 		float query_waiting_time = 0.f;
 	};
 

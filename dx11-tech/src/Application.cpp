@@ -33,7 +33,7 @@ Application::Application()
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
 	m_win = make_unique<Window>(GetModuleHandle(NULL), win_proc, WIN_WIDTH, WIN_HEIGHT);
 	m_input = make_unique<Input>(m_win->get_hwnd());
-	
+
 	// Initialize singletons (with clear dependencies)
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
 	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
@@ -41,6 +41,7 @@ Application::Application()
 
 	// Declare UI 
 	gfx::imgui->add_ui_callback("default ui", [&]() { declare_ui(); });
+	gfx::imgui->add_ui_callback("profiler", [&]() { declare_profiler_ui();  });
 
 	// Create perspective camera
 	m_cam = make_unique<FPPCamera>(80.f, (float)WIDTH/HEIGHT);
@@ -146,9 +147,7 @@ Application::Application()
 		
 		// make cbuffer
 		gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)), &m_cb_per_frame);
-
 		gfx::dev->create_buffer(BufferDesc::constant(512), &m_big_cb);	// x2 256
-
 
 		// compile and create shaders
 		Shader vs, ps;
@@ -216,16 +215,12 @@ void Application::run()
 
 		// Block here if paused
 		while (m_paused);
-		
-		// Check window message pumping overhead
-		{
-			auto _ = FrameProfiler::ScopedCPU("WM Pump");
-			m_win->pump_messages();
-		}
+	
+		m_win->pump_messages();
+
 		// Break as soon as possible
 		if (!m_win->is_alive() || !m_app_alive)
 			break;
-
 
 		m_input->begin();
 			
@@ -392,6 +387,40 @@ void Application::declare_ui()
 
 	ImGui::End();
 
+}
+
+void Application::declare_profiler_ui()
+{
+	bool open = true;
+	ImGui::Begin(fmt::format("Times (avg. over {} frames)", FrameProfiler::s_averaging_frames).c_str(), &open, ImGuiWindowFlags_NoTitleBar);
+
+	const auto& frame_data = perf::profiler->get_frame_statistics();
+
+	ImGui::SetNextItemOpen(true);
+	if (ImGui::TreeNode("CPU"))
+	{
+		for (const auto& profiles : frame_data.profiles)
+		{
+			const auto& name = profiles.first;
+			const auto& avg_cpu_time = profiles.second.avg_cpu_time;
+			ImGui::Text(fmt::format("{:s}: {:.3f} ms", name.c_str(), avg_cpu_time).c_str());
+		}
+		ImGui::TreePop();
+	}
+
+	ImGui::SetNextItemOpen(true);
+	if (ImGui::TreeNode("GPU"))
+	{
+		for (const auto& profiles : frame_data.profiles)
+		{
+			const auto& name = profiles.first;
+			const auto& avg_gpu_time = profiles.second.avg_gpu_time;
+			ImGui::Text(fmt::format("{:s}: {:.3f} ms", name.c_str(), avg_gpu_time).c_str());
+		}
+		ImGui::TreePop();
+	}
+
+	ImGui::End();
 }
 
 void Application::create_resolution_dependent_resources(UINT width, UINT height)

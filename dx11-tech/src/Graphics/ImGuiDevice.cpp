@@ -44,6 +44,8 @@ ImGuiDevice::ImGuiDevice(GfxDevice* dev)
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
 
+    io.FontGlobalScale = 1.35f;
+
     //io.ConfigDockingWithShift = true;   // Must hold shift to dock windows
 
     ImGui::StyleColorsDark();
@@ -59,6 +61,7 @@ ImGuiDevice::ImGuiDevice(GfxDevice* dev)
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(dev->m_dev->get_hwnd());
     ImGui_ImplDX11_Init(dev->m_dev->get_device().Get(), dev->m_dev->get_context().Get());
+
 }
 
 ImGuiDevice::~ImGuiDevice()
@@ -80,12 +83,16 @@ void ImGuiDevice::begin_frame()
 
 void ImGuiDevice::draw()
 {
+
+
     /*
         All potentially modified code by the callbacks will be reflected here.
         You can expect the changes next frame since we're done drawing this frame.
     */
     for (const auto& it : m_ui_callbacks)
         (it.second)();
+
+
 
     // Rendering
     ImGui::Render();

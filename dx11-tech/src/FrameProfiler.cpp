@@ -20,6 +20,10 @@ void FrameProfiler::shutdown()
 		delete perf::profiler;
 }
 
+FrameProfiler::FrameProfiler(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu) : m_cpu(std::move(cpu)), m_gpu(gpu)
+{
+}
+
 
 void FrameProfiler::begin_scope(const std::string& name, uint64_t flags)
 {
@@ -56,7 +60,8 @@ void FrameProfiler::end_gpu_scope(const std::string& name)
 
 const FrameProfiler::FrameData& FrameProfiler::get_frame_statistics()
 {
-	assert(m_frame_finished == true);
+	// We are okay giving zeroed data for some time until they are filled
+	//assert(m_frame_finished == true);
 	return m_frame_data;
 }
 
@@ -66,6 +71,7 @@ void FrameProfiler::frame_start()
 	m_frame_started = true;
 	m_frame_finished = false;
 }
+
 
 void FrameProfiler::frame_end()
 {
@@ -78,37 +84,29 @@ void FrameProfiler::frame_end()
 	// CPU started immediately to capture the computations inbetween frame_end() and frame_start()
 	m_cpu->frame_start();
 
+	// Fill CPU and GPU times
 	gather_data(cpu_frame_stats, gpu_frame_stats);
 
 	// Note that calculating the averages takes quite some time!
-	m_cpu->begin("Frame Averaging Overhead");
+	m_cpu->begin("Averaging Overhead");
 	calculate_averages();
-	m_cpu->end("Frame Averaging Overhead");
+	m_cpu->end("Averaging Overhead");
 
-	// Add full frame profile
+	// Add full frame profile 
 	for (const auto& averages : m_avg_gpu_times.profiles)
 	{
 		const auto& name = averages.first;
-		
-		// GPU
-		const auto& pipeline_stats = averages.second.first;
-		const auto& avg_time = averages.second.second;
-
-		auto& profile = m_frame_data.profiles[name];
-		profile.avg_gpu_time = avg_time;
-
-		// profile.avg_cpu_time = ...
+		const auto& pipeline_stats = averages.second;	
+		const auto& avg_time = averages.second;
+		m_frame_data.profiles[name].avg_gpu_time = avg_time;
 	}
-	
-	/*
-		Temporary, this is not DT fixed
-	*/
-	m_cpu->begin("Printing Overhead");
-	if (m_curr_frame % s_print_frame_freq == 0)
+
+	for (const auto& averages : m_avg_cpu_times.profiles)
 	{
-		//print_frame_results();
+		const auto& name = averages.first;
+		const auto& avg_time = averages.second;
+		m_frame_data.profiles[name].avg_cpu_time = avg_time;
 	}
-	m_cpu->end("Printing Overhead");
 
 	m_frame_started = false;
 	m_frame_finished = true;
@@ -122,9 +120,9 @@ void FrameProfiler::gather_data(const CPUProfiler::FrameData& cpu_frame_stats, c
 		const auto& name = profile.first;
 		const auto& time = profile.second;
 
-		auto it = m_frame_times.find(name);
-		if (it == m_frame_times.end())
-			m_frame_times.insert({ name, { time } });
+		auto it = m_cpu_times.find(name);
+		if (it == m_cpu_times.end())
+			m_cpu_times.insert({ name, { time } });		// First profile insertion
 		else
 			it->second[m_curr_frame % s_averaging_frames] = time;
 	}
@@ -132,11 +130,11 @@ void FrameProfiler::gather_data(const CPUProfiler::FrameData& cpu_frame_stats, c
 	for (const auto& profile : gpu_frame_stats.profiles)
 	{
 		const auto& name = profile.first;
-		const auto& time = profile.second.second;
+		const auto& time = profile.second;
 
-		auto it = m_data_times.find(name);
-		if (it == m_data_times.end())
-			m_data_times.insert({ name, { time } });
+		auto it = m_gpu_times.find(name);
+		if (it == m_gpu_times.end())
+			m_gpu_times.insert({ name, { time } });		// First profile insertion
 		else
 			it->second[m_curr_frame % s_averaging_frames] = time;
 	}
@@ -159,7 +157,7 @@ void FrameProfiler::calculate_averages()
 		*/
 
 		// calc average cpu times per profile
-		for (const auto& profile : m_frame_times)
+		for (const auto& profile : m_cpu_times)
 		{
 			const auto& name = profile.first;
 			const auto& times = profile.second;
@@ -168,45 +166,15 @@ void FrameProfiler::calculate_averages()
 		}
 
 		// calc average gpu times per profile
-		for (const auto& profile : m_data_times)
+		for (const auto& profile : m_gpu_times)
 		{
 			const auto& name = profile.first;
 			const auto& times = profile.second;
 
 			// average
-			m_avg_gpu_times.profiles[name].second = std::reduce(std::execution::seq, times.begin(), times.end()) / s_averaging_frames;
+			m_avg_gpu_times.profiles[name] = std::reduce(std::execution::seq, times.begin(), times.end()) / s_averaging_frames;
 		}
 	}
-}
-
-void FrameProfiler::print_frame_results()
-{
-	// dont print until we have accumulated averages
-	if (m_curr_frame < s_averaging_frames)
-		return;
-
-	// display cpu frametime
-	for (const auto& profile : m_avg_cpu_times.profiles)
-	{
-		fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, 
-			"======= CPU: {} =======\n{:.3f} ms\n\n", profile.first, profile.second);
-	}	
-
-	// display gpu frametime
-	for (const auto& profile : m_avg_gpu_times.profiles)
-	{
-		fmt::print(fg(fmt::color::steel_blue) | fmt::emphasis::bold,
-			"======= GPU: {} =======\n{:.3f} ms\n", profile.first, profile.second.second);
-
-		if (profile.second.first.has_value())
-		{
-			fmt::print("{} : Vertices\n{} Primitives sent to rasterizer\n",
-				profile.second.first->IAPrimitives,
-				profile.second.first->CInvocations);
-		}
-		fmt::print("\n");
-	}
-	fmt::print("\n");
 }
 
 FrameProfiler::Scoped::Scoped(const std::string& name, uint64_t flags) :

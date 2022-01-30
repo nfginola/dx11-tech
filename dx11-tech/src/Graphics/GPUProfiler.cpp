@@ -133,9 +133,11 @@ void GPUProfiler::frame_end()
         }
 
         if (pipeline_stats.PSInvocations != 0)
-            frame_data.profiles.insert({ name, { pipeline_stats, time } });
+            //frame_data.profiles.insert({ name, { pipeline_stats, time } });
+            frame_data.profiles.insert({ name, time });
         else
-            frame_data.profiles.insert({ name, { {}, time } });
+            //frame_data.profiles.insert({ name, { {}, time } });
+            frame_data.profiles.insert({ name, time });
     }
 
     frame_data.query_waiting_time = waiting_time;

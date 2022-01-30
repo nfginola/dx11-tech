@@ -17,6 +17,7 @@ private:
 	LRESULT custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 	void declare_ui();
+	void declare_profiler_ui();
 
 	void create_resolution_dependent_resources(UINT width, UINT height);
 	void on_resize(UINT width, UINT height);
