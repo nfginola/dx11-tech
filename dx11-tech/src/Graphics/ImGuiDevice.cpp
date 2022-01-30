@@ -80,6 +80,13 @@ void ImGuiDevice::begin_frame()
 
 void ImGuiDevice::draw()
 {
+    /*
+        All potentially modified code by the callbacks will be reflected here.
+        You can expect the changes next frame since we're done drawing this frame.
+    */
+    for (const auto& it : m_ui_callbacks)
+        (it.second)();
+
     // Rendering
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -105,4 +112,18 @@ bool ImGuiDevice::win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         return true;
     return false;
 }
+
+void ImGuiDevice::add_ui_callback(const std::string& name, std::function<void()> func)
+{
+    auto it = m_ui_callbacks.find(name);
+    assert(it == m_ui_callbacks.cend());    // Assert that the name is not taken
+
+    m_ui_callbacks.insert({ name, func });
+}
+
+void ImGuiDevice::remove_ui_callback(const std::string& name)
+{
+    m_ui_callbacks.erase(name);
+}
+
 

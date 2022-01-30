@@ -39,6 +39,9 @@ Application::Application()
 	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
 	ImGuiDevice::initialize(gfx::dev);
 
+	// Declare UI 
+	gfx::imgui->add_ui_callback("default ui", [&]() { declare_ui(); });
+
 	// Create perspective camera
 	m_cam = make_unique<FPPCamera>(80.f, (float)WIDTH/HEIGHT);
 	m_cam->set_position(0.f, 0.f, -5.f);
@@ -89,6 +92,10 @@ Application::Application()
 				- https://github.com/ocornut/imgui/wiki/Docking
 
 			- Set Backbuffer to a Dockable Render Target?			DONE
+
+			- Refactor the way we submit ImGUI code					DONE
+				- Add to global callback list
+				  which is all run before UI draw
 
 			- Use ImGUI bar to show Frame Statistics				TO-DO
 				- Bars for Full Frame
@@ -253,13 +260,6 @@ void Application::run()
 		// Upload per draw data to GPU at once
 		gfx::dev->map_copy(&m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
 	
-
-
-		// Declare UI (can be scattered all the way up until the end of the fullscreen pass!)
-		declare_ui();
-
-
-
 		// Geometry Pass
 		{
 			auto _ = FrameProfiler::Scoped("Geometry Pass");
@@ -290,7 +290,7 @@ void Application::run()
 			gfx::dev->bind_pipeline(&r_p);
 			gfx::dev->draw(6);
 
-			gfx::imgui->draw();		// Draw overlay (Last thing to draw on the backbuffer!)
+			gfx::imgui->draw();		// Draw ImGUI overlay 
 
 			gfx::dev->end_pass();
 		}	
@@ -416,7 +416,7 @@ void Application::create_resolution_dependent_resources(UINT width, UINT height)
 
 void Application::on_resize(UINT width, UINT height)
 {
-	fmt::print("resize with dimensions:\n[Width: {}], [Height: {}]\n", m_resized_client_area.first, m_resized_client_area.second);
+	fmt::print("resize with dimensions: [Width: {}], [Height: {}]\n", m_resized_client_area.first, m_resized_client_area.second);
 
 	gfx::dev->resize_swapchain(width, height);
 
@@ -442,7 +442,6 @@ void Application::update(float dt)
 	// Update camera controller
 	m_camera_controller->update(dt);
 }
-
 
 LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
