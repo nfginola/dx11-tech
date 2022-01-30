@@ -5,7 +5,7 @@
 #include "Graphics/GfxVertexTypes.h"
 #include "Graphics/GfxTypes.h"
 #include "Graphics/GfxHelperTypes.h"
-#include "Graphics/GPUProfiler.h"
+#include "Profiler/GPUProfiler.h"
 
 /*
 	Once performance has been measured, only then should we allow binding multiple resources instead of single slot bindings.

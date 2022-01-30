@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Graphics/GPUProfiler.h"
+#include "Profiler/GPUProfiler.h"
 #include "Timer.h"
 
 void GPUProfiler::begin(const std::string& name, bool annotate, bool get_pipeline_stats)

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "FrameProfiler.h"
+#include "Profiler/FrameProfiler.h"
 #include <numeric>
 #include <execution>
 

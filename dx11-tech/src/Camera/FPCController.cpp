@@ -1,7 +1,6 @@
 #include "pch.h"
-#include "FPCController.h"
-
-#include "FPPCamera.h"
+#include "Camera/FPCController.h"
+#include "Camera/FPPCamera.h"
 #include "Input.h"
 
 void FPCController::set_camera(FPPCamera* cam)

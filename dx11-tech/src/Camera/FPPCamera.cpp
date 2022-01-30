@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "FPPCamera.h"
+#include "Camera/FPPCamera.h"
 
 FPPCamera::FPPCamera(float fov_deg, float aspect_ratio, float near_plane, float far_plane, bool reversed_depth)
 {

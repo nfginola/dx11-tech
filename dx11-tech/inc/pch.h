@@ -14,6 +14,7 @@
 #include <functional>
 #include <array>
 #include <map>
+#include <set>
 
 using std::shared_ptr;
 using std::unique_ptr;

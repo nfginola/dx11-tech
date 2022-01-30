@@ -1,6 +1,6 @@
 #pragma once
-#include "Graphics/GPUProfiler.h"
-#include "CPUProfiler.h"
+#include "Profiler/GPUProfiler.h"
+#include "Profiler/CPUProfiler.h"
 
 enum ProfilerFlags
 {

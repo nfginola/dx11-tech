@@ -166,20 +166,20 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Graphics\ImGuiDevice.cpp" />
-    <ClCompile Include="src\FPCController.cpp" />
-    <ClCompile Include="src\FPPCamera.cpp" />
-    <ClCompile Include="src\CPUProfiler.cpp" />
-    <ClCompile Include="src\FrameProfiler.cpp" />
+    <ClCompile Include="src\Camera\FPCController.cpp" />
+    <ClCompile Include="src\Camera\FPPCamera.cpp" />
+    <ClCompile Include="src\Profiler\CPUProfiler.cpp" />
+    <ClCompile Include="src\Profiler\FrameProfiler.cpp" />
     <ClCompile Include="src\Graphics\GfxDescriptorsAbstraction.cpp" />
     <ClCompile Include="src\Graphics\GfxHelperTypes.cpp" />
     <ClCompile Include="src\Graphics\GfxTypes.cpp" />
     <ClCompile Include="src\Graphics\DXDevice.cpp" />
     <ClCompile Include="src\Graphics\GfxDevice.cpp" />
-    <ClCompile Include="src\Camera.cpp" />
+    <ClCompile Include="src\Camera\Camera.cpp" />
     <ClCompile Include="src\Graphics\GfxCommon.cpp" />
     <ClCompile Include="src\Graphics\GfxDescriptorsPrimitive.cpp" />
     <ClCompile Include="src\Graphics\GfxVertexTypes.cpp" />
-    <ClCompile Include="src\Graphics\GPUProfiler.cpp" />
+    <ClCompile Include="src\Profiler\GPUProfiler.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -230,27 +230,27 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="inc\Graphics\ImGuiDevice.h" />
-    <ClInclude Include="inc\FPCController.h" />
-    <ClInclude Include="inc\CPUProfiler.h" />
-    <ClInclude Include="inc\FrameProfiler.h" />
+    <ClInclude Include="inc\Camera\FPCController.h" />
+    <ClInclude Include="inc\Profiler\CPUProfiler.h" />
+    <ClInclude Include="inc\Profiler\FrameProfiler.h" />
     <ClInclude Include="inc\Globals.h" />
     <ClInclude Include="inc\Graphics\GfxDescriptorsAbstraction.h" />
     <ClInclude Include="inc\Graphics\GfxHelperTypes.h" />
     <ClInclude Include="inc\Graphics\GfxTypes.h" />
     <ClInclude Include="inc\Graphics\DXDevice.h" />
     <ClInclude Include="inc\Graphics\GfxDevice.h" />
-    <ClInclude Include="inc\Camera.h" />
+    <ClInclude Include="inc\Camera\Camera.h" />
     <ClInclude Include="inc\Application.h" />
     <ClInclude Include="inc\Graphics\GfxDescriptorsPrimitive.h" />
     <ClInclude Include="inc\Graphics\GfxVertexTypes.h" />
-    <ClInclude Include="inc\Graphics\GPUProfiler.h" />
+    <ClInclude Include="inc\Profiler\GPUProfiler.h" />
     <ClInclude Include="inc\pch.h" />
     <ClInclude Include="inc\Utilities.h" />
     <ClInclude Include="inc\Window.h" />
     <ClInclude Include="inc\Input.h" />
     <ClInclude Include="inc\Timer.h" />
     <ClInclude Include="inc\Graphics\GfxCommon.h" />
-    <ClInclude Include="inc\FPPCamera.h" />
+    <ClInclude Include="inc\Camera\FPPCamera.h" />
     <ClInclude Include="vendor\imgui-docking\backends\imgui_impl_dx11.h" />
     <ClInclude Include="vendor\imgui-docking\backends\imgui_impl_win32.h" />
     <ClInclude Include="vendor\imgui-docking\imconfig.h" />

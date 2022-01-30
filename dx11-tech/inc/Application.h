@@ -1,6 +1,6 @@
 #pragma once
 #include "Graphics/GfxDevice.h"
-#include "FrameProfiler.h"
+#include "Profiler/FrameProfiler.h"
 
 class Application
 {
@@ -18,6 +18,7 @@ private:
 
 	void declare_ui();
 	void declare_profiler_ui();
+	void declare_shader_dir_ui();
 
 	void create_resolution_dependent_resources(UINT width, UINT height);
 	void on_resize(UINT width, UINT height);

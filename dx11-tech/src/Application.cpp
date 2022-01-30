@@ -5,8 +5,8 @@
 #include "Timer.h"
 #include "Graphics/ImGuiDevice.h"
 
-#include "FPCController.h"
-#include "FPPCamera.h"
+#include "Camera/FPCController.h"
+#include "Camera/FPPCamera.h"
 
 // Important that Globals is defined last, as the extern members need to be defined!
 // We can define GfxGlobals.h if we want to have a separation layer later 
@@ -28,7 +28,6 @@ Application::Application()
 	constexpr UINT WIDTH = WIN_WIDTH;
 	constexpr UINT HEIGHT = WIN_HEIGHT;
 
-
 	// Window and Input
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
 	m_win = make_unique<Window>(GetModuleHandle(NULL), win_proc, WIN_WIDTH, WIN_HEIGHT);
@@ -42,6 +41,7 @@ Application::Application()
 	// Declare UI 
 	gfx::imgui->add_ui_callback("default ui", [&]() { declare_ui(); });
 	gfx::imgui->add_ui_callback("profiler", [&]() { declare_profiler_ui();  });
+	gfx::imgui->add_ui_callback("shaderdirs", [&]() { declare_shader_dir_ui();  });
 
 	// Create perspective camera
 	m_cam = make_unique<FPPCamera>(80.f, (float)WIDTH/HEIGHT);
@@ -403,6 +403,9 @@ void Application::declare_profiler_ui()
 		{
 			const auto& name = profiles.first;
 			const auto& avg_cpu_time = profiles.second.avg_cpu_time;
+			if (abs(avg_cpu_time) <= std::numeric_limits<float>::epsilon())		// skip negligible profiles
+				continue;
+
 			ImGui::Text(fmt::format("{:s}: {:.3f} ms", name.c_str(), avg_cpu_time).c_str());
 		}
 		ImGui::TreePop();
@@ -415,6 +418,9 @@ void Application::declare_profiler_ui()
 		{
 			const auto& name = profiles.first;
 			const auto& avg_gpu_time = profiles.second.avg_gpu_time;
+			if (abs(avg_gpu_time) <= std::numeric_limits<float>::epsilon())		// skip negligible profiles
+				continue;
+
 			ImGui::Text(fmt::format("{:s}: {:.3f} ms", name.c_str(), avg_gpu_time).c_str());
 		}
 		ImGui::TreePop();
@@ -422,6 +428,60 @@ void Application::declare_profiler_ui()
 
 	ImGui::End();
 }
+
+
+/*
+	Shader reloader variables
+*/
+std::set<std::string> shader_filenames;
+bool do_once = true;
+const char* selected_item = "";
+
+void Application::declare_shader_dir_ui()
+{
+	if (do_once)
+	{
+		const std::string path = "shaders";
+		for (const auto& entry : std::filesystem::directory_iterator(path))
+		{
+			if (std::filesystem::path(entry).extension() == ".hlsli")	// discard hlsli
+				continue;
+
+			shader_filenames.insert(std::filesystem::path(entry).stem().string());
+
+		}
+		selected_item = shader_filenames.cbegin()->c_str();
+		do_once = false;
+	}
+	
+
+	ImGui::Begin("Shader Reloader");
+
+	const char* combo_preview_value = selected_item;
+	if (ImGui::BeginCombo("Files", combo_preview_value))
+	{
+		for (const auto& filename : shader_filenames)
+		{
+			const bool is_selected = strcmp(selected_item, filename.c_str());
+
+			if (ImGui::Selectable(filename.c_str(), is_selected))
+			{
+				selected_item = filename.c_str();
+				combo_preview_value = selected_item;
+			}
+
+			if (is_selected)
+				ImGui::SetItemDefaultFocus();
+		}
+
+		ImGui::EndCombo();
+	}
+	if (ImGui::SmallButton("Reload"))
+		gfx::dev->recompile_pipeline_shaders_by_name(std::string(selected_item));
+
+	ImGui::End();
+}
+
 
 void Application::create_resolution_dependent_resources(UINT width, UINT height)
 {

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "CPUProfiler.h"
+#include "Profiler/CPUProfiler.h"
 
 void CPUProfiler::begin(const std::string& name)
 {
