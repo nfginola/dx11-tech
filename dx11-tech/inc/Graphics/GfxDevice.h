@@ -152,7 +152,6 @@ public:
 public:
 	static void initialize(unique_ptr<DXDevice> dx_device);
 	static void shutdown();
-	//static GfxDevice* get();
 
 	GfxDevice() = delete;
 	GfxDevice(unique_ptr<class DXDevice> dev);

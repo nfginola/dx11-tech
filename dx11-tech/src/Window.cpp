@@ -138,7 +138,6 @@ void Window::set_fullscreen(bool fullscreenState)
 	}
 	else  // Go to fullscreen mode
 	{
-		std::cout << "lol\n";
 		// Save windowed window dimensions
 		RECT old_rect{};
 		GetWindowRect(m_hwnd, &old_rect);

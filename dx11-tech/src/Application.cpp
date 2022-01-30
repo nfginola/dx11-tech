@@ -88,7 +88,7 @@ Application::Application()
 			- Add ImGUI docking branch								DONE
 				- https://github.com/ocornut/imgui/wiki/Docking
 
-			- Set Backbuffer to a Dockable Render Target?			TO-DO
+			- Set Backbuffer to a Dockable Render Target?			DONE
 
 			- Use ImGUI bar to show Frame Statistics				TO-DO
 				- Bars for Full Frame
@@ -135,18 +135,7 @@ Application::Application()
 
 	// setup geometry pass 
 	{
-		// Render to Texture
-		{
-			// create depth tex
-			gfx::dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, WIDTH, HEIGHT, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
-
-			// create render to texture (HDR)
-			gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, WIDTH, HEIGHT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &r_tex);
-
-			gfx::dev->create_framebuffer(FramebufferDesc(
-				{ &r_tex }, &d_32),
-				&r_fb);
-		}
+		create_resolution_dependent_resources(WIDTH, HEIGHT);
 		
 		// make cbuffer
 		gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)), &m_cb_per_frame);
@@ -226,6 +215,10 @@ void Application::run()
 			auto _ = FrameProfiler::ScopedCPU("WM Pump");
 			m_win->pump_messages();
 		}
+		// Break as soon as possible
+		if (!m_win->is_alive() || !m_app_alive)
+			break;
+
 
 		m_input->begin();
 			
@@ -260,6 +253,13 @@ void Application::run()
 		// Upload per draw data to GPU at once
 		gfx::dev->map_copy(&m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
 	
+
+
+		// Declare UI (can be scattered all the way up until the end of the fullscreen pass!)
+		declare_ui();
+
+
+
 		// Geometry Pass
 		{
 			auto _ = FrameProfiler::Scoped("Geometry Pass");
@@ -290,43 +290,7 @@ void Application::run()
 			gfx::dev->bind_pipeline(&r_p);
 			gfx::dev->draw(6);
 
-
-			// Declare things to draw UI overlay
-			bool show_demo_window = true;
-			ImGui::ShowDemoWindow(&show_demo_window);
-
-			ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-			ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-			ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-			ImGui::Checkbox("Another Window", &show_demo_window);
-
-			ImGui::SameLine();
-
-			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-			ImGui::End();
-
-			// Main menu
-			if (ImGui::BeginMainMenuBar())
-			{
-				if (ImGui::BeginMenu("File"))
-				{
-					ImGui::EndMenu();
-				}
-				if (ImGui::BeginMenu("Edit"))
-				{
-					if (ImGui::MenuItem("Undo", "CTRL+Z")) { fmt::print("Undid!\n"); }
-					if (ImGui::MenuItem("Redo", "CTRL+Y", false, false)) {}  // Disabled item
-					ImGui::Separator();
-					if (ImGui::MenuItem("Cut", "CTRL+X")) {}
-					if (ImGui::MenuItem("Copy", "CTRL+C")) {}
-					if (ImGui::MenuItem("Paste", "CTRL+V")) {}
-					ImGui::EndMenu();
-				}
-				ImGui::EndMainMenuBar();
-			}
-
-			gfx::imgui->draw();		// Draw overlay
+			gfx::imgui->draw();		// Draw overlay (Last thing to draw on the backbuffer!)
 
 			gfx::dev->end_pass();
 		}	
@@ -357,6 +321,129 @@ void Application::run()
 	}
 }
 
+void Application::declare_ui()
+{
+	// Declare things to draw UI overlay
+	bool show_demo_window = true;
+	ImGui::ShowDemoWindow(&show_demo_window);
+
+	ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+
+	ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+	ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+	ImGui::Checkbox("Another Window", &show_demo_window);
+
+	ImGui::SameLine();
+
+	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::End();
+
+	// Main menu
+	if (ImGui::BeginMainMenuBar())
+	{
+		if (ImGui::BeginMenu("File"))
+		{
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Edit"))
+		{
+			if (ImGui::MenuItem("Undo", "CTRL+Z")) { fmt::print("Undid!\n"); }
+			if (ImGui::MenuItem("Redo", "CTRL+Y", false, false)) {}  // Disabled item
+			ImGui::Separator();
+			if (ImGui::MenuItem("Cut", "CTRL+X")) {}
+			if (ImGui::MenuItem("Copy", "CTRL+C")) {}
+			if (ImGui::MenuItem("Paste", "CTRL+V")) {}
+			ImGui::EndMenu();
+		}
+		ImGui::EndMainMenuBar();
+
+	}
+
+	ImGui::Begin("Settings");
+
+	const char* items[] = { "2560x1440", "1920x1080", "1280x720", "640x360", "384x216" };
+	static int item_current_idx = 0; // Here we store our selection data as an index.
+	const char* combo_preview_value = items[item_current_idx];  // Pass in the preview value visible before opening the combo (it could be anything)
+	bool change_res = false;
+	if (ImGui::BeginCombo("Resolutions", combo_preview_value))
+	{
+		for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+		{
+			const bool is_selected = (item_current_idx == n);
+			if (ImGui::Selectable(items[n], is_selected))
+			{
+				item_current_idx = n;
+				change_res = true;
+			}
+			// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+			if (is_selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	if (change_res)
+	{
+		if (item_current_idx == 0)		create_resolution_dependent_resources(2560, 1440);
+		if (item_current_idx == 1)		create_resolution_dependent_resources(1920, 1080);
+		if (item_current_idx == 2)		create_resolution_dependent_resources(1280, 720);
+		if (item_current_idx == 3)		create_resolution_dependent_resources(640, 360);
+		if (item_current_idx == 4)		create_resolution_dependent_resources(384, 216);
+	}
+
+	ImGui::End();
+
+}
+
+void Application::create_resolution_dependent_resources(UINT width, UINT height)
+{
+	// Render to Texture
+	{
+		// viewport
+		viewports[1].Width = (FLOAT)width;
+		viewports[1].Height = (FLOAT)height;
+
+		// create depth tex
+		gfx::dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, width, height, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
+
+		// create render to texture (HDR)
+		gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &r_tex);
+
+		gfx::dev->create_framebuffer(FramebufferDesc(
+			{ &r_tex }, &d_32),
+			&r_fb);
+	}
+}
+
+void Application::on_resize(UINT width, UINT height)
+{
+	fmt::print("resize with dimensions:\n[Width: {}], [Height: {}]\n", m_resized_client_area.first, m_resized_client_area.second);
+
+	gfx::dev->resize_swapchain(width, height);
+
+	// resize vp for backbuffer
+	viewports[0].Width = (FLOAT)width;
+	viewports[0].Height = (FLOAT)height;
+	viewports[0].TopLeftX = 0.f;
+	viewports[0].TopLeftY = 0.f;
+
+	// recreate framebuffer for backbuffer
+	gfx::dev->create_framebuffer(FramebufferDesc({ gfx::dev->get_backbuffer() }), &fb);
+}
+
+void Application::update(float dt)
+{
+	// Possess different cameras
+	if (m_input->key_pressed(Keys::D1))		m_camera_controller->set_camera(m_cam.get());
+	if (m_input->key_pressed(Keys::D2))		m_camera_controller->set_camera(m_cam2.get());
+
+	// Shader reload test
+	if (m_input->key_pressed(Keys::R))		gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
+
+	// Update camera controller
+	m_camera_controller->update(dt);
+}
+
+
 LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	/*
@@ -374,13 +461,6 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 		// DirectXTK Mouse and Keyboard (Input)
 	case WM_ACTIVATEAPP:
 	{
-		//if (m_engine && m_engine->GetInput())
-		//{
-		//	m_engine->GetInput()->process_keyboard(uMsg, wParam, lParam);
-		//	m_engine->GetInput()->process_mouse(uMsg, wParam, lParam);
-		//}
-		//break;
-
 		if (m_input)
 		{
 			m_input->process_keyboard(uMsg, wParam, lParam);
@@ -400,10 +480,6 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	case WM_XBUTTONUP:
 	case WM_MOUSEHOVER:
 	{
-		//if (m_engine && m_engine->GetInput())
-		//{
-		//	m_engine->GetInput()->process_mouse(uMsg, wParam, lParam);
-		//}
 		if (m_input)
 			m_input->process_mouse(uMsg, wParam, lParam);
 
@@ -417,10 +493,6 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 		}
 	case WM_KEYUP:
 	case WM_SYSKEYUP:
-		//if (m_engine && m_engine->GetInput())
-		//{
-		//	m_engine->GetInput()->process_keyboard(uMsg, wParam, lParam);
-		//}
 		if (m_input)
 			m_input->process_keyboard(uMsg, wParam, lParam);
 		break;
@@ -463,15 +535,20 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 		break;
 	}
 
-	// Input message
 	case WM_SYSKEYDOWN:
 	{
+		// Custom Alt + Enter to toggle windowed borderless (disabled for now)
+		/*
+			DO NOT DRAG IMGUI WINDOWS IN FULLSCREEN!
+		*/
 		if (wParam == VK_RETURN && (lParam & 0x60000000) == 0x20000000)
 		{
-			// Custom Alt + Enter to toggle windowed borderless
-			// m_win->set_fullscreen(!m_win->is_fullscreen());
-			// Resizing will be handled through WM_SIZE through a subsequent WM
-			std::cout << "should resize\n";
+			m_win->set_fullscreen(!m_win->is_fullscreen());
+			if (m_resize_allowed)
+			{
+				m_should_resize = true;
+				m_resize_allowed = false;
+			}
 		}
 		break;
 	}
@@ -485,31 +562,4 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-void Application::on_resize(UINT width, UINT height)
-{
-	fmt::print("resize with dimensions:\n[Width: {}], [Height: {}]\n", m_resized_client_area.first, m_resized_client_area.second);
 
-	gfx::dev->resize_swapchain(width, height);
-
-	// resize vp for backbuffer
-	viewports[0].Width = width;
-	viewports[0].Height = height;
-	viewports[0].TopLeftX = 0.f;
-	viewports[0].TopLeftY = 0.f;
-
-	// recreate framebuffer for backbuffer
-	gfx::dev->create_framebuffer(FramebufferDesc({ gfx::dev->get_backbuffer() }), &fb);
-}
-
-void Application::update(float dt)
-{
-	// Possess different cameras
-	if (m_input->key_pressed(Keys::D1))		m_camera_controller->set_camera(m_cam.get());
-	if (m_input->key_pressed(Keys::D2))		m_camera_controller->set_camera(m_cam2.get());
-
-	// Shader reload test
-	if (m_input->key_pressed(Keys::R))		gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
-
-	// Update camera controller
-	m_camera_controller->update(dt);
-}
