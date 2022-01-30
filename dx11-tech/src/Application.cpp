@@ -84,6 +84,12 @@ Application::Application()
 			- Add ImGUI docking branch								DONE
 				- https://github.com/ocornut/imgui/wiki/Docking
 
+			- Set Backbuffer to a Dockable Render Target?			TO-DO
+
+			- Use ImGUI bar to show Frame Statistics				TO-DO
+				- Bars for Full Frame
+				- Numbers in ms on the side for parts
+
 			- Add a Model class										TO-DO
 				- Simply has Meshes and Materials (1:1 mapping)
 				- Later down the line, we want to reformat for
@@ -201,8 +207,8 @@ void Application::run()
 	float dt = 0.f;
 	while (m_win->is_alive() && m_app_alive)
 	{
-		Timer frame_time;
 		perf::profiler->frame_start();
+		Timer frame_time;
 
 		// Block here if paused
 		while (m_paused);
@@ -309,10 +315,10 @@ void Application::run()
 		gfx::imgui->end_frame();
 		gfx::dev->frame_end();
 
-		perf::profiler->frame_end();
-		dt = frame_time.elapsed(Timer::Unit::Seconds);
 		
 		++m_curr_frame;
+		dt = frame_time.elapsed(Timer::Unit::Seconds);
+		perf::profiler->frame_end();
 	}
 
 

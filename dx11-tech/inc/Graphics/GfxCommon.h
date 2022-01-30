@@ -8,7 +8,7 @@
 namespace gfxconstants
 {
 	static constexpr const char* SHADER_DIRECTORY = "shaders/";
-	static constexpr UINT QUERY_LATENCY = 5;		// 5 frames query latency
+	static constexpr UINT QUERY_LATENCY = 7;		// 5 frames query latency
 
 	static constexpr UINT MAX_CS_UAV = D3D11_PS_CS_UAV_REGISTER_COUNT;
 	static constexpr UINT MAX_SHADER_INPUT_RESOURCE_SLOTS = D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT;

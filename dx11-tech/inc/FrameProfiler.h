@@ -109,7 +109,7 @@ public:
 
 private:
 	void calculate_averages();
-	void grab_data();
+	void gather_data(const CPUProfiler::FrameData& cpu_frame_stats, const GPUProfiler::FrameData& gpu_frame_stats);
 
 	// temp
 	void print_frame_results();
@@ -118,7 +118,7 @@ private:
 	// Maybe we want to apply some delta time to both below
 	// Meaning we average over past X seconds and print every Y seconds?
 	static constexpr UINT s_print_frame_freq = 170;		// Print every X frames
-	static constexpr UINT s_averaging_frames = 500;		// Averaging over X frames
+	static constexpr UINT s_averaging_frames = 350;		// Averaging over X frames
 
 	unique_ptr<CPUProfiler> m_cpu;
 	GPUProfiler* m_gpu;

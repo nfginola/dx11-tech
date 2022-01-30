@@ -72,11 +72,13 @@ void FrameProfiler::frame_end()
 	m_cpu->frame_end();
 	// GPU externally ended by GfxDevice
 
-	grab_data();
+	auto& cpu_frame_stats = m_cpu->get_frame_statistics();
+	auto& gpu_frame_stats = m_gpu->get_frame_statistics();
 
 	// CPU started immediately to capture the computations inbetween frame_end() and frame_start()
-	// Otherwise the time taken to calculate averages is not included! (And its substantial!)
 	m_cpu->frame_start();
+
+	gather_data(cpu_frame_stats, gpu_frame_stats);
 
 	// Note that calculating the averages takes quite some time!
 	m_cpu->begin("Frame Averaging Overhead");
@@ -94,7 +96,8 @@ void FrameProfiler::frame_end()
 
 		auto& profile = m_frame_data.profiles[name];
 		profile.avg_gpu_time = avg_time;
-		//profile.avg_cpu_time = 
+
+		// profile.avg_cpu_time = ...
 	}
 	
 	/*
@@ -112,11 +115,8 @@ void FrameProfiler::frame_end()
 	++m_curr_frame;
 }
 
-void FrameProfiler::grab_data()
+void FrameProfiler::gather_data(const CPUProfiler::FrameData& cpu_frame_stats, const GPUProfiler::FrameData& gpu_frame_stats)
 {
-	// grab cpu frame times
-	auto& cpu_frame_stats = m_cpu->get_frame_statistics();
-
 	for (const auto& profile : cpu_frame_stats.profiles)
 	{
 		const auto& name = profile.first;
@@ -128,8 +128,7 @@ void FrameProfiler::grab_data()
 		else
 			it->second[m_curr_frame % s_averaging_frames] = time;
 	}
-	// grab gpu frame times
-	auto& gpu_frame_stats = m_gpu->get_frame_statistics();
+
 	for (const auto& profile : gpu_frame_stats.profiles)
 	{
 		const auto& name = profile.first;

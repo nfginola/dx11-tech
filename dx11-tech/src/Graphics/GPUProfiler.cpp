@@ -95,7 +95,7 @@ void GPUProfiler::frame_end()
     ++m_curr_frame;
     m_curr_frame = m_curr_frame % gfxconstants::QUERY_LATENCY;
 
-    float waiting_time = 0;
+    float waiting_time = 0.f;
     // go over each profile and extract
     FrameData frame_data{};
     for (const auto& it : m_profiles)
