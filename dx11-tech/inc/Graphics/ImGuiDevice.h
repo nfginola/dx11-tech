@@ -13,6 +13,8 @@ public:
 	bool win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 private:
+	void start_docking();
+
 	ImGuiDevice(class GfxDevice* dev);
 	~ImGuiDevice();
 };

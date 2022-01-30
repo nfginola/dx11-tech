@@ -93,6 +93,10 @@ public:
 
 	const AnnotationPtr get_annotation() const;
 
+	const DXGI_MODE_DESC& get_best_mode() const;
+
+	void resize_swapchain(UINT width, UINT height);
+
 private:
 	void create_device_and_context();
 	void get_debug();
@@ -119,6 +123,8 @@ private:
 	AnnotationPtr m_annotation;
 
 	std::vector<DXGI_MODE_DESC> m_available_display_modes;
+
+	static constexpr UINT s_buffer_count = 2;
 };
 
 

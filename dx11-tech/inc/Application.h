@@ -16,6 +16,8 @@ public:
 private:
 	LRESULT custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+	void on_resize(UINT width, UINT height);
+
 	void update(float dt);
 
 private:
@@ -67,6 +69,10 @@ private:
 	Sampler def_samp;	
 
 	uint64_t m_curr_frame = 0;
+
+	bool m_resize_allowed = false;
+	bool m_should_resize = false;
+	std::pair<UINT, UINT> m_resized_client_area;
 
 
 

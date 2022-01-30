@@ -106,7 +106,7 @@ void FrameProfiler::frame_end()
 	m_cpu->begin("Printing Overhead");
 	if (m_curr_frame % s_print_frame_freq == 0)
 	{
-		print_frame_results();
+		//print_frame_results();
 	}
 	m_cpu->end("Printing Overhead");
 

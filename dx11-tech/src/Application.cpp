@@ -21,9 +21,13 @@ Application::Application()
 	constexpr UINT WIN_WIDTH = 1920;
 	constexpr UINT WIN_HEIGHT = 1080;
 
+	//m_resized_client_area.first = WIN_WIDTH;
+	//m_resized_client_area.second = WIN_HEIGHT;
+
 	// Resolution
 	constexpr UINT WIDTH = WIN_WIDTH;
 	constexpr UINT HEIGHT = WIN_HEIGHT;
+
 
 	// Window and Input
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
@@ -117,7 +121,11 @@ Application::Application()
 			- Try recreating view-space positions from only depth!
 	*/
 
-	viewports = { CD3D11_VIEWPORT(0.f, 0.f, WIDTH, HEIGHT) };
+	viewports = 
+	{ 
+		CD3D11_VIEWPORT(0.f, 0.f, WIDTH, HEIGHT),	// To Swapchain (changes when swapchain is resized)
+		CD3D11_VIEWPORT(0.f, 0.f, WIDTH, HEIGHT)	// Render to texture (stays the same for Geometry Pass)
+	};
 
 	// depth pre-pass
 	{
@@ -218,9 +226,6 @@ void Application::run()
 			auto _ = FrameProfiler::ScopedCPU("WM Pump");
 			m_win->pump_messages();
 		}
-		// Break as soon as possible
-		if (!m_app_alive || !m_win->is_alive())
-			break;
 
 		m_input->begin();
 			
@@ -254,11 +259,12 @@ void Application::run()
 
 		// Upload per draw data to GPU at once
 		gfx::dev->map_copy(&m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
-
+	
+		// Geometry Pass
 		{
 			auto _ = FrameProfiler::Scoped("Geometry Pass");
 			gfx::dev->begin_pass(&r_fb);
-			gfx::dev->bind_viewports(viewports);
+			gfx::dev->bind_viewports({ viewports[1] });
 			// draw
 			gfx::dev->bind_pipeline(&p);
 			GPUBuffer vbs[] = { vb_pos, vb_uv, vb_nor };
@@ -275,6 +281,7 @@ void Application::run()
 			gfx::dev->end_pass();
 		}
 
+		// Fullscreen Pass
 		{
 			auto _ = FrameProfiler::Scoped("Fullscreen Pass");
 			gfx::dev->begin_pass(&fb);
@@ -282,6 +289,7 @@ void Application::run()
 			gfx::dev->bind_viewports(viewports);
 			gfx::dev->bind_pipeline(&r_p);
 			gfx::dev->draw(6);
+
 
 			// Declare things to draw UI overlay
 			bool show_demo_window = true;
@@ -297,6 +305,27 @@ void Application::run()
 
 			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 			ImGui::End();
+
+			// Main menu
+			if (ImGui::BeginMainMenuBar())
+			{
+				if (ImGui::BeginMenu("File"))
+				{
+					ImGui::EndMenu();
+				}
+				if (ImGui::BeginMenu("Edit"))
+				{
+					if (ImGui::MenuItem("Undo", "CTRL+Z")) { fmt::print("Undid!\n"); }
+					if (ImGui::MenuItem("Redo", "CTRL+Y", false, false)) {}  // Disabled item
+					ImGui::Separator();
+					if (ImGui::MenuItem("Cut", "CTRL+X")) {}
+					if (ImGui::MenuItem("Copy", "CTRL+C")) {}
+					if (ImGui::MenuItem("Paste", "CTRL+V")) {}
+					ImGui::EndMenu();
+				}
+				ImGui::EndMainMenuBar();
+			}
+
 			gfx::imgui->draw();		// Draw overlay
 
 			gfx::dev->end_pass();
@@ -315,15 +344,17 @@ void Application::run()
 		gfx::imgui->end_frame();
 		gfx::dev->frame_end();
 
-		
 		++m_curr_frame;
 		dt = frame_time.elapsed(Timer::Unit::Seconds);
 		perf::profiler->frame_end();
+	
+		// Wait for end of frame for safe resizing
+		if (m_should_resize)
+		{
+			on_resize(m_resized_client_area.first, m_resized_client_area.second);
+			m_should_resize = false;
+		}
 	}
-
-
-
-
 }
 
 LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -406,25 +437,28 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	// Resize message
 	case WM_SIZE:
 	{
-		// NOTE: We may want to turn off so that we can scale freely in both dimensions.
-		// Because we would like to keep the aspect ratio of the initial resolution! To not handle it, lets just turn off free scaling and resize only on Fullscreen enter/exit
-
-		// We want to hook this to ImGui viewport later
-		//if (m_resizeCallback)
-		//	m_resizeCallback(LOWORD(lParam), HIWORD(lParam));
-		//std::cout << "should resize\n";
-		// dont resize here (a lot of calls)
+		/*
+			This is called frequently when resizing happens.
+			Hence why m_allow_resize is used so that we can defer the operations until later
+		*/
+		m_resize_allowed = true;
+		m_resized_client_area.first = LOWORD(lParam);
+		m_resized_client_area.second = HIWORD(lParam);
 		break;
 	}
 	case WM_ENTERSIZEMOVE:
 	{
-		std::cout << "should pause to prep for resize\n";
 		m_paused = true;
 		break;
 	}
 	case WM_EXITSIZEMOVE:
 	{
-		std::cout << "should resize\n";
+		if (m_resize_allowed)
+		{
+			m_should_resize = true;
+			m_resize_allowed = false;
+		}
+
 		m_paused = false;
 		break;
 	}
@@ -449,6 +483,22 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	}
 
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+void Application::on_resize(UINT width, UINT height)
+{
+	fmt::print("resize with dimensions:\n[Width: {}], [Height: {}]\n", m_resized_client_area.first, m_resized_client_area.second);
+
+	gfx::dev->resize_swapchain(width, height);
+
+	// resize vp for backbuffer
+	viewports[0].Width = width;
+	viewports[0].Height = height;
+	viewports[0].TopLeftX = 0.f;
+	viewports[0].TopLeftY = 0.f;
+
+	// recreate framebuffer for backbuffer
+	gfx::dev->create_framebuffer(FramebufferDesc({ gfx::dev->get_backbuffer() }), &fb);
 }
 
 void Application::update(float dt)

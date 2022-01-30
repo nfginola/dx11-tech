@@ -610,6 +610,11 @@ void GfxDevice::create_shader(ShaderStage stage, const ShaderBytecode& bytecode,
 
 void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer)
 {
+	framebuffer->m_depth_stencil_resolve_target = nullptr;
+	framebuffer->m_depth_stencil_target = nullptr;
+	framebuffer->m_resolve_targets.clear();
+	framebuffer->m_targets.clear();
+
 	bool render_targets_exist = true;
 	if (desc.m_targets.size() == 0)
 		render_targets_exist = false;
@@ -1059,6 +1064,22 @@ GPUProfiler* GfxDevice::get_profiler()
 GPUAnnotator* GfxDevice::get_annotator()
 {
 	return m_annotator.get();
+}
+
+void GfxDevice::resize_swapchain(UINT width, UINT height)
+{
+	// Release the primitive texture
+	m_backbuffer.m_internal_resource.ReleaseAndGetAddressOf();
+	m_backbuffer.m_rtv.ReleaseAndGetAddressOf();
+
+	m_dev->resize_swapchain(width, height);
+
+	// recreate primitive texture
+	m_backbuffer.m_internal_resource = m_dev->get_bb_texture();
+	m_backbuffer.m_rtv = m_dev->get_bb_target();
+	m_backbuffer.m_desc.m_type = TextureType::e2D;
+	m_backbuffer.m_desc.m_render_target_clear = RenderTextureClear::black();
+	m_dev->get_bb_texture()->GetDesc(&m_backbuffer.m_desc.m_desc);
 }
 
 void GfxDevice::draw(UINT vertex_count, UINT start_loc)

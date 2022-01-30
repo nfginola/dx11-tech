@@ -54,7 +54,8 @@ DXDevice::DXDevice(HWND hwnd, int bbWidth, int bbHeight) :
 	HRCHECK(m_context->QueryInterface(__uuidof(ID3DUserDefinedAnnotation), (void**)m_annotation.GetAddressOf()));
 
 	// Prevent DXGI from responding to Mode Changes and Alt + Enter (We will handle this ourselves)
-	m_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER);		// orig
+	//m_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER);		// orig
+	m_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);	
 	//m_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES);
 }
 
@@ -138,21 +139,23 @@ void DXDevice::create_swapchain(HWND hwnd, int bbWidth, int bbHeight)
 	m_sc_desc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
 	m_sc_desc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 
-	// No MSAA enabled for now
+	// SC backbuffer is not a multisampled image
 	m_sc_desc.SampleDesc.Quality = 0;
 	m_sc_desc.SampleDesc.Count = 1;
 
 	// Surface usage is back buffer!
 	m_sc_desc.BufferUsage = DXGI_USAGE_BACK_BUFFER | DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	m_sc_desc.BufferCount = 2;		// One front and one back buffer
+	m_sc_desc.BufferCount = s_buffer_count;		// One front and one back buffer
 
 	m_sc_desc.OutputWindow = hwnd;
 	m_sc_desc.Windowed = true;
 	m_sc_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+
 	// Allow switch mode through IDXGISwapChain::ResizeTarget (e.g Windowed to Fullscreen)
-	//m_sc_desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	m_sc_desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+
 	// No we dont allow Mode Switch: We handle exclusive fullscreen manually :)
-	m_sc_desc.Flags = 0;
+	//m_sc_desc.Flags = 0;
 
 	HRCHECK(m_factory->CreateSwapChain(m_device.Get(), &m_sc_desc, m_sc.GetAddressOf()));
 
@@ -224,6 +227,30 @@ const D3D11_VIEWPORT& DXDevice::get_bb_viewport() const
 const AnnotationPtr DXDevice::get_annotation() const
 {
 	return m_annotation;
+}
+
+const DXGI_MODE_DESC& DXDevice::get_best_mode() const
+{
+	return m_available_display_modes.back();
+}
+
+void DXDevice::resize_swapchain(UINT width, UINT height)
+{
+	// Release texture and vview
+	m_bbTex->Release();
+	m_bbView->Release();
+
+	auto best_mode = m_available_display_modes.back();
+	best_mode.Width = width;
+	best_mode.Height = height;
+
+	HRCHECK(m_sc->ResizeBuffers(s_buffer_count, width, height, best_mode.Format, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
+	// Automatically choose the width and height to match the client rect for HWNDs
+	//HRCHECK(m_sc->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0));
+	HRCHECK(m_sc->ResizeTarget(&best_mode));
+	
+	// Grab new texture and and recreate render target for it
+	create_bb_target();
 }
 
 const DXGI_SWAP_CHAIN_DESC& DXDevice::get_sc_desc() const

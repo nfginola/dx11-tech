@@ -21,7 +21,18 @@ void ImGuiDevice::initialize(GfxDevice* dev)
 void ImGuiDevice::shutdown()
 {
     if (gfx::imgui)
+    {
         delete gfx::imgui;
+        gfx::imgui = nullptr;
+    }
+}
+
+void ImGuiDevice::start_docking()
+{
+    // Make dockspace over the whole viewport
+    // This has to be called prior to all other ImGUI calls
+    ImGuiDockNodeFlags flags = ImGuiDockNodeFlags_PassthruCentralNode;      // Pass through the otherwise background cleared window
+    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), flags);
 }
 
 ImGuiDevice::ImGuiDevice(GfxDevice* dev)
@@ -61,6 +72,8 @@ void ImGuiDevice::begin_frame()
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
+
+    start_docking();
 }
 
 void ImGuiDevice::draw()

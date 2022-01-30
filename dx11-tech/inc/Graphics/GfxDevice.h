@@ -19,7 +19,6 @@
 class GfxDevice
 {
 	friend class ImGuiDevice;
-	friend class Application;		// temp
 public:
 	//static GfxDevice* dev;
 
@@ -38,6 +37,8 @@ public:
 	GPUTexture* get_backbuffer();
 	GPUProfiler* get_profiler();
 	GPUAnnotator* get_annotator();
+
+	void resize_swapchain(UINT width, UINT height);
 
 	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname, Shader* shader);
 	void compile_shader(ShaderStage stage, const std::filesystem::path& fname, ShaderBytecode* bytecode);
