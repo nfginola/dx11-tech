@@ -1,5 +1,6 @@
 #pragma once
 #include "Graphics/GfxDevice.h"
+#include "Graphics/ImGuiDevice.h"
 #include "Profiler/FrameProfiler.h"
 
 class Application
@@ -18,7 +19,7 @@ private:
 
 	void declare_ui();
 	void declare_profiler_ui();
-	void declare_shader_dir_ui();
+	void declare_shader_reloader_ui();
 
 	void create_resolution_dependent_resources(UINT width, UINT height);
 	void on_resize(UINT width, UINT height);
@@ -79,6 +80,14 @@ private:
 	bool m_should_resize = false;
 	std::pair<UINT, UINT> m_resized_client_area;
 
+
+
+	/*
+		Shader reloader variables
+	*/
+	std::set<std::string> shader_filenames;
+	bool do_once = true;
+	const char* selected_item = "";
 
 
 

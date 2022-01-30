@@ -3,6 +3,20 @@
 #include "Camera/FPPCamera.h"
 #include "Input.h"
 
+// Global dependency to ImGUI
+#include "Graphics/ImGuiDevice.h"
+namespace gfx { extern ImGuiDevice* imgui; }
+
+FPCController::FPCController(class Input* input) : m_cam(nullptr), m_input(input)
+{
+	gfx::imgui->add_ui_callback("fpccontroller", [&]()
+		{
+			ImGui::Begin("FPC Controller");
+			ImGui::Text(fmt::format("Speed: {:.2f}", m_curr_speed).c_str());
+			ImGui::End();
+		});
+}
+
 void FPCController::set_camera(FPPCamera* cam)
 {
 	m_cam = cam;
@@ -41,9 +55,9 @@ void FPCController::update(float dt)
 	if (m_input->key_down(Keys::LeftShift))	utils::constrained_decr(m_up_state, -1.f, 1.f);
 
 	// [0, 120, 240, ..] --> [0, 1, 2, ..]
-	auto scroll_val = (m_input->get_scroll_value() / 120.f) * 1.f;
-	auto final_speed = utils::constrained_add(m_init_speed, scroll_val, m_min_speed, m_max_speed);
-	m_cam->set_speed(final_speed);
+	auto scroll_val = (m_input->get_scroll_value() / 120.f) * 0.5f;
+	m_curr_speed = utils::constrained_add(m_init_speed, scroll_val, m_min_speed, m_max_speed);
+	m_cam->set_speed(m_curr_speed);
 
 	m_cam->set_sensitivity(m_mouse_sens);
 

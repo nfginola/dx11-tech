@@ -93,8 +93,11 @@ void ImGuiDevice::draw()
         (it.second)();
 
 
-
+    
     // Rendering
+    /*
+        ImGUI sets its own Viewport, which is based on the swapchain backbuffer size
+    */
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }

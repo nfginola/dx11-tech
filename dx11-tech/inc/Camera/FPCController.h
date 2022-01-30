@@ -2,7 +2,7 @@
 class FPCController
 {
 public:
-	FPCController(class Input* input) : m_cam(nullptr), m_input(input){};
+	FPCController(class Input* input);
 	~FPCController() = default;
 
 	/*
@@ -31,7 +31,8 @@ private:
 
 	// Base speed
 	float m_init_speed = 7.f;
-	float m_min_speed = 2.f;
+	float m_curr_speed = m_init_speed;
+	float m_min_speed = 1.f;
 	float m_max_speed = 11.f;
 
 	// Sensitivity

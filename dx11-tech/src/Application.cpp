@@ -3,7 +3,6 @@
 #include "Window.h"
 #include "Input.h"
 #include "Timer.h"
-#include "Graphics/ImGuiDevice.h"
 
 #include "Camera/FPCController.h"
 #include "Camera/FPPCamera.h"
@@ -20,9 +19,6 @@ Application::Application()
 	// Window render area dimension
 	constexpr UINT WIN_WIDTH = 1920;
 	constexpr UINT WIN_HEIGHT = 1080;
-
-	//m_resized_client_area.first = WIN_WIDTH;
-	//m_resized_client_area.second = WIN_HEIGHT;
 
 	// Resolution
 	constexpr UINT WIDTH = WIN_WIDTH;
@@ -41,7 +37,7 @@ Application::Application()
 	// Declare UI 
 	gfx::imgui->add_ui_callback("default ui", [&]() { declare_ui(); });
 	gfx::imgui->add_ui_callback("profiler", [&]() { declare_profiler_ui();  });
-	gfx::imgui->add_ui_callback("shaderdirs", [&]() { declare_shader_dir_ui();  });
+	gfx::imgui->add_ui_callback("shaderdirs", [&]() { declare_shader_reloader_ui();  });
 
 	// Create perspective camera
 	m_cam = make_unique<FPPCamera>(80.f, (float)WIDTH/HEIGHT);
@@ -98,14 +94,24 @@ Application::Application()
 				- Add to global callback list
 				  which is all run before UI draw
 
-			- Use ImGUI bar to show Frame Statistics				TO-DO
-				- Bars for Full Frame
-				- Numbers in ms on the side for parts
+			- Use ImGUI bar to show Frame Statistics				DONE
+				X Bars for Full Frame
+				X Numbers in ms on the side for parts
+				+ We just print numbers instead to keep it simple
+
+			- Add shader reloader GUI								DONE
+				- Directory auto scanning
+				- Filters out .hlsli
+
+			- Add Assimp Loader										TO-DO
 
 			- Add a Model class										TO-DO
 				- Simply has Meshes and Materials (1:1 mapping)
 				- Later down the line, we want to reformat for
 					instancing.
+
+			- Add model repository									TO-DO
+				- Ignore MT contention problems
 
 			- Add a Simple Entity which holds a World Matrix		TO-DO
 				- Holds a pointer to an existing Model (Flyweight)	
@@ -113,6 +119,12 @@ Application::Application()
 			- Bind Persistent Samplers (on the last slots stages)	TO-DO
 				- Check MJP samples and DXTK for Common Samplers
 				- Remember that shadows use diff. samplers
+
+			- Create Swap chain class?
+				- Refactoring work
+
+			- Grab Pipeline Query
+				- Refactoring work
 
 			- Check out JSON format and see if it is useful			TO-DO
 				- Check out nlohmanns JSON parser
@@ -219,8 +231,8 @@ void Application::run()
 		m_win->pump_messages();
 
 		// Break as soon as possible
-		if (!m_win->is_alive() || !m_app_alive)
-			break;
+		//if (!m_win->is_alive() || !m_app_alive)
+		//	break;
 
 		m_input->begin();
 			
@@ -426,18 +438,19 @@ void Application::declare_profiler_ui()
 		ImGui::TreePop();
 	}
 
+	// Get FPS
+	const auto& full_frame = frame_data.profiles.find("*** Full Frame ***");
+	if (full_frame != frame_data.profiles.cend())
+	{
+		auto avg_frame_time = (full_frame->second.avg_cpu_time + full_frame->second.avg_gpu_time) / 2.f;
+		avg_frame_time /= 1000.f;
+		ImGui::Text(fmt::format("FPS: {:.1f}", 1.f / avg_frame_time).c_str());
+	}
+
 	ImGui::End();
 }
 
-
-/*
-	Shader reloader variables
-*/
-std::set<std::string> shader_filenames;
-bool do_once = true;
-const char* selected_item = "";
-
-void Application::declare_shader_dir_ui()
+void Application::declare_shader_reloader_ui()
 {
 	if (do_once)
 	{
@@ -453,7 +466,6 @@ void Application::declare_shader_dir_ui()
 		selected_item = shader_filenames.cbegin()->c_str();
 		do_once = false;
 	}
-	
 
 	ImGui::Begin("Shader Reloader");
 
@@ -481,7 +493,6 @@ void Application::declare_shader_dir_ui()
 
 	ImGui::End();
 }
-
 
 void Application::create_resolution_dependent_resources(UINT width, UINT height)
 {
@@ -512,6 +523,9 @@ void Application::on_resize(UINT width, UINT height)
 	// resize vp for backbuffer
 	viewports[0].Width = (FLOAT)width;
 	viewports[0].Height = (FLOAT)height;
+	//auto im_vp = ImGui::GetMainViewport();
+	//viewports[0].Width = im_vp->WorkSize.x;
+	//viewports[0].Height = im_vp->WorkSize.y;
 	viewports[0].TopLeftX = 0.f;
 	viewports[0].TopLeftY = 0.f;
 
