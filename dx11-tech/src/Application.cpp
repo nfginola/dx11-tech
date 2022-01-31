@@ -14,6 +14,7 @@
 // Just an idea.
 #include "Globals.h"
 
+
 Application::Application()
 {
 	// Window render area dimension
@@ -40,11 +41,11 @@ Application::Application()
 	gfx::imgui->add_ui_callback("shaderdirs", [&]() { declare_shader_reloader_ui();  });
 
 	// Create perspective camera
-	m_cam = make_unique<FPPCamera>(80.f, (float)WIDTH/HEIGHT);
+	m_cam = make_unique<FPPCamera>(90.f, (float)WIDTH/HEIGHT, 0.1f, 1000.f);
 	m_cam->set_position(0.f, 0.f, -5.f);
 	
 	// Create secondary camera
-	m_cam2 = make_unique<FPPCamera>(80.f, (float)WIDTH / HEIGHT);
+	m_cam2 = make_unique<FPPCamera>(90.f, (float)WIDTH / HEIGHT, 0.1f, 1000.f);
 	m_cam2->set_position(0.f, 0.f, -15.f);
 
 	// Create a First-Person Camera Controller and attach a First-Person Perspective camera
@@ -169,7 +170,7 @@ Application::Application()
 		
 		// make cbuffer
 		gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)), &m_cb_per_frame);
-		gfx::dev->create_buffer(BufferDesc::constant(512), &m_big_cb);	// x2 256
+		gfx::dev->create_buffer(BufferDesc::constant(256 * 3), &m_big_cb);	
 
 		// compile and create shaders
 		Shader vs, ps;
@@ -218,6 +219,8 @@ Application::Application()
 		gfx::dev->create_sampler(SamplerDesc(), &def_samp);
 		gfx::dev->bind_sampler(0, ShaderStage::ePixel, &def_samp);
 	}
+
+	load_assets();
 }
 
 Application::~Application()
@@ -263,6 +266,7 @@ void Application::run()
 		*/
 		m_cb_elements[0].world_mat = DirectX::XMMatrixTranslation(2.f, 0.f, 0.f);
 		m_cb_elements[1].world_mat = DirectX::XMMatrixTranslation(-2.f, 0.f, 0.f);
+		m_cb_elements[2].world_mat = DirectX::XMMatrixScaling(0.07, 0.07, 0.07);
 
 		// Update graphics
 		gfx::dev->frame_start();
@@ -295,6 +299,22 @@ void Application::run()
 			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 1);
 			gfx::dev->draw_indexed(3);
 			gfx::annotator->end_event();
+
+			// draw sponza
+			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 2);
+
+			gfx::annotator->begin_event("Draw sponza");
+			GPUBuffer sponza_vbs[] = { sp_vb_pos, sp_vb_uv, sp_vb_nor };
+			gfx::dev->bind_vertex_buffers(0, _countof(sponza_vbs), sponza_vbs, strides);
+			gfx::dev->bind_index_buffer(&sp_ib);
+
+			for (const auto& mesh : m_sp_meshes)
+				gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
+
+			//gfx::dev->draw_indexed(786801, 0, 0);
+			//gfx::dev->draw_indexed(786801, 0, 0);
+			gfx::annotator->end_event();
+
 			gfx::dev->end_pass();
 		}
 
@@ -672,6 +692,24 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	}
 
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+void Application::load_assets()
+{
+	AssimpLoader loader("models/sponza/Sponza.fbx");
+
+	const auto& positions = loader.get_positions();
+	const auto& uvs = loader.get_uvs();
+	const auto& normals = loader.get_normals();
+	const auto& indices = loader.get_indices();
+	//const auto& meshes = loader.get_meshes();
+	m_sp_meshes = loader.get_meshes();
+
+	gfx::dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), &sp_vb_pos, SubresourceData((void*)positions.data()));
+	gfx::dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &sp_vb_uv, SubresourceData((void*)uvs.data()));
+	gfx::dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &sp_vb_nor, SubresourceData((void*)normals.data()));
+	gfx::dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &sp_ib, SubresourceData((void*)indices.data()));
+
 }
 
 

@@ -44,7 +44,7 @@ ImGuiDevice::ImGuiDevice(GfxDevice* dev)
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
 
-    io.FontGlobalScale = 1.35f;
+    io.FontGlobalScale = 1.21f;
 
     //io.ConfigDockingWithShift = true;   // Must hold shift to dock windows
 

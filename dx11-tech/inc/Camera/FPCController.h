@@ -30,10 +30,10 @@ private:
 	float m_right_state = 0.f;
 
 	// Base speed
-	float m_init_speed = 7.f;
+	float m_init_speed = 15.f;
 	float m_curr_speed = m_init_speed;
 	float m_min_speed = 1.f;
-	float m_max_speed = 11.f;
+	float m_max_speed = 28.f;
 
 	// Sensitivity
 	float m_mouse_sens = 12.3f;

@@ -7,7 +7,7 @@ struct PixelInput
 
 float4 main(PixelInput input) : SV_TARGET
 {
-    float3 col = input.normal;
+    float3 col = normalize(input.normal);
     
     //return float4(0.f, 1.f, 0.f, 1.f);
     

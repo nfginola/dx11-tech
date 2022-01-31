@@ -13,7 +13,10 @@ Texture2D tex_pass : register(t0);
 
 float4 main(PixelInput input) : SV_TARGET
 {
-    float3 hdr_col = tex_pass.Sample(lin_samp, input.uv).rgb;
+    /*
+        Negative color produces weird values for the HDR to LDR conversion..
+    */
+    float3 hdr_col = max(tex_pass.Sample(lin_samp, input.uv).rgb, 0.f.xxx);
     
     /*
         Do tonemapping before Gamma correction!

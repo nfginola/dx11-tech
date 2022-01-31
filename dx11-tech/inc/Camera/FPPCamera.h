@@ -35,7 +35,7 @@ private:
 	// local in world
 	DirectX::SimpleMath::Vector4 m_lookat_dir = s_world_forward;
 	DirectX::SimpleMath::Vector4 m_right_dir = s_world_right;
-	DirectX::SimpleMath::Vector4 m_up_dir = -s_world_up;
+	DirectX::SimpleMath::Vector4 m_up_dir = s_world_up;
 
 	float m_sensitivity = 12.3f;
 	float m_move_speed = 7.f;

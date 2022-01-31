@@ -3,6 +3,9 @@
 #include "Graphics/ImGuiDevice.h"
 #include "Profiler/FrameProfiler.h"
 
+#include "AssimpLoader.h"
+
+
 class Application
 {
 public:
@@ -16,6 +19,8 @@ public:
 
 private:
 	LRESULT custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+	void load_assets();
 
 	void declare_ui();
 	void declare_profiler_ui();
@@ -42,6 +47,13 @@ private:
 	GPUBuffer vb_nor;
 	GPUBuffer ib;
 
+	// sponza
+	GPUBuffer sp_vb_pos;
+	GPUBuffer sp_vb_uv;
+	GPUBuffer sp_vb_nor;
+	GPUBuffer sp_ib;
+	std::vector<AssimpMeshData> m_sp_meshes;
+
 	struct PerFrameData
 	{
 		DirectX::XMMATRIX view_mat, proj_mat;
@@ -51,7 +63,7 @@ private:
 	{
 		DirectX::XMMATRIX world_mat;
 	};
-	std::array<CBElement, 2> m_cb_elements;
+	std::array<CBElement, 3> m_cb_elements;
 
 	// cbuffer
 	GPUBuffer m_cb_per_frame;
