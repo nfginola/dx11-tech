@@ -116,14 +116,24 @@ Application::Application()
 			- Add a Simple Entity which holds a World Matrix		TO-DO
 				- Holds a pointer to an existing Model (Flyweight)	
 
+			- Add AABBs to Entities									TO-DO
+				- Models have local AABB
+				- Entities receive a copy that is 
+				  world-adjusted to the specific Entity
+			
+			- Frustum Culling										TO-DO
+				-	AABBs
+
+			- Octtree?												TO-DO
+
 			- Bind Persistent Samplers (on the last slots stages)	TO-DO
 				- Check MJP samples and DXTK for Common Samplers
 				- Remember that shadows use diff. samplers
 
-			- Create Swap chain class?
+			- Create Swap chain class?								TO-DO
 				- Refactoring work
 
-			- Grab Pipeline Query
+			- Grab Pipeline Query									TO-DO
 				- Refactoring work
 
 			- Check out JSON format and see if it is useful			TO-DO
@@ -138,7 +148,7 @@ Application::Application()
 					  We can avoid binding the same ones
 					  at least.
 
-			- Try recreating view-space positions from only depth!
+			- Try recreating view-space positions from only depth!	TO-DO
 	*/
 
 	viewports = 

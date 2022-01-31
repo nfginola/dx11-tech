@@ -16,7 +16,6 @@ float4 main(PixelInput input) : SV_TARGET
     float3 hdr_col = tex_pass.Sample(lin_samp, input.uv).rgb;
     
     /*
-        
         Do tonemapping before Gamma correction!
         Gamma correction should always be done last
         https://computergraphics.stackexchange.com/questions/5449/tone-mapping-gamma-correction/5451
