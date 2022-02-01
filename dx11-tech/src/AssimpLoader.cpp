@@ -102,6 +102,9 @@ void AssimpLoader::process_mesh(aiMesh* mesh, const aiScene* scene)
 		if (mesh->mTextureCoords[0])
 		{
 			Vector2 uv(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
+
+			//if (uv.x < 0 || uv.y < 0)
+			//	fmt::print("hey\n");
 			m_uvs.push_back(uv);
 		}
 

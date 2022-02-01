@@ -10,6 +10,8 @@ namespace gfx
 
 	// ImGUI device
 	extern class ImGuiDevice* imgui;
+
+	extern class DiskTextureManager* tex_mgr;
 }
 
 namespace perf

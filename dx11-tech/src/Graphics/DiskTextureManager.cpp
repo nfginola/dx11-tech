@@ -1,15 +1,18 @@
 #include "pch.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/DiskTextureManager.h"
 
-namespace gfx { TextureManager* tex_mgr = nullptr; }
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
-void TextureManager::initialize(GfxDevice* dev)
+namespace gfx { DiskTextureManager* tex_mgr = nullptr; }
+
+void DiskTextureManager::initialize(GfxDevice* dev)
 {
 	if (!gfx::tex_mgr)
-		gfx::tex_mgr = new TextureManager(dev);
+		gfx::tex_mgr = new DiskTextureManager(dev);
 }
 
-void TextureManager::shutdown()
+void DiskTextureManager::shutdown()
 {
 	if (gfx::tex_mgr)
 	{
@@ -18,17 +21,17 @@ void TextureManager::shutdown()
 	}
 }
 
-TextureManager::TextureManager(GfxDevice* dev) :
+DiskTextureManager::DiskTextureManager(GfxDevice* dev) :
 	m_dev(dev)
 {
 
 }
 
-TextureManager::~TextureManager()
+DiskTextureManager::~DiskTextureManager()
 {
 }
 
-GPUTexture* TextureManager::load_from_disk(const std::filesystem::path& fpath)
+GPUTexture* DiskTextureManager::load_from(const std::filesystem::path& fpath)
 {
 	auto it = m_path_mapper.find(fpath);
 	if (it != m_path_mapper.cend())
@@ -37,22 +40,34 @@ GPUTexture* TextureManager::load_from_disk(const std::filesystem::path& fpath)
 		return &m_textures.find(it->second)->second;
 	}
 
-	// Load with STB Image (TO-DO)
+	// Load with STB Image 
 	int width = 0;
 	int height = 0;
-	void* image_data = nullptr;
-	int row_in_bytes = 0;		// width * 4 bytes (R8G8B8A8)
+	int channels = 0;
+	auto image_data = stbi_load(fpath.string().c_str(), &width, &height, &channels, 4);
+	int row_in_bytes = width * 4;		// width * 4 bytes (R8G8B8A8)
+
+	// If failed to load..
+	if (width == 0 || height == 0)
+	{
+		return nullptr;
+	}
 
 	// Always assuming SRGB
-	auto desc = TextureDesc::make_2d(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET);
+	auto desc = TextureDesc::make_2d(
+		DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, width, height, 
+		D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET, 0, 1, D3D11_USAGE_DEFAULT, 0, 1, 0,
+		D3D11_RESOURCE_MISC_GENERATE_MIPS);
 	
 	// Create texture
 	GPUTexture new_texture;
 	m_dev->create_texture(desc, &new_texture, SubresourceData(image_data, row_in_bytes, 0));
 
-	void* internal_resource = new_texture.m_internal_resource.Get();
+	// Free data from host
+	stbi_image_free(image_data);
 
 	// Track using the internal resource
+	void* internal_resource = new_texture.m_internal_resource.Get();
 	m_path_mapper.insert({ fpath, internal_resource });
 
 	// Insert to persistent textures map and get texture
@@ -62,7 +77,7 @@ GPUTexture* TextureManager::load_from_disk(const std::filesystem::path& fpath)
 	return tex;
 }
 
-void TextureManager::remove(const GPUTexture* texture)
+void DiskTextureManager::remove(const GPUTexture* texture)
 {
 	auto internal_res = texture->m_internal_resource.Get();
 

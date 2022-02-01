@@ -105,7 +105,7 @@
     <ClCompile Include="src\AssimpLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\TextureManager.cpp">
+    <ClCompile Include="src\Graphics\DiskTextureManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -203,7 +203,10 @@
     <ClInclude Include="inc\AssimpLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\TextureManager.h">
+    <ClInclude Include="inc\Graphics\DiskTextureManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\stb\include\stb_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

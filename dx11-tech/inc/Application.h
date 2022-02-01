@@ -34,6 +34,7 @@ private:
 private:
 	bool m_paused = false;
 	bool m_app_alive = true;
+	bool m_vsync = true;
 
 	unique_ptr<class Window> m_win;
 	unique_ptr<class Input> m_input;
@@ -53,6 +54,7 @@ private:
 	GPUBuffer sp_vb_nor;
 	GPUBuffer sp_ib;
 	std::vector<AssimpMeshData> m_sp_meshes;
+	std::vector<GPUTexture*> m_sp_textures;
 
 	struct PerFrameData
 	{
@@ -84,7 +86,8 @@ private:
 	GraphicsPipeline r_p;
 
 	// linear minmagmip
-	Sampler def_samp;	
+	Sampler def_samp;
+	Sampler repeat_samp;
 
 	uint64_t m_curr_frame = 0;
 

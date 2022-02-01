@@ -39,7 +39,7 @@ protected:
 class GPUTexture : public GPUResource
 {
 	friend class GfxDevice;
-	friend class TextureManager;
+	friend class DiskTextureManager;
 private:
 	TextureDesc m_desc;
 	DsvPtr m_dsv;

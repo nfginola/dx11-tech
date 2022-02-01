@@ -161,7 +161,7 @@ void GfxDevice::compile_shader(ShaderStage stage, const std::filesystem::path& f
 		{
 			OutputDebugStringA((char*)error_blob->GetBufferPointer());
 			std::cout << (char*)error_blob->GetBufferPointer() << "\n";
-			//assert(false);
+			assert(false);
 			return;
 		}
 	}
@@ -265,6 +265,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 	bool is_array = d3d_desc.ArraySize > 1 ? true : false;
 	bool ms_on = d3d_desc.SampleDesc.Count > 1 ? true : false;
 	bool is_cube = d3d_desc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE ? true : false;
+	bool misc_gen_mips = d3d_desc.MiscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS ? true : false;
 
 	if (ms_on && d3d_desc.MipLevels != 1)
 		assert(false);		// https://docs.microsoft.com/en-us/windows/win32/api/d3d11/ns-d3d11-d3d11_texture2d_desc MipLevels = 1 required for MS
@@ -286,9 +287,14 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 		break;
 	case TextureType::e2D:
 	{
+		/*
+			Using Generate Mips Misc Flag disallows using initial data
+			https://stackoverflow.com/questions/53569263/directx-11-id3ddevicecreatetexture2d-with-initial-data-fail
+			We will load it at top-level manually through context
+		*/
 		HRCHECK(m_dev->get_device()->CreateTexture2D(
 			&d3d_desc,
-			subres ? &subres->m_subres : nullptr,
+			!misc_gen_mips && subres ? &subres->m_subres : nullptr,
 			(ID3D11Texture2D**)texture->m_internal_resource.ReleaseAndGetAddressOf()));
 		break;
 	}
@@ -397,8 +403,17 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 		));
 	
 		// Auto-gen mips
-		if (d3d_desc.MiscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS)
+		if (misc_gen_mips)
 		{
+			// Copy texture to top level first (initialization through CreateTexture2D is disabled when MISC_GEN_MIPS is on)
+
+			/*
+				We dont need to make staging resource because UpdateSubresource does that for us!
+				https://stackoverflow.com/questions/50396189/d3d11-usage-staging-what-kind-of-gpu-cpu-memory-is-used
+			*/
+			m_dev->get_context()->UpdateSubresource((ID3D11Texture2D*)texture->m_internal_resource.Get(), 
+				0, nullptr, subres->m_subres.pSysMem, subres->m_subres.SysMemPitch, 0);
+
 			assert(d3d_desc.BindFlags & D3D11_BIND_RENDER_TARGET);
 			m_dev->get_context()->GenerateMips(texture->m_srv.Get());
 		}
@@ -889,7 +904,7 @@ void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuff
 
 void GfxDevice::bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource)
 {
-	ID3D11ShaderResourceView* srvs[] = { resource->m_srv.Get() };
+	ID3D11ShaderResourceView* srvs[] = { resource ? resource->m_srv.Get() : nullptr };
 	auto& ctx = m_dev->get_context();
 
 	switch (stage)

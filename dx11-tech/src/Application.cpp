@@ -7,6 +7,8 @@
 #include "Camera/FPCController.h"
 #include "Camera/FPPCamera.h"
 
+#include "Graphics/DiskTextureManager.h"
+
 // Important that Globals is defined last, as the extern members need to be defined!
 // We can define GfxGlobals.h if we want to have a separation layer later 
 // Maybe we would like to have like WickedEngine where we have a Renderer.cpp and Renderer.hpp with all static functions
@@ -34,6 +36,7 @@ Application::Application()
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
 	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
 	ImGuiDevice::initialize(gfx::dev);
+	DiskTextureManager::initialize(gfx::dev);
 
 	// Declare UI 
 	gfx::imgui->add_ui_callback("default ui", [&]() { declare_ui(); });
@@ -272,6 +275,8 @@ Application::Application()
 		// create and bind persistent sampler
 		gfx::dev->create_sampler(SamplerDesc(), &def_samp);
 		gfx::dev->bind_sampler(0, ShaderStage::ePixel, &def_samp);
+
+
 	}
 
 	load_assets();
@@ -279,6 +284,7 @@ Application::Application()
 
 Application::~Application()
 {
+	DiskTextureManager::shutdown();
 	ImGuiDevice::shutdown();
 	FrameProfiler::shutdown();
 	GfxDevice::shutdown();
@@ -362,8 +368,13 @@ void Application::run()
 			gfx::dev->bind_vertex_buffers(0, _countof(sponza_vbs), sponza_vbs, strides);
 			gfx::dev->bind_index_buffer(&sp_ib);
 
-			for (const auto& mesh : m_sp_meshes)
+			for (int i = 0; i < m_sp_meshes.size(); ++i)
+			{
+				const auto& mesh = m_sp_meshes[i];
+				const auto& mat = m_sp_textures[i];
+				gfx::dev->bind_resource(0, ShaderStage::ePixel, mat);
 				gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
+			}
 
 			gfx::annotator->end_event();
 
@@ -391,7 +402,7 @@ void Application::run()
 		// Check present block CPU block (if vsync)
 		{
 			auto _ = FrameProfiler::Scoped("Presentation");
-			gfx::dev->present();
+			gfx::dev->present(m_vsync);
 		}
 
 		gfx::imgui->end_frame();
@@ -412,6 +423,11 @@ void Application::run()
 
 void Application::declare_ui()
 {
+	ImGui::Begin("Settings");
+	ImGui::Checkbox("Vsync", &m_vsync);
+	ImGui::End();
+
+
 	// Declare things to draw UI overlay
 	bool show_demo_window = true;
 	ImGui::ShowDemoWindow(&show_demo_window);
@@ -749,36 +765,26 @@ void Application::load_assets()
 
 	// confirm 1:1 mapping
 	assert(m_sp_meshes.size() == mats.size());
-
-	/*
-		We need a TextureManager with the responsibilities to:
-			- Upload texture to GPU
-			- Holds repositories for textures
-			- Hashes absolute filepath into ints
-			- Return a texture handle 
-
-			This is meant as a higher level interface for handling textures loaded from disk.
-			Manager offers a repository to avoid duplicates, meaning it is largely for loading textures from disk.
-						
-			// get identifier
-			GPUTexture* tex = mgr->upload(filepath);	
-			
-			// hash the absolute filepath --> use it as key for GPUTexture to handle duplications
-			// make another map to map <GPUTexture.m_internal_resource ptr, hashed value>
-			// --> Use the internal resource pointer as key for hash value! (IMPORTANT THAT IT IS THE INTERNAL RESOURCE)
-			// Using the internal resource solves the problem where a user would dereference the returned texture, store it somewhere
-			// and try to pass it in for removal. As long as its the same underlying resource, it will remove it accordingly.
-
-			We should probably override the == operator for GPUResources (check if they are all the same internal res and views)
-
-			// IF user passes in a GPU texture that doesnt exist in this repository, we simply return (ignore)
-		
-			// signal to remove the texture once all external outstanding references are gone (safe!)
-			// essentially drops the reference from the repository
-			mgr->remove(tex);
-		
 	
-	*/
+	for (const auto& mat : mats)
+	{
+		const auto& paths = std::get<AssimpMaterialData::PhongPaths>(mat.file_paths);
+		m_sp_textures.push_back(gfx::tex_mgr->load_from(paths.diffuse));
+	}
+
+	// sponza requires wrapping texture
+	D3D11_SAMPLER_DESC repeat{};
+	repeat.Filter = D3D11_FILTER_ANISOTROPIC;
+	repeat.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	repeat.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	repeat.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	repeat.MinLOD = -FLT_MAX;
+	repeat.MaxLOD = FLT_MAX;
+	repeat.MipLODBias = 0.0f;
+	repeat.MaxAnisotropy = 1;
+	repeat.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	gfx::dev->create_sampler(repeat, &repeat_samp);
+	gfx::dev->bind_sampler(1, ShaderStage::ePixel, &repeat_samp);
 
 
 	gfx::dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), &sp_vb_pos, SubresourceData((void*)positions.data()));

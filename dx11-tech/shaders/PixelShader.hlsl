@@ -5,11 +5,17 @@ struct PixelInput
     float3 normal : NORMAL;
 };
 
+Texture2D main_tex : register(t0);
+SamplerState repeat_samp : register(s1);
+
 float4 main(PixelInput input) : SV_TARGET
 {
     float3 col = normalize(input.normal);
     
     //return float4(0.f, 1.f, 0.f, 1.f);
+    
+    col = main_tex.Sample(repeat_samp, input.uv).rgb;
+    //col = float3(input.uv, 0.f);
     
     return float4(col, 1.f);
     //return g_vec;

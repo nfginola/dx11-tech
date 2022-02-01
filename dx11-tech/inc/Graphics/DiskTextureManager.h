@@ -2,16 +2,16 @@
 #include "Graphics/GfxTypes.h"
 #include "Graphics/GfxDevice.h"
 
-class TextureManager
+class DiskTextureManager
 {
 public:
 	static void initialize(GfxDevice* dev);
 	static void shutdown();
 
-	TextureManager(GfxDevice* dev);
-	~TextureManager();
+	DiskTextureManager(GfxDevice* dev);
+	~DiskTextureManager();
 
-	GPUTexture* load_from_disk(const std::filesystem::path& fpath);
+	GPUTexture* load_from(const std::filesystem::path& fpath);
 	void remove(const GPUTexture* texture);
 
 private:
