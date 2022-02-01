@@ -3,7 +3,7 @@
 #include <assimp/Importer.hpp>      // C++ importer interface
 #include <assimp/scene.h>           // Output data structure
 #include <assimp/postprocess.h>     // Post processing flags
-#include <assimp/pbrmaterial.h>
+//#include <assimp/pbrmaterial.h>	// deprecated
 
 struct AssimpMeshData 
 {
@@ -52,6 +52,8 @@ private:
 	void process_node(aiNode* node, const aiScene* scene);
 
 private:
+	std::filesystem::path m_directory;
+
 	std::vector<DirectX::SimpleMath::Vector3> m_positions;
 	std::vector<DirectX::SimpleMath::Vector2> m_uvs;
 	std::vector<DirectX::SimpleMath::Vector3> m_normals;

@@ -1,11 +1,12 @@
 #include "pch.h"
 #include "AssimpLoader.h"
 
-
 using namespace DirectX::SimpleMath;
 
-AssimpLoader::AssimpLoader(const std::filesystem::path& fpath)
+AssimpLoader::AssimpLoader(const std::filesystem::path& fpath) :
+	m_directory(std::filesystem::path(fpath.parent_path().string() + "/"))
 {
+	// Load assimp scene
 	Assimp::Importer importer;
 	const aiScene* scene = importer.ReadFile(
 		fpath.relative_path().string().c_str(),
@@ -25,14 +26,9 @@ AssimpLoader::AssimpLoader(const std::filesystem::path& fpath)
 	);
 
 	if (!scene)
-	{
-		fmt::print("File not found!\n");
-		return;
-	}
+		assert(false);
 
-	/*
-		Find out total amount of vertices and pre-allocate memory
-	*/
+	// Get total amount of vertices and pre-allocate memory
 	unsigned int total_verts = 0;
 	for (unsigned int i = 0; i < scene->mNumMeshes; ++i)
 		total_verts += scene->mMeshes[i]->mNumVertices;
@@ -61,7 +57,7 @@ void AssimpLoader::process_material(aiMaterial* material, const aiScene* scene)
 
 	material->GetTexture(aiTextureType_DIFFUSE, 0, &diffuse);
 
-	// Try getting normals, if unsuccessful, get from height
+	// Try getting normal map, if unsuccessful, get from height
 	ret = material->GetTexture(aiTextureType_NORMALS, 0, &normal);
 	if (ret != aiReturn_SUCCESS)
 		material->GetTexture(aiTextureType_HEIGHT, 0, &normal);
@@ -71,10 +67,18 @@ void AssimpLoader::process_material(aiMaterial* material, const aiScene* scene)
 
 	// Save
 	AssimpMaterialData::PhongPaths paths;
-	paths.diffuse = diffuse.C_Str();
-	paths.normal = normal.C_Str();
-	paths.specular = specular.C_Str();
-	paths.opacity = opacity.C_Str();
+	
+	// Set directory
+	paths.diffuse = m_directory;
+	paths.normal = m_directory;
+	paths.specular = m_directory;
+	paths.opacity = m_directory;
+
+	// Append file names
+	paths.diffuse += diffuse.C_Str();
+	paths.normal += normal.C_Str();
+	paths.specular += specular.C_Str();
+	paths.opacity += opacity.C_Str();
 
 	AssimpMaterialData data;
 	data.file_paths = paths;
@@ -86,7 +90,7 @@ void AssimpLoader::process_mesh(aiMesh* mesh, const aiScene* scene)
 	/*
 		Get all the the relevant vertex data from this mesh
 	*/
-	UINT vertex_start = m_positions.size();
+	UINT vertex_start = (UINT)m_positions.size();
 	for (unsigned int i = 0; i < mesh->mNumVertices; ++i)
 	{
 		Vector3 pos(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
@@ -118,7 +122,7 @@ void AssimpLoader::process_mesh(aiMesh* mesh, const aiScene* scene)
 		Save where this mesh starts in the index buffer
 	*/
 	//size_t index_start = (std::max)((int64_t)m_indices.size() - 1, (int64_t)0);
-	auto index_start = m_indices.size();
+	auto index_start = (UINT)m_indices.size();
 
 	/*
 		Go over this meshes faces and extract indices.
@@ -149,9 +153,7 @@ void AssimpLoader::process_mesh(aiMesh* mesh, const aiScene* scene)
 
 void AssimpLoader::process_node(aiNode* node, const aiScene* scene)
 {
-	/*
-		Process all meshes in this node
-	*/
+	// Process all meshes in this node
 	for (unsigned int i = 0; i < node->mNumMeshes; ++i)
 	{
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
@@ -163,10 +165,7 @@ void AssimpLoader::process_node(aiNode* node, const aiScene* scene)
 		process_material(material, scene);
 	}
 
-	/*
-		Recursively process all child nodes and process meshes in them.
-	*/
+	// Recursively process all child nodes and process meshes in them.
 	for (unsigned int i = 0; i < node->mNumChildren; ++i)
 		process_node(node->mChildren[i], scene);
-
 }

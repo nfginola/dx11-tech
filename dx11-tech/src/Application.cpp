@@ -52,6 +52,53 @@ Application::Application()
 	m_camera_controller = make_unique<FPCController>(m_input.get());
 	m_camera_controller->set_camera(m_cam.get());
 
+
+	/*
+	
+	
+		std::vector<SimpleVert> loadObj(filename)
+		{
+			std::vector<SimpleVert> my_vertices;
+			my_vertices.reserve(..)
+
+			std::vector<Positions> positions
+			std::vector<UV> uvs
+			std::vector<Normals> normals
+
+			// Fill positions, uvs, normals
+			..
+			..
+			..
+			..
+			..
+			..
+
+			// Actually combine pos, uv, normals into one vertex
+			...
+			...
+			my_vertices.push_back({ pos, uv, normal} )
+			...
+			...
+
+
+			return my_vertices;
+		}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	*/
+
+
+
+
 	/*
 		
 		To-do: 
@@ -104,12 +151,19 @@ Application::Application()
 				- Directory auto scanning
 				- Filters out .hlsli
 
-			- Add Assimp Loader										TO-DO
+			- Add Assimp Loader										DONE
+
+			- Refactor dependencies									DONE
+				- Lib linking and minimal files
+
+			- Add TextureManager									WIP
+				- Read notes in load_assets()
 
 			- Add a Model class										TO-DO
 				- Simply has Meshes and Materials (1:1 mapping)
 				- Later down the line, we want to reformat for
 					instancing.
+				- Make a naive version
 
 			- Add model repository									TO-DO
 				- Ignore MT contention problems
@@ -266,7 +320,7 @@ void Application::run()
 		*/
 		m_cb_elements[0].world_mat = DirectX::XMMatrixTranslation(2.f, 0.f, 0.f);
 		m_cb_elements[1].world_mat = DirectX::XMMatrixTranslation(-2.f, 0.f, 0.f);
-		m_cb_elements[2].world_mat = DirectX::XMMatrixScaling(0.07, 0.07, 0.07);
+		m_cb_elements[2].world_mat = DirectX::XMMatrixScaling(0.07f, 0.07f, 0.07f);
 
 		// Update graphics
 		gfx::dev->frame_start();
@@ -725,6 +779,7 @@ void Application::load_assets()
 		
 	
 	*/
+
 
 	gfx::dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), &sp_vb_pos, SubresourceData((void*)positions.data()));
 	gfx::dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &sp_vb_uv, SubresourceData((void*)uvs.data()));

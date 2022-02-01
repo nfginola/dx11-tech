@@ -3,7 +3,8 @@
 #include "Camera/FPPCamera.h"
 #include "Input.h"
 
-// Global dependency to ImGUI
+// Global dependency to ImGUI:
+// Showing controller data
 #include "Graphics/ImGuiDevice.h"
 namespace gfx { extern ImGuiDevice* imgui; }
 
