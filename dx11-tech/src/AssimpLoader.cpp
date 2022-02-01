@@ -45,9 +45,40 @@ AssimpLoader::AssimpLoader(const std::filesystem::path& fpath)
 	m_bitangents.reserve(total_verts);
 	m_meshes.reserve(scene->mNumMeshes); 
 
+	// Reserve memory for materials
+	m_materials.reserve(scene->mNumMaterials);
 
-	// start processing scene
+	// Start processing scene
 	process_node(scene->mRootNode, scene);
+}
+
+void AssimpLoader::process_material(aiMaterial* material, const aiScene* scene)
+{
+	aiReturn ret;
+
+	// Get file paths
+	aiString diffuse, normal, opacity, specular;
+
+	material->GetTexture(aiTextureType_DIFFUSE, 0, &diffuse);
+
+	// Try getting normals, if unsuccessful, get from height
+	ret = material->GetTexture(aiTextureType_NORMALS, 0, &normal);
+	if (ret != aiReturn_SUCCESS)
+		material->GetTexture(aiTextureType_HEIGHT, 0, &normal);
+
+	material->GetTexture(aiTextureType_OPACITY, 0, &opacity);
+	material->GetTexture(aiTextureType_SPECULAR, 0, &specular);
+
+	// Save
+	AssimpMaterialData::PhongPaths paths;
+	paths.diffuse = diffuse.C_Str();
+	paths.normal = normal.C_Str();
+	paths.specular = specular.C_Str();
+	paths.opacity = opacity.C_Str();
+
+	AssimpMaterialData data;
+	data.file_paths = paths;
+	m_materials.push_back(data);
 }
 
 void AssimpLoader::process_mesh(aiMesh* mesh, const aiScene* scene)
@@ -83,7 +114,6 @@ void AssimpLoader::process_mesh(aiMesh* mesh, const aiScene* scene)
 		}
 	}
 	
-
 	/*
 		Save where this mesh starts in the index buffer
 	*/
@@ -110,13 +140,11 @@ void AssimpLoader::process_mesh(aiMesh* mesh, const aiScene* scene)
 	amd.index_count = index_count;
 
 	/*
-		It seems like the indices are local to the mesh part, hence why vertex_start is required.
-		
+		Indices are local to the mesh!
+		Thus requiring the offset to this mesh in the joint vertex buffer
 	*/
 	amd.vertex_start = vertex_start;
 	m_meshes.push_back(amd);
-
-	
 }
 
 void AssimpLoader::process_node(aiNode* node, const aiScene* scene)
@@ -127,7 +155,12 @@ void AssimpLoader::process_node(aiNode* node, const aiScene* scene)
 	for (unsigned int i = 0; i < node->mNumMeshes; ++i)
 	{
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+		
+		// Get material for this mesh
+		aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+
 		process_mesh(mesh, scene);
+		process_material(material, scene);
 	}
 
 	/*

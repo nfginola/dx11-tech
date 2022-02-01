@@ -311,8 +311,6 @@ void Application::run()
 			for (const auto& mesh : m_sp_meshes)
 				gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
 
-			//gfx::dev->draw_indexed(786801, 0, 0);
-			//gfx::dev->draw_indexed(786801, 0, 0);
 			gfx::annotator->end_event();
 
 			gfx::dev->end_pass();
@@ -550,17 +548,14 @@ void Application::on_resize(UINT width, UINT height)
 
 	gfx::dev->resize_swapchain(width, height);
 
+	// recreate framebuffer for backbuffer
+	gfx::dev->create_framebuffer(FramebufferDesc({ gfx::dev->get_backbuffer() }), &fb);
+
 	// resize vp for backbuffer
 	viewports[0].Width = (FLOAT)width;
 	viewports[0].Height = (FLOAT)height;
-	//auto im_vp = ImGui::GetMainViewport();
-	//viewports[0].Width = im_vp->WorkSize.x;
-	//viewports[0].Height = im_vp->WorkSize.y;
 	viewports[0].TopLeftX = 0.f;
 	viewports[0].TopLeftY = 0.f;
-
-	// recreate framebuffer for backbuffer
-	gfx::dev->create_framebuffer(FramebufferDesc({ gfx::dev->get_backbuffer() }), &fb);
 }
 
 void Application::update(float dt)
@@ -578,15 +573,7 @@ void Application::update(float dt)
 
 LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	/*
-	
-		We may want to consider having an Engine custom_win_proc which have defaults
-		and the application win_proc can extend it. 
-		Essentailly the same method as we are doing with the Window and Application
-	*/
-
-	if (gfx::imgui->win_proc(hwnd, uMsg, wParam, lParam))
-		return true;
+	gfx::imgui->win_proc(hwnd, uMsg, wParam, lParam);
 
 	switch (uMsg)
 	{
@@ -704,12 +691,45 @@ void Application::load_assets()
 	const auto& indices = loader.get_indices();
 	//const auto& meshes = loader.get_meshes();
 	m_sp_meshes = loader.get_meshes();
+	const auto& mats = loader.get_materials();
+
+	// confirm 1:1 mapping
+	assert(m_sp_meshes.size() == mats.size());
+
+	/*
+		We need a TextureManager with the responsibilities to:
+			- Upload texture to GPU
+			- Holds repositories for textures
+			- Hashes absolute filepath into ints
+			- Return a texture handle 
+
+			This is meant as a higher level interface for handling textures loaded from disk.
+			Manager offers a repository to avoid duplicates, meaning it is largely for loading textures from disk.
+						
+			// get identifier
+			GPUTexture* tex = mgr->upload(filepath);	
+			
+			// hash the absolute filepath --> use it as key for GPUTexture to handle duplications
+			// make another map to map <GPUTexture.m_internal_resource ptr, hashed value>
+			// --> Use the internal resource pointer as key for hash value! (IMPORTANT THAT IT IS THE INTERNAL RESOURCE)
+			// Using the internal resource solves the problem where a user would dereference the returned texture, store it somewhere
+			// and try to pass it in for removal. As long as its the same underlying resource, it will remove it accordingly.
+
+			We should probably override the == operator for GPUResources (check if they are all the same internal res and views)
+
+			// IF user passes in a GPU texture that doesnt exist in this repository, we simply return (ignore)
+		
+			// signal to remove the texture once all external outstanding references are gone (safe!)
+			// essentially drops the reference from the repository
+			mgr->remove(tex);
+		
+	
+	*/
 
 	gfx::dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), &sp_vb_pos, SubresourceData((void*)positions.data()));
 	gfx::dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &sp_vb_uv, SubresourceData((void*)uvs.data()));
 	gfx::dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &sp_vb_nor, SubresourceData((void*)normals.data()));
 	gfx::dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &sp_ib, SubresourceData((void*)indices.data()));
-
 }
 
 

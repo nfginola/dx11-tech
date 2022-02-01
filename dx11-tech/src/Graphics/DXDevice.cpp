@@ -244,10 +244,10 @@ void DXDevice::resize_swapchain(UINT width, UINT height)
 	best_mode.Width = width;
 	best_mode.Height = height;
 
+	HRCHECK(m_sc->ResizeTarget(&best_mode));
 	HRCHECK(m_sc->ResizeBuffers(s_buffer_count, width, height, best_mode.Format, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
 	// Automatically choose the width and height to match the client rect for HWNDs
 	//HRCHECK(m_sc->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0));
-	HRCHECK(m_sc->ResizeTarget(&best_mode));
 	
 	// Grab new texture and and recreate render target for it
 	create_bb_target();
