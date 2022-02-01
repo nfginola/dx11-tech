@@ -36,7 +36,7 @@ private:
 	float m_max_speed = 28.f;
 
 	// Sensitivity
-	float m_mouse_sens = 12.3f;
+	float m_mouse_sens = 0.07f;
 	
 
 

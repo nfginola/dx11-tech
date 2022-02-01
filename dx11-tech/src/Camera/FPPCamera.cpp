@@ -76,11 +76,11 @@ void FPPCamera::update_orientation(float mouse_x_delta, float mouse_y_delta, flo
 
 	*/
 
-	m_yaw -= mouse_x_delta * m_sensitivity * dt;
+	m_yaw -= mouse_x_delta * m_sensitivity;
 
 	// Delta Y is positive downwards by default, therefore we add negative of Y delta to pitch
 	// (Positive pitch is rotation around X/Z using RH rule)
-	m_pitch += -mouse_y_delta * m_sensitivity * dt;	
+	m_pitch += -mouse_y_delta * m_sensitivity;	
 
 	// Restrict 
 	if (m_pitch > 89.f)
