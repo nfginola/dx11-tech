@@ -778,7 +778,7 @@ void Application::load_assets()
 		m_sp_textures.push_back(gfx::tex_mgr->load_from(paths.diffuse));
 	}
 
-	// sponza requires wrapping texture
+	// sponza requires wrapping texture, we will also use anisotropic filtering here (16) 
 	D3D11_SAMPLER_DESC repeat{};
 	repeat.Filter = D3D11_FILTER_ANISOTROPIC;
 	repeat.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -787,7 +787,7 @@ void Application::load_assets()
 	repeat.MinLOD = -FLT_MAX;
 	repeat.MaxLOD = FLT_MAX;
 	repeat.MipLODBias = 0.0f;
-	repeat.MaxAnisotropy = 1;
+	repeat.MaxAnisotropy = 16;
 	repeat.ComparisonFunc = D3D11_COMPARISON_NEVER;
 	gfx::dev->create_sampler(repeat, &repeat_samp);
 	gfx::dev->bind_sampler(1, ShaderStage::ePixel, &repeat_samp);
