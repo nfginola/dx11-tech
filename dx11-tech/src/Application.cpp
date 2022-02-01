@@ -159,14 +159,20 @@ Application::Application()
 			- Refactor dependencies									DONE
 				- Lib linking and minimal files
 
-			- Add TextureManager									WIP
+			- Add TextureManager									DONE
 				- Read notes in load_assets()
+
+			- Load Sponza Textures									DONE
+
+			- Fix auto-gen mipmaps									DONE
+				- Using UpdateSubresource to do
+				  staging copy
 
 			- Add a Model class										TO-DO
 				- Simply has Meshes and Materials (1:1 mapping)
 				- Later down the line, we want to reformat for
 					instancing.
-				- Make a naive version
+				- Make a naive version for now
 
 			- Add model repository									TO-DO
 				- Ignore MT contention problems
