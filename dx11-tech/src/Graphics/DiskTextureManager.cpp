@@ -56,7 +56,7 @@ GPUTexture* DiskTextureManager::load_from(const std::filesystem::path& fpath)
 	// Always assuming SRGB
 	auto desc = TextureDesc::make_2d(
 		DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, width, height, 
-		D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET, 0, 1, D3D11_USAGE_DEFAULT, 0, 1, 0,
+		D3D11_BIND_SHADER_RESOURCE, 0, 1, D3D11_USAGE_DEFAULT, 0, 1, 0,
 		D3D11_RESOURCE_MISC_GENERATE_MIPS);
 	
 	// Create texture

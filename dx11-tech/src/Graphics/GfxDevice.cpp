@@ -267,6 +267,11 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 	bool is_cube = d3d_desc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE ? true : false;
 	bool misc_gen_mips = d3d_desc.MiscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS ? true : false;
 
+	// auto gen using GenerateMips requires texture to be written to (other subres)
+	// we automatically append this incase user forgets
+	if (misc_gen_mips)
+		d3d_desc.BindFlags |= D3D11_BIND_RENDER_TARGET;	
+
 	if (ms_on && d3d_desc.MipLevels != 1)
 		assert(false);		// https://docs.microsoft.com/en-us/windows/win32/api/d3d11/ns-d3d11-d3d11_texture2d_desc MipLevels = 1 required for MS
 
