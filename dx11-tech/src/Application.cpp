@@ -236,16 +236,6 @@ Application::Application()
 		gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "VertexShader.hlsl", &vs);
 		gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "PixelShader.hlsl", &ps);
 
-		// Use VB/IB for triangle (non-interleaved)
-		std::vector<DirectX::XMFLOAT3> positions = { { -0.5f, -0.5f, 0.f }, { 0.f, 0.5f, 0.f }, { 0.5f, -0.5f, 0.f } };
-		std::vector<DirectX::XMFLOAT2> uvs = { {0.f, 1.f}, {1.f, 0.f}, {1.f, 1.f} };
-		std::vector<DirectX::XMFLOAT3> normals = { { 1.f, 0.f, 0.f }, { 0.f, 1.f, 0.f }, { 0.f, 0.f, 1.f } };
-		std::vector<uint32_t> indices = { 0, 1, 2 };
-		gfx::dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), &vb_pos, SubresourceData(positions.data()));
-		gfx::dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &vb_uv, SubresourceData(uvs.data()));
-		gfx::dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &vb_nor, SubresourceData(normals.data()));
-		gfx::dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &ib, SubresourceData(indices.data()));
-
 		// Interleaved layout
 		auto layout = InputLayoutDesc()
 			.append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0)
@@ -326,9 +316,7 @@ void Application::run()
 
 			Each CBElement is aligned(256)
 		*/
-		m_cb_elements[0].world_mat = DirectX::XMMatrixTranslation(2.f, 0.f, 0.f);
-		m_cb_elements[1].world_mat = DirectX::XMMatrixTranslation(-2.f, 0.f, 0.f);
-		m_cb_elements[2].world_mat = DirectX::XMMatrixScaling(0.07f, 0.07f, 0.07f);
+		m_cb_elements[0].world_mat = DirectX::XMMatrixScaling(0.07f, 0.07f, 0.07f);
 
 		// Update graphics
 		gfx::dev->frame_start();
@@ -348,28 +336,17 @@ void Application::run()
 			auto _ = FrameProfiler::Scoped("Geometry Pass");
 			gfx::dev->begin_pass(&r_fb);
 			gfx::dev->bind_viewports({ viewports[1] });
-			// draw
-			gfx::dev->bind_pipeline(&p);
-			GPUBuffer vbs[] = { vb_pos, vb_uv, vb_nor };
-			UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
-			gfx::dev->bind_vertex_buffers(0, _countof(vbs), vbs, strides);
-			gfx::dev->bind_index_buffer(&ib);
-	
-			gfx::annotator->begin_event("Draw Triangles");
-			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 0);
-			gfx::dev->draw_indexed(3);
-			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 1);
-			gfx::dev->draw_indexed(3);
-			gfx::annotator->end_event();
 
 			// draw sponza
-			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 2);
-
-			gfx::annotator->begin_event("Draw sponza");
+			gfx::annotator->begin_event("Draw Sponza");
+			UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
+			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 0);
 			GPUBuffer sponza_vbs[] = { sp_vb_pos, sp_vb_uv, sp_vb_nor };
 			gfx::dev->bind_vertex_buffers(0, _countof(sponza_vbs), sponza_vbs, strides);
 			gfx::dev->bind_index_buffer(&sp_ib);
-
+			
+			// draw each submesh
+			gfx::dev->bind_pipeline(&p);
 			for (int i = 0; i < m_sp_meshes.size(); ++i)
 			{
 				const auto& mesh = m_sp_meshes[i];
@@ -377,7 +354,6 @@ void Application::run()
 				gfx::dev->bind_resource(0, ShaderStage::ePixel, mat);
 				gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
 			}
-
 			gfx::annotator->end_event();
 
 			gfx::dev->end_pass();

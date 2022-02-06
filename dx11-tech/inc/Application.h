@@ -39,14 +39,7 @@ private:
 	unique_ptr<class Window> m_win;
 	unique_ptr<class Input> m_input;
 
-
 	std::vector<D3D11_VIEWPORT> viewports;										
-
-	// triangle (temporary)
-	GPUBuffer vb_pos;
-	GPUBuffer vb_uv;
-	GPUBuffer vb_nor;
-	GPUBuffer ib;
 
 	// sponza
 	GPUBuffer sp_vb_pos;
@@ -65,7 +58,7 @@ private:
 	{
 		DirectX::XMMATRIX world_mat;
 	};
-	std::array<CBElement, 3> m_cb_elements;
+	std::array<CBElement, 1> m_cb_elements;
 
 	// cbuffer
 	GPUBuffer m_cb_per_frame;
