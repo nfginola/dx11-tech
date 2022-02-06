@@ -35,11 +35,11 @@ public:
 		Vertex data are returned in non-interleaved form
 		Packing to interleaved form is up to the end user
 	*/
-	const std::vector<DirectX::SimpleMath::Vector3>& get_positions() { return m_positions; }
-	const std::vector<DirectX::SimpleMath::Vector2>& get_uvs() { return m_uvs; }
-	const std::vector<DirectX::SimpleMath::Vector3>& get_normals() { return m_normals; }
-	const std::vector<DirectX::SimpleMath::Vector3>& get_tangents() { return m_tangents; }
-	const std::vector<DirectX::SimpleMath::Vector3>& get_bitangents() { return m_bitangents; }
+	const std::vector<aiVector3D>& get_positions() { return m_positions; }
+	const std::vector<aiVector2D>& get_uvs() { return m_uvs; }
+	const std::vector<aiVector3D>& get_normals() { return m_normals; }
+	const std::vector<aiVector3D>& get_tangents() { return m_tangents; }
+	const std::vector<aiVector3D>& get_bitangents() { return m_bitangents; }
 
 	const std::vector<uint32_t>& get_indices() { return m_indices; }
 
@@ -54,11 +54,11 @@ private:
 private:
 	std::filesystem::path m_directory;
 
-	std::vector<DirectX::SimpleMath::Vector3> m_positions;
-	std::vector<DirectX::SimpleMath::Vector2> m_uvs;
-	std::vector<DirectX::SimpleMath::Vector3> m_normals;
-	std::vector<DirectX::SimpleMath::Vector3> m_tangents;
-	std::vector<DirectX::SimpleMath::Vector3> m_bitangents;
+	std::vector<aiVector3D> m_positions;
+	std::vector<aiVector2D> m_uvs;
+	std::vector<aiVector3D> m_normals;
+	std::vector<aiVector3D> m_tangents;
+	std::vector<aiVector3D> m_bitangents;
 
 	std::vector<uint32_t> m_indices;
 

@@ -93,32 +93,17 @@ void AssimpLoader::process_mesh(aiMesh* mesh, const aiScene* scene)
 	UINT vertex_start = (UINT)m_positions.size();
 	for (unsigned int i = 0; i < mesh->mNumVertices; ++i)
 	{
-		Vector3 pos(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
-		Vector3 nor(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
-
-		m_positions.push_back(pos);
-		m_normals.push_back(nor);
+		m_positions.push_back(mesh->mVertices[i]);
+		m_normals.push_back(mesh->mNormals[i]);
 
 		if (mesh->mTextureCoords[0])
-		{
-			Vector2 uv(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
-
-			//if (uv.x < 0 || uv.y < 0)
-			//	fmt::print("hey\n");
-			m_uvs.push_back(uv);
-		}
+			m_uvs.push_back({ mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y });
 
 		if (mesh->mTangents)
-		{
-			Vector3 tangent(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z);
-			m_tangents.push_back(tangent);
-		}
+			m_tangents.push_back(mesh->mTangents[i]);
 
 		if (mesh->mBitangents)
-		{
-			Vector3 bitangent(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z);
-			m_bitangents.push_back(bitangent);
-		}
+			m_bitangents.push_back(mesh->mBitangents[i]);
 	}
 	
 	/*
