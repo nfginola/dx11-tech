@@ -41,16 +41,12 @@ Application::Application()
 	// Declare UI 
 	gfx::imgui->add_ui_callback("default ui", [&]() { declare_ui(); });
 	gfx::imgui->add_ui_callback("profiler", [&]() { declare_profiler_ui();  });
-	gfx::imgui->add_ui_callback("shaderdirs", [&]() { declare_shader_reloader_ui();  });
+	gfx::imgui->add_ui_callback("shader reloading", [&]() { declare_shader_reloader_ui();  });
 
 	// Create perspective camera
 	m_cam = make_unique<FPPCamera>(90.f, (float)WIDTH/HEIGHT, 0.1f, 1000.f);
 	m_cam->set_position(0.f, 0.f, -5.f);
 	
-	// Create secondary camera
-	m_cam2 = make_unique<FPPCamera>(90.f, (float)WIDTH / HEIGHT, 0.1f, 1000.f);
-	m_cam2->set_position(0.f, 0.f, -15.f);
-
 	// Create a First-Person Camera Controller and attach a First-Person Perspective camera
 	m_camera_controller = make_unique<FPCController>(m_input.get());
 	m_camera_controller->set_camera(m_cam.get());
@@ -620,7 +616,12 @@ void Application::create_resolution_dependent_resources(UINT width, UINT height)
 
 void Application::on_resize(UINT width, UINT height)
 {
+	if (width == m_win->get_client_width() && height == m_win->get_client_height())
+		return;
+
 	fmt::print("resize with dimensions: [Width: {}], [Height: {}]\n", m_resized_client_area.first, m_resized_client_area.second);
+
+	m_win->resize_client(width, height);
 
 	gfx::dev->resize_swapchain(width, height);
 
@@ -636,13 +637,6 @@ void Application::on_resize(UINT width, UINT height)
 
 void Application::update(float dt)
 {
-	// Possess different cameras
-	if (m_input->key_pressed(Keys::D1))		m_camera_controller->set_camera(m_cam.get());
-	if (m_input->key_pressed(Keys::D2))		m_camera_controller->set_camera(m_cam2.get());
-
-	// Shader reload test
-	if (m_input->key_pressed(Keys::R))		gfx::dev->recompile_pipeline_shaders_by_name("fullscreenQuadPS");
-
 	// Update camera controller
 	m_camera_controller->update(dt);
 }

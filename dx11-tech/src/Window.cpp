@@ -181,6 +181,12 @@ int Window::get_client_height() const
 	return m_client_height;
 }
 
+void Window::resize_client(UINT width, UINT height)
+{
+	m_client_width = width;
+	m_client_height = height;
+}
+
 std::string Window::get_next_id()
 {
 	static int id = 0;

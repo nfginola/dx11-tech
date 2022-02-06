@@ -19,6 +19,8 @@ public:
 	HWND get_hwnd() const;
 	int get_client_width() const;
 	int get_client_height() const;
+
+	void resize_client(UINT width, UINT height);
 	
 private:
 	void register_window();
