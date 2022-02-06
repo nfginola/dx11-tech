@@ -414,7 +414,8 @@ void Application::run()
 		dt = frame_time.elapsed(Timer::Unit::Seconds);
 		perf::profiler->frame_end();
 	
-		// Wait for end of frame for safe resizing
+		// Resize once at the end of a frame
+		// Avoid resizing constantly
 		if (m_should_resize)
 		{
 			on_resize(m_resized_client_area.first, m_resized_client_area.second);
@@ -714,13 +715,13 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 	}
 	case WM_EXITSIZEMOVE:
 	{
+		m_paused = false;
+
 		if (m_resize_allowed)
 		{
 			m_should_resize = true;
 			m_resize_allowed = false;
 		}
-
-		m_paused = false;
 		break;
 	}
 
