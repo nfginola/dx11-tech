@@ -1,26 +1,11 @@
 #pragma once
-
+#include "AssimpTypes.h"
 #include <assimp/Importer.hpp>      // C++ importer interface
 #include <assimp/scene.h>           // Output data structure
 #include <assimp/postprocess.h>     // Post processing flags
 //#include <assimp/pbrmaterial.h>	// deprecated
 
-struct AssimpMeshData 
-{
-	UINT index_start = 0;
-	UINT index_count = 0;
-	UINT vertex_start = 0;
-};
 
-struct AssimpMaterialData
-{
-	struct PhongPaths
-	{
-		std::filesystem::path diffuse, normal, specular, opacity;
-	};
-
-	std::variant<PhongPaths> file_paths;
-};
 
 
 class AssimpLoader

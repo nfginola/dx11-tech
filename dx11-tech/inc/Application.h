@@ -40,17 +40,31 @@ private:
 	unique_ptr<class Window> m_win;
 	unique_ptr<class Input> m_input;
 
+	unique_ptr<class FPCController> m_camera_controller;
+	unique_ptr<class FPPCamera> m_cam;
+
 	std::vector<D3D11_VIEWPORT> viewports;										
 
-	std::vector<Material> m_materials;
-	// sponza
-	Model m_sponza;
-	GPUBuffer sp_vb_pos;
-	GPUBuffer sp_vb_uv;
-	GPUBuffer sp_vb_nor;
-	GPUBuffer sp_ib;
-	std::vector<AssimpMeshData> m_sp_meshes;
-	std::vector<GPUTexture*> m_sp_textures;
+	bool m_resize_allowed = false;
+	bool m_should_resize = false;
+	std::pair<UINT, UINT> m_resized_client_area;
+
+	uint64_t m_curr_frame = 0;
+
+	/*
+		Shader reloader variables
+	*/
+	std::set<std::string> shader_filenames;
+	bool do_once = true;
+	const char* selected_item = "";
+
+
+
+	/*
+		Renderer variables
+	*/
+
+	std::vector<const Model*> m_models;
 
 	struct PerFrameData
 	{
@@ -67,9 +81,6 @@ private:
 	GPUBuffer m_cb_per_frame;
 	GPUBuffer m_big_cb;
 
-	unique_ptr<class FPCController> m_camera_controller;
-	unique_ptr<class FPPCamera> m_cam;
-
 	// render to texture 
 	GPUTexture d_32;
 	GPUTexture r_tex;		
@@ -84,20 +95,10 @@ private:
 	Sampler def_samp;
 	Sampler repeat_samp;
 
-	uint64_t m_curr_frame = 0;
-
-	bool m_resize_allowed = false;
-	bool m_should_resize = false;
-	std::pair<UINT, UINT> m_resized_client_area;
 
 
 
-	/*
-		Shader reloader variables
-	*/
-	std::set<std::string> shader_filenames;
-	bool do_once = true;
-	const char* selected_item = "";
+
 
 
 

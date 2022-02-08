@@ -19,11 +19,11 @@ public:
 	Model& set_ib(GPUBuffer ib);
 	Model& add_mesh(Mesh mesh, const Material* mat);
 
-	const std::vector<GPUBuffer>& get_vbs();
-	GPUBuffer* get_ib();
+	const std::vector<GPUBuffer>& get_vbs() const;
+	const GPUBuffer* get_ib() const;
 	
-	const std::vector<Mesh>& get_meshes();
-	const std::vector<const Material*>& get_materials();
+	const std::vector<Mesh>& get_meshes() const;
+	const std::vector<const Material*>& get_materials() const;
 
 private:
 	std::vector<GPUBuffer> m_vbs;

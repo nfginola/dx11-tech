@@ -24,7 +24,6 @@ void DiskTextureManager::shutdown()
 DiskTextureManager::DiskTextureManager(GfxDevice* dev) :
 	m_dev(dev)
 {
-
 }
 
 DiskTextureManager::~DiskTextureManager()

@@ -20,22 +20,22 @@ Model& Model::add_mesh(Mesh mesh, const Material* mat)
 	return *this;
 }
 
-const std::vector<GPUBuffer>& Model::get_vbs()
+const std::vector<GPUBuffer>& Model::get_vbs() const
 {
 	return m_vbs;
 }
 
-GPUBuffer* Model::get_ib()
+const GPUBuffer* Model::get_ib() const
 {
 	return &m_ib;
 }
 
-const std::vector<Mesh>& Model::get_meshes()
+const std::vector<Mesh>& Model::get_meshes() const
 {
 	return m_meshes;
 }
 
-const std::vector<const Material*>& Model::get_materials()
+const std::vector<const Material*>& Model::get_materials() const
 {
 	return m_materials;
 }

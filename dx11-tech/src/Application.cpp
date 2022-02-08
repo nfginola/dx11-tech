@@ -8,6 +8,8 @@
 #include "Camera/FPPCamera.h"
 
 #include "Graphics/DiskTextureManager.h"
+#include "Graphics/MaterialManager.h"
+#include "Graphics/ModelManager.h"
 #include "Graphics/Model.h"
 
 // Important that Globals is defined last, as the extern members need to be defined!
@@ -38,6 +40,8 @@ Application::Application()
 	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
 	ImGuiDevice::initialize(gfx::dev);
 	DiskTextureManager::initialize(gfx::dev);
+	MaterialManager::initialize(gfx::tex_mgr);
+	ModelManager::initialize(gfx::dev, gfx::mat_mgr);
 
 	// Declare UI 
 	gfx::imgui->add_ui_callback("default ui", [&]() { declare_ui(); });
@@ -272,11 +276,29 @@ Application::Application()
 
 	}
 
+
+	// sponza requires wrapping texture, we will also use anisotropic filtering here (16) 
+	D3D11_SAMPLER_DESC repeat{};
+	repeat.Filter = D3D11_FILTER_ANISOTROPIC;
+	repeat.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	repeat.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	repeat.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	repeat.MinLOD = -FLT_MAX;
+	repeat.MaxLOD = FLT_MAX;
+	repeat.MipLODBias = 0.0f;
+	repeat.MaxAnisotropy = 16;
+	repeat.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	gfx::dev->create_sampler(repeat, &repeat_samp);
+	gfx::dev->bind_sampler(1, ShaderStage::ePixel, &repeat_samp);
+
+
 	load_assets();
 }
 
 Application::~Application()
 {
+	ModelManager::shutdown();
+	MaterialManager::shutdown();
 	DiskTextureManager::shutdown();
 	ImGuiDevice::shutdown();
 	FrameProfiler::shutdown();
@@ -293,7 +315,6 @@ void Application::run()
 
 		// Block here if paused
 		while (m_paused);
-	
 		m_win->pump_messages();
 
 		// Break as soon as possible
@@ -304,20 +325,6 @@ void Application::run()
 			
 		// Update CPU states
 		update(dt);
-
-		// Update persistent per frame data
-		m_cb_dat.view_mat = m_camera_controller->get_active_camera()->get_view_mat();
-		m_cb_dat.proj_mat = m_camera_controller->get_active_camera()->get_proj_mat();
-
-		// Update per draw
-		// https://developer.nvidia.com/content/constant-buffers-without-constant-pain-0
-		/*
-			Maybe its not such a good idea to do this now for draw calls (premature optimization).
-			Lets just stick with the normal cbuffers for now.
-
-			Each CBElement is aligned(256)
-		*/
-		m_cb_elements[0].world_mat = DirectX::XMMatrixScaling(0.07f, 0.07f, 0.07f);
 
 		// Update graphics
 		gfx::dev->frame_start();
@@ -337,41 +344,31 @@ void Application::run()
 			auto _ = FrameProfiler::Scoped("Geometry Pass");
 			gfx::dev->begin_pass(&r_fb);
 			gfx::dev->bind_viewports({ viewports[1] });
-
-			// draw sponza
-			gfx::annotator->begin_event("Draw Sponza");
 			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 0);
 
-			//UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
-			//GPUBuffer sponza_vbs[] = { sp_vb_pos, sp_vb_uv, sp_vb_nor };
-			//gfx::dev->bind_vertex_buffers(0, _countof(sponza_vbs), sponza_vbs, strides);
-			//gfx::dev->bind_index_buffer(&sp_ib);
+			// draw models
+			gfx::annotator->begin_event("Draw Models");
 
-			UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
-			gfx::dev->bind_vertex_buffers(0, m_sponza.get_vbs().size(), m_sponza.get_vbs().data(), strides);
-			gfx::dev->bind_index_buffer(m_sponza.get_ib());
-			
-			// draw each submesh
-			gfx::dev->bind_pipeline(&p);
-			//for (int i = 0; i < m_sp_meshes.size(); ++i)
-			//{
-			//	const auto& mesh = m_sp_meshes[i];
-			//	const auto& mat = m_sp_textures[i];
-			//	gfx::dev->bind_resource(0, ShaderStage::ePixel, mat);
-			//	gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
-			//}
-			const auto& meshes = m_sponza.get_meshes();
-			const auto& materials = m_sponza.get_materials();
-			for (int i = 0; i < meshes.size(); ++i)
+			for (const auto& model : m_models)
 			{
-				const auto& mesh = meshes[i];
-				const auto& mat = materials[i];
-				gfx::dev->bind_resource(0, ShaderStage::ePixel, mat->get_texture(Material::Texture::eAlbedo));
-				gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
+				UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
+				gfx::dev->bind_vertex_buffers(0, model->get_vbs().size(), model->get_vbs().data(), strides);
+				gfx::dev->bind_index_buffer(model->get_ib());
+
+				// draw each submesh
+				gfx::dev->bind_pipeline(&p);
+				const auto& meshes = model->get_meshes();
+				const auto& materials = model->get_materials();
+				for (int i = 0; i < meshes.size(); ++i)
+				{
+					const auto& mesh = meshes[i];
+					const auto& mat = materials[i];
+					gfx::dev->bind_resource(0, ShaderStage::ePixel, mat->get_texture(Material::Texture::eAlbedo));
+					gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
+				}
 			}
 
 			gfx::annotator->end_event();
-
 			gfx::dev->end_pass();
 		}
 
@@ -632,6 +629,20 @@ void Application::update(float dt)
 {
 	// Update camera controller
 	m_camera_controller->update(dt);
+
+	// Update persistent per frame data
+	m_cb_dat.view_mat = m_camera_controller->get_active_camera()->get_view_mat();
+	m_cb_dat.proj_mat = m_camera_controller->get_active_camera()->get_proj_mat();
+
+	// Update per draw
+	// https://developer.nvidia.com/content/constant-buffers-without-constant-pain-0
+	/*
+		Maybe its not such a good idea to do this now for draw calls (premature optimization).
+		Lets just stick with the normal cbuffers for now.
+
+		Each CBElement is aligned(256)
+	*/
+	m_cb_elements[0].world_mat = DirectX::XMMatrixScaling(0.07f, 0.07f, 0.07f);
 }
 
 LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -746,66 +757,44 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
 void Application::load_assets()
 {
-	AssimpLoader loader("models/sponza/Sponza.fbx");
+	//AssimpLoader loader("models/sponza/Sponza.fbx");
 
-	const auto& positions = loader.get_positions();
-	const auto& uvs = loader.get_uvs();
-	const auto& normals = loader.get_normals();
-	const auto& indices = loader.get_indices();
+	//const auto& positions = loader.get_positions();
+	//const auto& uvs = loader.get_uvs();
+	//const auto& normals = loader.get_normals();
+	//const auto& indices = loader.get_indices();
 	//const auto& meshes = loader.get_meshes();
-	m_sp_meshes = loader.get_meshes();
-	const auto& mats = loader.get_materials();
+	//const auto& mats = loader.get_materials();
+	//assert(meshes.size() == mats.size());
 
-	// confirm 1:1 mapping
-	assert(m_sp_meshes.size() == mats.size());
-	
-	for (const auto& mat : mats)
-	{
-		const auto& paths = std::get<AssimpMaterialData::PhongPaths>(mat.file_paths);
+	//GPUBuffer pos, uv, nor, idx;
+	//gfx::dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), &pos, SubresourceData((void*)positions.data()));
+	//gfx::dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &uv, SubresourceData((void*)uvs.data()));
+	//gfx::dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &nor, SubresourceData((void*)normals.data()));
+	//gfx::dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &idx, SubresourceData((void*)indices.data()));
 
-		auto diffuse = gfx::tex_mgr->load_from(paths.diffuse);
-		m_sp_textures.push_back(diffuse);
-	
-		// Push material
-		auto mat = Material().set_texture(Material::Texture::eAlbedo, diffuse);
-		m_materials.push_back(mat);
-	}
+	//// Set partial geometry data for model
+	//auto model = Model().set_ib(idx).set_vbs({ pos, uv, nor });
+	//
+	//for (int i = 0; i < meshes.size(); ++i)
+	//{
+	//	// Add submesh data
+	//	Mesh mesh;
+	//	const auto& assimp_mesh = meshes[i];
+	//	std::memcpy(&mesh, &assimp_mesh, sizeof(AssimpMeshData));
 
-	// sponza requires wrapping texture, we will also use anisotropic filtering here (16) 
-	D3D11_SAMPLER_DESC repeat{};
-	repeat.Filter = D3D11_FILTER_ANISOTROPIC;
-	repeat.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-	repeat.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-	repeat.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-	repeat.MinLOD = -FLT_MAX;
-	repeat.MaxLOD = FLT_MAX;
-	repeat.MipLODBias = 0.0f;
-	repeat.MaxAnisotropy = 16;
-	repeat.ComparisonFunc = D3D11_COMPARISON_NEVER;
-	gfx::dev->create_sampler(repeat, &repeat_samp);
-	gfx::dev->bind_sampler(1, ShaderStage::ePixel, &repeat_samp);
+	//	// Get material
+	//	const auto& assimp_mat = mats[i];
+	//	//auto mat = load_material(assimp_mat);
+	//	auto mat = gfx::mat_mgr->load_material(assimp_mat);
 
+	//	// Add mesh/material pair
+	//	model.add_mesh(mesh, mat);
+	//}
+	//m_models.push_back(model);
 
-	gfx::dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), &sp_vb_pos, SubresourceData((void*)positions.data()));
-	gfx::dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &sp_vb_uv, SubresourceData((void*)uvs.data()));
-	gfx::dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &sp_vb_nor, SubresourceData((void*)normals.data()));
-	gfx::dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &sp_ib, SubresourceData((void*)indices.data()));
+	m_models.push_back(gfx::model_mgr->load_model("models/sponza/sponza.fbx", "Sponza"));
 
-	m_sponza = Model()
-		.set_vbs({ sp_vb_pos, sp_vb_uv, sp_vb_nor })
-		.set_ib(sp_ib);
-
-	for (int i = 0; i < m_sp_meshes.size(); ++i)
-	{
-		const auto& assimp_mesh = m_sp_meshes[i];
-		const auto& material = m_materials[i];
-
-		Mesh mesh;
-		std::memcpy(&mesh, &assimp_mesh, sizeof(AssimpMeshData));
-		m_sponza.add_mesh(mesh, &material);
-	}
-
-	std::cout << "done\n";
 }
 
 
