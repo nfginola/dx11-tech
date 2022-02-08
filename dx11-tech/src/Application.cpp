@@ -8,6 +8,7 @@
 #include "Camera/FPPCamera.h"
 
 #include "Graphics/DiskTextureManager.h"
+#include "Graphics/Model.h"
 
 // Important that Globals is defined last, as the extern members need to be defined!
 // We can define GfxGlobals.h if we want to have a separation layer later 
@@ -339,21 +340,36 @@ void Application::run()
 
 			// draw sponza
 			gfx::annotator->begin_event("Draw Sponza");
-			UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
 			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 0);
-			GPUBuffer sponza_vbs[] = { sp_vb_pos, sp_vb_uv, sp_vb_nor };
-			gfx::dev->bind_vertex_buffers(0, _countof(sponza_vbs), sponza_vbs, strides);
-			gfx::dev->bind_index_buffer(&sp_ib);
+
+			//UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
+			//GPUBuffer sponza_vbs[] = { sp_vb_pos, sp_vb_uv, sp_vb_nor };
+			//gfx::dev->bind_vertex_buffers(0, _countof(sponza_vbs), sponza_vbs, strides);
+			//gfx::dev->bind_index_buffer(&sp_ib);
+
+			UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
+			gfx::dev->bind_vertex_buffers(0, m_sponza.get_vbs().size(), m_sponza.get_vbs().data(), strides);
+			gfx::dev->bind_index_buffer(m_sponza.get_ib());
 			
 			// draw each submesh
 			gfx::dev->bind_pipeline(&p);
-			for (int i = 0; i < m_sp_meshes.size(); ++i)
+			//for (int i = 0; i < m_sp_meshes.size(); ++i)
+			//{
+			//	const auto& mesh = m_sp_meshes[i];
+			//	const auto& mat = m_sp_textures[i];
+			//	gfx::dev->bind_resource(0, ShaderStage::ePixel, mat);
+			//	gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
+			//}
+			const auto& meshes = m_sponza.get_meshes();
+			const auto& materials = m_sponza.get_materials();
+			for (int i = 0; i < meshes.size(); ++i)
 			{
-				const auto& mesh = m_sp_meshes[i];
-				const auto& mat = m_sp_textures[i];
-				gfx::dev->bind_resource(0, ShaderStage::ePixel, mat);
+				const auto& mesh = meshes[i];
+				const auto& mat = materials[i];
+				gfx::dev->bind_resource(0, ShaderStage::ePixel, mat->get_texture(Material::Texture::eAlbedo));
 				gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
 			}
+
 			gfx::annotator->end_event();
 
 			gfx::dev->end_pass();
@@ -746,7 +762,13 @@ void Application::load_assets()
 	for (const auto& mat : mats)
 	{
 		const auto& paths = std::get<AssimpMaterialData::PhongPaths>(mat.file_paths);
-		m_sp_textures.push_back(gfx::tex_mgr->load_from(paths.diffuse));
+
+		auto diffuse = gfx::tex_mgr->load_from(paths.diffuse);
+		m_sp_textures.push_back(diffuse);
+	
+		// Push material
+		auto mat = Material().set_texture(Material::Texture::eAlbedo, diffuse);
+		m_materials.push_back(mat);
 	}
 
 	// sponza requires wrapping texture, we will also use anisotropic filtering here (16) 
@@ -768,6 +790,22 @@ void Application::load_assets()
 	gfx::dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &sp_vb_uv, SubresourceData((void*)uvs.data()));
 	gfx::dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &sp_vb_nor, SubresourceData((void*)normals.data()));
 	gfx::dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &sp_ib, SubresourceData((void*)indices.data()));
+
+	m_sponza = Model()
+		.set_vbs({ sp_vb_pos, sp_vb_uv, sp_vb_nor })
+		.set_ib(sp_ib);
+
+	for (int i = 0; i < m_sp_meshes.size(); ++i)
+	{
+		const auto& assimp_mesh = m_sp_meshes[i];
+		const auto& material = m_materials[i];
+
+		Mesh mesh;
+		std::memcpy(&mesh, &assimp_mesh, sizeof(AssimpMeshData));
+		m_sponza.add_mesh(mesh, &material);
+	}
+
+	std::cout << "done\n";
 }
 
 

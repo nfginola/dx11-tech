@@ -171,6 +171,8 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Graphics\Model.cpp" />
+    <ClCompile Include="src\Graphics\Material.cpp" />
     <ClCompile Include="src\AssimpLoader.cpp" />
     <ClCompile Include="src\Graphics\ImGuiDevice.cpp" />
     <ClCompile Include="src\Camera\FPCController.cpp" />
@@ -268,6 +270,8 @@
     <ClInclude Include="inc\Graphics\GfxCommon.h" />
     <ClInclude Include="inc\Camera\FPPCamera.h" />
     <ClInclude Include="inc\Graphics\DiskTextureManager.h" />
+    <ClInclude Include="inc\Graphics\Material.h" />
+    <ClInclude Include="inc\Graphics\Model.h" />
     <ClInclude Include="vendor\imgui-docking\backends\imgui_impl_dx11.h" />
     <ClInclude Include="vendor\imgui-docking\backends\imgui_impl_win32.h" />
     <ClInclude Include="vendor\imgui-docking\imconfig.h" />

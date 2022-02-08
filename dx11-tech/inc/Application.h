@@ -3,6 +3,7 @@
 #include "Graphics/ImGuiDevice.h"
 #include "Profiler/FrameProfiler.h"
 
+#include "Graphics/Model.h"
 #include "AssimpLoader.h"
 
 
@@ -41,7 +42,9 @@ private:
 
 	std::vector<D3D11_VIEWPORT> viewports;										
 
+	std::vector<Material> m_materials;
 	// sponza
+	Model m_sponza;
 	GPUBuffer sp_vb_pos;
 	GPUBuffer sp_vb_uv;
 	GPUBuffer sp_vb_nor;
