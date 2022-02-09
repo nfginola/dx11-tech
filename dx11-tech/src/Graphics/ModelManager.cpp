@@ -55,8 +55,13 @@ const Model* ModelManager::load_model(const std::filesystem::path& path, const s
 	m_dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &nor, SubresourceData((void*)normals.data()));
 	m_dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &idx, SubresourceData((void*)indices.data()));
 
+	std::vector<std::pair<GPUBuffer, UINT>> vbs_and_strides;
+	vbs_and_strides.push_back({ pos, (UINT)sizeof(positions[0]) });
+	vbs_and_strides.push_back({ uv, (UINT)sizeof(uvs[0]) });
+	vbs_and_strides.push_back({ nor, (UINT)sizeof(normals[0]) });
+
 	// Set partial geometry data for model
-	auto model = Model().set_ib(idx).set_vbs({ pos, uv, nor });
+	auto model = Model().set_ib(idx).set_vbs(vbs_and_strides);
 
 	for (int i = 0; i < meshes.size(); ++i)
 	{

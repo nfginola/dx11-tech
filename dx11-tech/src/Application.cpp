@@ -12,6 +12,8 @@
 #include "Graphics/ModelManager.h"
 #include "Graphics/Model.h"
 
+#include "Entity.h"
+
 // Important that Globals is defined last, as the extern members need to be defined!
 // We can define GfxGlobals.h if we want to have a separation layer later 
 // Maybe we would like to have like WickedEngine where we have a Renderer.cpp and Renderer.hpp with all static functions
@@ -56,52 +58,12 @@ Application::Application()
 	m_camera_controller = make_unique<FPCController>(m_input.get());
 	m_camera_controller->set_camera(m_cam.get());
 
+	// Load models
+	m_models.push_back(gfx::model_mgr->load_model("models/sponza/sponza.fbx", "Sponza"));
 
-	/*
-	
-	
-		std::vector<SimpleVert> loadObj(filename)
-		{
-			std::vector<SimpleVert> my_vertices;
-			my_vertices.reserve(..)
-
-			std::vector<Positions> positions
-			std::vector<UV> uvs
-			std::vector<Normals> normals
-
-			// Fill positions, uvs, normals
-			..
-			..
-			..
-			..
-			..
-			..
-
-			// Actually combine pos, uv, normals into one vertex
-			...
-			...
-			my_vertices.push_back({ pos, uv, normal} )
-			...
-			...
-
-
-			return my_vertices;
-		}
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	*/
-
-
-
+	Entity e;
+	e.add_component<eModelComponent>(new ModelComponent(m_models[0]));
+	e.get_component<eTransformComponent>().set_position(5.f, 0.f, 0.f);
 
 	/*
 		
@@ -169,17 +131,41 @@ Application::Application()
 				- Using UpdateSubresource to do
 				  staging copy
 
-			- Add a Model class										TO-DO
+			- Add a Model class										DONE
 				- Simply has Meshes and Materials (1:1 mapping)
 				- Later down the line, we want to reformat for
 					instancing.
 				- Make a naive version for now
 
-			- Add model repository									TO-DO
+			- Add Material repository								DONE
+
+			- Add model repository									DONE
 				- Ignore MT contention problems
+
+			- Create a Pipeline Manager								TO-DO
+				- Create Pipeline (naming too)
+				- Retrieve Pipeline
+
+			- Add enTT library for flexibility						TO-DO
 
 			- Add a Simple Entity which holds a World Matrix		TO-DO
 				- Holds a pointer to an existing Model (Flyweight)	
+
+			- Add instancing by default								TO-DO
+				- Renderer.SubmitOpaque(model, world_mat, FLAGS)
+
+			FLAGS |= visible
+
+			for each unique model submitted,
+			we allocate an array for world matrices PER MODEL
+				--> serves as instance buffer
+
+			we submit DrawData: 
+				{ mesh*, material*, vbs*, strides*, ib*, InstanceData { void*, size } }
+			--> sort DrawData by Material first and Index Buffer second
+
+
+
 
 			- Add AABBs to Entities									TO-DO
 				- Models have local AABB
@@ -276,7 +262,6 @@ Application::Application()
 
 	}
 
-
 	// sponza requires wrapping texture, we will also use anisotropic filtering here (16) 
 	D3D11_SAMPLER_DESC repeat{};
 	repeat.Filter = D3D11_FILTER_ANISOTROPIC;
@@ -292,7 +277,6 @@ Application::Application()
 	gfx::dev->bind_sampler(1, ShaderStage::ePixel, &repeat_samp);
 
 
-	load_assets();
 }
 
 Application::~Application()
@@ -316,10 +300,6 @@ void Application::run()
 		// Block here if paused
 		while (m_paused);
 		m_win->pump_messages();
-
-		// Break as soon as possible
-		//if (!m_win->is_alive() || !m_app_alive)
-		//	break;
 
 		m_input->begin();
 			
@@ -349,14 +329,13 @@ void Application::run()
 			// draw models
 			gfx::annotator->begin_event("Draw Models");
 
+			gfx::dev->bind_pipeline(&p);
 			for (const auto& model : m_models)
 			{
-				UINT strides[] = { sizeof(DirectX::XMFLOAT3), sizeof(DirectX::XMFLOAT2), sizeof(DirectX::XMFLOAT3) };
-				gfx::dev->bind_vertex_buffers(0, model->get_vbs().size(), model->get_vbs().data(), strides);
+				gfx::dev->bind_vertex_buffers(0, (UINT)model->get_vbs().size(), model->get_vbs().data(), model->get_vb_strides().data());
 				gfx::dev->bind_index_buffer(model->get_ib());
 
 				// draw each submesh
-				gfx::dev->bind_pipeline(&p);
 				const auto& meshes = model->get_meshes();
 				const auto& materials = model->get_materials();
 				for (int i = 0; i < meshes.size(); ++i)
@@ -754,47 +733,4 @@ LRESULT Application::custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
-
-void Application::load_assets()
-{
-	//AssimpLoader loader("models/sponza/Sponza.fbx");
-
-	//const auto& positions = loader.get_positions();
-	//const auto& uvs = loader.get_uvs();
-	//const auto& normals = loader.get_normals();
-	//const auto& indices = loader.get_indices();
-	//const auto& meshes = loader.get_meshes();
-	//const auto& mats = loader.get_materials();
-	//assert(meshes.size() == mats.size());
-
-	//GPUBuffer pos, uv, nor, idx;
-	//gfx::dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), &pos, SubresourceData((void*)positions.data()));
-	//gfx::dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &uv, SubresourceData((void*)uvs.data()));
-	//gfx::dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &nor, SubresourceData((void*)normals.data()));
-	//gfx::dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &idx, SubresourceData((void*)indices.data()));
-
-	//// Set partial geometry data for model
-	//auto model = Model().set_ib(idx).set_vbs({ pos, uv, nor });
-	//
-	//for (int i = 0; i < meshes.size(); ++i)
-	//{
-	//	// Add submesh data
-	//	Mesh mesh;
-	//	const auto& assimp_mesh = meshes[i];
-	//	std::memcpy(&mesh, &assimp_mesh, sizeof(AssimpMeshData));
-
-	//	// Get material
-	//	const auto& assimp_mat = mats[i];
-	//	//auto mat = load_material(assimp_mat);
-	//	auto mat = gfx::mat_mgr->load_material(assimp_mat);
-
-	//	// Add mesh/material pair
-	//	model.add_mesh(mesh, mat);
-	//}
-	//m_models.push_back(model);
-
-	m_models.push_back(gfx::model_mgr->load_model("models/sponza/sponza.fbx", "Sponza"));
-
-}
-
 

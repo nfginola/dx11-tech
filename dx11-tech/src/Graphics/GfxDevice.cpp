@@ -1050,7 +1050,7 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 	ctx->OMSetBlendState((ID3D11BlendState*)pipeline->m_blend.m_internal_resource.Get(), blend_factor.data(), pipeline->m_sample_mask);
 }
 
-void GfxDevice::bind_vertex_buffers(UINT start_slot, UINT count, const GPUBuffer* buffers, UINT* strides, UINT* offsets)
+void GfxDevice::bind_vertex_buffers(UINT start_slot, UINT count, const GPUBuffer* buffers, const UINT* strides, const UINT* offsets)
 {
 	assert(count < 31);	// slot 31 is reserved for instancing
 	ID3D11Buffer* vbs[gfxconstants::MAX_INPUT_SLOTS] = {};

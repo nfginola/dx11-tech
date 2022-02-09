@@ -21,8 +21,6 @@ public:
 private:
 	LRESULT custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-	void load_assets();
-
 	void declare_ui();
 	void declare_profiler_ui();
 	void declare_shader_reloader_ui();

@@ -15,11 +15,12 @@ public:
 	Model() = default;
 	~Model() = default;
 
-	Model& set_vbs(const std::vector<GPUBuffer> vbs);
+	Model& set_vbs(const std::vector<std::pair<GPUBuffer, UINT>>& vbs_and_strides);
 	Model& set_ib(GPUBuffer ib);
 	Model& add_mesh(Mesh mesh, const Material* mat);
 
 	const std::vector<GPUBuffer>& get_vbs() const;
+	const std::vector<UINT>& get_vb_strides() const;
 	const GPUBuffer* get_ib() const;
 	
 	const std::vector<Mesh>& get_meshes() const;
@@ -27,6 +28,7 @@ public:
 
 private:
 	std::vector<GPUBuffer> m_vbs;
+	std::vector<UINT> m_vb_strides;
 	GPUBuffer m_ib;
 
 	std::vector<Mesh> m_meshes;

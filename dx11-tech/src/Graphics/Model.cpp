@@ -1,9 +1,14 @@
 #include "pch.h"
 #include "Graphics/Model.h"
 
-Model& Model::set_vbs(const std::vector<GPUBuffer> vbs)
+Model& Model::set_vbs(const std::vector<std::pair<GPUBuffer, UINT>>& vbs_and_strides)
 {
-	m_vbs = vbs;
+	for (const auto& p : vbs_and_strides)
+	{
+		m_vbs.push_back(p.first);
+		m_vb_strides.push_back(p.second);
+	}
+
 	return *this;
 }
 
@@ -23,6 +28,11 @@ Model& Model::add_mesh(Mesh mesh, const Material* mat)
 const std::vector<GPUBuffer>& Model::get_vbs() const
 {
 	return m_vbs;
+}
+
+const std::vector<UINT>& Model::get_vb_strides() const
+{
+	return m_vb_strides;
 }
 
 const GPUBuffer* Model::get_ib() const
