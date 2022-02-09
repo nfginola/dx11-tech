@@ -61,6 +61,10 @@ Application::Application()
 	// Load models
 	m_models.push_back(gfx::model_mgr->load_model("models/sponza/sponza.fbx", "Sponza"));
 
+	// Test mock entity
+	/*
+		Replace with enTT for flexibility
+	*/
 	Entity e;
 	e.add_component<eModelComponent>(new ModelComponent(m_models[0]));
 	e.get_component<eTransformComponent>().set_position(5.f, 0.f, 0.f);
