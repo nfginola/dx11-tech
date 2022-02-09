@@ -2,15 +2,13 @@
 #include "Camera/FPCController.h"
 #include "Camera/FPPCamera.h"
 #include "Input.h"
-
-// Global dependency to ImGUI:
-// Showing controller data
 #include "Graphics/ImGuiDevice.h"
-namespace gfx { extern ImGuiDevice* imgui; }
 
-FPCController::FPCController(class Input* input) : m_cam(nullptr), m_input(input)
+FPCController::FPCController(Input* input) : 
+	m_cam(nullptr), 
+	m_input(input)
 {
-	gfx::imgui->add_ui_callback("fpccontroller", [&]()
+	ImGuiDevice::add_ui("fpccontroller", [&]()
 		{
 			ImGui::Begin("FPC Controller");
 			ImGui::Text(fmt::format("Speed: {:.2f}", m_curr_speed).c_str());
@@ -21,6 +19,11 @@ FPCController::FPCController(class Input* input) : m_cam(nullptr), m_input(input
 void FPCController::set_camera(FPPCamera* cam)
 {
 	m_cam = cam;
+}
+
+void FPCController::set_secondary_camera(FPPCamera* cam)
+{
+	m_cam_2 = cam;
 }
 
 Camera* FPCController::get_active_camera()
@@ -40,6 +43,8 @@ void FPCController::update(float dt)
 		m_input->set_mouse_mode(MouseMode::Relative);	// Hide mouse
 		auto [x_delta, y_delta] = m_input->get_mouse_delta();
 		m_cam->update_orientation((float)x_delta, (float)y_delta, dt);
+		m_cam_2->update_orientation((float)x_delta, (float)y_delta, dt);
+
 	}
 
 	// Unhide mouse
@@ -59,10 +64,24 @@ void FPCController::update(float dt)
 	auto scroll_val = (m_input->get_scroll_value() / 120.f) * 0.5f;
 	m_curr_speed = utils::constrained_add(m_init_speed, scroll_val, m_min_speed, m_max_speed);
 	m_cam->set_speed(m_curr_speed);
-
 	m_cam->set_sensitivity(m_mouse_sens);
-
 	m_cam->update_position(m_right_state, m_up_state, m_fwd_state, dt);
-
 	m_cam->update_matrices();
+
+	// Simulate secondary camera identically
+	m_cam_2->set_speed(m_curr_speed);
+	m_cam_2->set_sensitivity(m_mouse_sens);
+	m_cam_2->update_position(m_right_state, m_up_state, m_fwd_state, dt);
+	m_cam_2->update_matrices();
+
+	FPPCamera* tmp = nullptr;
+	if (m_input->mmb_pressed() || m_input->mmb_released())
+	{ 
+		//m_cam_2->set_yaw(m_cam->get_yaw());
+		//m_cam_2->set_pitch(m_cam->get_pitch());
+
+		tmp = m_cam;
+		m_cam = m_cam_2;
+		m_cam_2 = tmp;
+	}		
 }

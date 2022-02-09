@@ -40,6 +40,7 @@ private:
 
 	unique_ptr<class FPCController> m_camera_controller;
 	unique_ptr<class FPPCamera> m_cam;
+	unique_ptr<class FPPCamera> m_cam_zoom;
 
 	std::vector<D3D11_VIEWPORT> viewports;										
 

@@ -165,4 +165,24 @@ void FPPCamera::set_sensitivity(float sens)
 	m_sensitivity = sens;
 }
 
+void FPPCamera::set_yaw(float yaw)
+{
+	m_yaw = yaw;
+}
+
+void FPPCamera::set_pitch(float pitch)
+{
+	m_pitch = pitch;
+}
+
+float FPPCamera::get_yaw()
+{
+	return m_yaw;;
+}
+
+float FPPCamera::get_pitch()
+{
+	return m_pitch;
+}
+
 

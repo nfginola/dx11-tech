@@ -171,8 +171,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\Component.cpp" />
-    <ClCompile Include="src\Entity.cpp" />
     <ClCompile Include="src\Graphics\ModelManager.cpp" />
     <ClCompile Include="src\Graphics\MaterialManager.cpp" />
     <ClCompile Include="src\Graphics\Model.cpp" />
@@ -252,9 +250,6 @@
   <ItemGroup>
     <ClInclude Include="inc\AssimpLoader.h" />
     <ClInclude Include="inc\AssimpTypes.h" />
-    <ClInclude Include="inc\Component.h" />
-    <ClInclude Include="inc\ComponentMapper.h" />
-    <ClInclude Include="inc\Entity.h" />
     <ClInclude Include="inc\Graphics\ImGuiDevice.h" />
     <ClInclude Include="inc\Camera\FPCController.h" />
     <ClInclude Include="inc\Profiler\CPUProfiler.h" />

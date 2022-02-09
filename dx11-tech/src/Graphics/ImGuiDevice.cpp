@@ -5,7 +5,6 @@
 #include "Graphics/ImGuiDevice.h"
 #include "Graphics/GfxDevice.h"
 
-
 namespace gfx
 {
     ImGuiDevice* imgui = nullptr;
@@ -25,6 +24,16 @@ void ImGuiDevice::shutdown()
         delete gfx::imgui;
         gfx::imgui = nullptr;
     }
+}
+
+void ImGuiDevice::add_ui(const std::string& name, std::function<void()> func)
+{
+    gfx::imgui->add_ui_callback(name, func);
+}
+
+void ImGuiDevice::remove_ui(const std::string& name)
+{
+    gfx::imgui->remove_ui_callback(name);
 }
 
 void ImGuiDevice::start_docking()

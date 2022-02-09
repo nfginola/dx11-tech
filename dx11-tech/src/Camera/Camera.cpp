@@ -17,18 +17,27 @@ Camera::~Camera()
 void Camera::set_position(float x, float y, float z)
 {
 	m_position = DirectX::SimpleMath::Vector4(x, y, z, 1.f);
-	m_view_mat = DirectX::XMMatrixLookAtLH(m_position, DirectX::SimpleMath::Vector4(0.f, 0.f, 0.f, 1.f), s_world_up);
+	m_view_mat = DirectX::XMMatrixLookAtLH(m_position, m_lookat_pos, s_world_up);
 }
 
-void Camera::set_orientation()
+void Camera::set_position(const DirectX::SimpleMath::Vector4& pos)
 {
-	assert(false);
-	// to implement
+	m_position = pos;
+}
+
+void Camera::set_lookat_pos(const DirectX::SimpleMath::Vector4& lookat)
+{
+	m_lookat_pos = lookat;
 }
 
 const DirectX::SimpleMath::Vector4& Camera::get_position() const
 {
 	return m_position;
+}
+
+const DirectX::SimpleMath::Vector4& Camera::get_lookat() const
+{
+	return m_lookat_pos;
 }
 
 const DirectX::SimpleMath::Matrix& Camera::get_view_mat() const

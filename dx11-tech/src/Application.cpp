@@ -12,8 +12,6 @@
 #include "Graphics/ModelManager.h"
 #include "Graphics/Model.h"
 
-#include "Entity.h"
-
 // Important that Globals is defined last, as the extern members need to be defined!
 // We can define GfxGlobals.h if we want to have a separation layer later 
 // Maybe we would like to have like WickedEngine where we have a Renderer.cpp and Renderer.hpp with all static functions
@@ -46,28 +44,22 @@ Application::Application()
 	ModelManager::initialize(gfx::dev, gfx::mat_mgr);
 
 	// Declare UI 
-	gfx::imgui->add_ui_callback("default ui", [&]() { declare_ui(); });
-	gfx::imgui->add_ui_callback("profiler", [&]() { declare_profiler_ui();  });
-	gfx::imgui->add_ui_callback("shader reloading", [&]() { declare_shader_reloader_ui();  });
+	ImGuiDevice::add_ui("default ui", [&]() { declare_ui(); });
+	ImGuiDevice::add_ui("profiler", [&]() { declare_profiler_ui();  });
+	ImGuiDevice::add_ui("shader reloading", [&]() { declare_shader_reloader_ui();  });
 
 	// Create perspective camera
 	m_cam = make_unique<FPPCamera>(90.f, (float)WIDTH/HEIGHT, 0.1f, 1000.f);
-	m_cam->set_position(0.f, 0.f, -5.f);
+	m_cam_zoom = make_unique<FPPCamera>(28.f, (float)WIDTH / HEIGHT, 0.1f, 1000.f);	// zoomed in
 	
 	// Create a First-Person Camera Controller and attach a First-Person Perspective camera
 	m_camera_controller = make_unique<FPCController>(m_input.get());
 	m_camera_controller->set_camera(m_cam.get());
+	m_camera_controller->set_secondary_camera(m_cam_zoom.get());
 
 	// Load models
 	m_models.push_back(gfx::model_mgr->load_model("models/sponza/sponza.fbx", "Sponza"));
 
-	// Test mock entity
-	/*
-		Replace with enTT for flexibility
-	*/
-	Entity e;
-	e.add_component<eModelComponent>(new ModelComponent(m_models[0]));
-	e.get_component<eTransformComponent>().set_position(5.f, 0.f, 0.f);
 
 	/*
 		
@@ -146,11 +138,11 @@ Application::Application()
 			- Add model repository									DONE
 				- Ignore MT contention problems
 
+			- Add enTT library for flexibility						TO-DO
+
 			- Create a Pipeline Manager								TO-DO
 				- Create Pipeline (naming too)
 				- Retrieve Pipeline
-
-			- Add enTT library for flexibility						TO-DO
 
 			- Add a Simple Entity which holds a World Matrix		TO-DO
 				- Holds a pointer to an existing Model (Flyweight)	
@@ -569,6 +561,7 @@ void Application::declare_shader_reloader_ui()
 
 void Application::create_resolution_dependent_resources(UINT width, UINT height)
 {
+
 	// Render to Texture
 	{
 		// viewport

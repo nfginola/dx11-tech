@@ -28,6 +28,12 @@ public:
 	void set_speed(float speed);
 	void set_sensitivity(float sens);
 
+	void set_yaw(float yaw);
+	void set_pitch(float pitch);
+
+	float get_yaw();
+	float get_pitch();
+
 private:
 	// Used to offset yaw so the default viewing point is in forward Z.
 	static constexpr float s_yaw_offset = 90.f;

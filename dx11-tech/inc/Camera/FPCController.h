@@ -9,6 +9,7 @@ public:
 		May be replaced with FPCamera in the future where FP-Perspective (FPP) inherits from FP
 	*/
 	void set_camera(class FPPCamera* cam);
+	void set_secondary_camera(FPPCamera* cam);
 
 	class Camera* get_active_camera();
 
@@ -20,7 +21,8 @@ private:
 		position and orientation, which is persistent should this controller
 		possess another Camera.
 	*/
-
+	
+	FPPCamera* m_cam_2;
 	FPPCamera* m_cam;
 	Input* m_input;
 
