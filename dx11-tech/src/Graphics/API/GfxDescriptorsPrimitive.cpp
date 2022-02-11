@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Graphics/GfxDescriptorsPrimitive.h"
+#include "Graphics/API/GfxDescriptorsPrimitive.h"
 
 BufferDesc BufferDesc::constant(size_t size_in_bytes, bool dynamic)
 {

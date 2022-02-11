@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "AssimpLoader.h"
-#include "Graphics/GfxDevice.h"
+#include "Graphics/API/GfxDevice.h"
 #include "Graphics/MaterialManager.h"
 #include "Graphics/ModelManager.h"
 

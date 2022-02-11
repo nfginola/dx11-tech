@@ -1,6 +1,6 @@
 #pragma once
-#include "Graphics/GfxCommon.h"
-#include "Graphics/GfxDescriptorsPrimitive.h"
+#include "Graphics/API/GfxCommon.h"
+#include "Graphics/API/GfxDescriptorsPrimitive.h"
 
 
 /*

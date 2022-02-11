@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics/GfxTypes.h"
+#include "Graphics/API/GfxTypes.h"
 
 /*	
 	These descriptors are not "typical" descriptors such as for the Primitives.

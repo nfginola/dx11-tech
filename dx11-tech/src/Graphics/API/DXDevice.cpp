@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Graphics/DXDevice.h"
+#include "Graphics/API/DXDevice.h"
 
 // Lets us print some debug messages sent to the queue
 // Currently responsible for printing WARNING debug messages to cout

@@ -1,8 +1,8 @@
 #include "pch.h"
-#include "Graphics/Renderer.h"
-#include "Graphics/GfxDevice.h"
+#include "Graphics/Renderer/Renderer.h"
+#include "Graphics/API/GfxDevice.h"
 #include "Profiler/FrameProfiler.h"
-#include "Graphics/ImGuiDevice.h"
+#include "Graphics/API/ImGuiDevice.h"
 #include "Camera/Camera.h"
 #include "Graphics/Drawable/ICustomDrawable.h"
 
@@ -11,8 +11,8 @@
 #include "Graphics/Model.h"
 #include "Graphics/ModelManager.h"
 
-namespace gfx 
-{ 
+namespace gfx
+{
 	Renderer* rend = nullptr;
 	extern GfxDevice* dev;
 	extern ImGuiDevice* imgui;
@@ -47,9 +47,13 @@ Renderer::Renderer()
 	assert(gfx::dev != nullptr);
 	assert(perf::profiler != nullptr);
 
+	// Declare UI 
+	ImGuiDevice::add_ui("default ui", [&]() { declare_ui(); });
+	ImGuiDevice::add_ui("profiler", [&]() { declare_profiler_ui();  });
+	ImGuiDevice::add_ui("shader reloading", [&]() { declare_shader_reloader_ui();  });
+
+
 	auto sc_dim = gfx::dev->get_sc_dim();
-
-
 	viewports =
 	{
 		CD3D11_VIEWPORT(0.f, 0.f, (FLOAT)sc_dim.first, (FLOAT)sc_dim.second),	// To Swapchain (changes when swapchain is resized)
@@ -184,7 +188,7 @@ void Renderer::render()
 	//for (auto& dbl : m_custom_drawables)
 	//	dbl->on_render();
 
-	
+
 	// Update graphics
 	gfx::dev->frame_start();
 	gfx::imgui->begin_frame();
@@ -205,9 +209,6 @@ void Renderer::render()
 		gfx::dev->bind_viewports({ viewports[1] });
 		gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 0);
 
-		// draw models
-		gfx::annotator->begin_event("Draw Models");
-
 		gfx::dev->bind_pipeline(&p);
 		for (const auto& model : m_models)
 		{
@@ -225,8 +226,6 @@ void Renderer::render()
 				gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
 			}
 		}
-
-		gfx::annotator->end_event();
 		gfx::dev->end_pass();
 	}
 
@@ -252,16 +251,187 @@ void Renderer::render()
 
 	gfx::imgui->end_frame();
 	gfx::dev->frame_end();
-
 }
 
 void Renderer::on_resize(UINT width, UINT height)
 {
-
+	viewports[0].Width = (FLOAT)width;
+	viewports[0].Height = (FLOAT)height;
 }
 
 void Renderer::on_change_resolution(UINT width, UINT height)
 {
 	create_resolution_dependent_resources(width, height);
+}
+
+void Renderer::declare_ui()
+{
+	ImGui::Begin("Settings");
+	ImGui::Checkbox("Vsync", &m_vsync);
+	ImGui::End();
+
+
+	// Declare things to draw UI overlay
+	bool show_demo_window = true;
+	ImGui::ShowDemoWindow(&show_demo_window);
+
+	ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+
+	ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+	ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+	ImGui::Checkbox("Another Window", &show_demo_window);
+
+	ImGui::SameLine();
+
+	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::End();
+
+	// Main menu
+	if (ImGui::BeginMainMenuBar())
+	{
+		if (ImGui::BeginMenu("File"))
+		{
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Edit"))
+		{
+			if (ImGui::MenuItem("Undo", "CTRL+Z")) { fmt::print("Undid!\n"); }
+			if (ImGui::MenuItem("Redo", "CTRL+Y", false, false)) {}  // Disabled item
+			ImGui::Separator();
+			if (ImGui::MenuItem("Cut", "CTRL+X")) {}
+			if (ImGui::MenuItem("Copy", "CTRL+C")) {}
+			if (ImGui::MenuItem("Paste", "CTRL+V")) {}
+			ImGui::EndMenu();
+		}
+		ImGui::EndMainMenuBar();
+
+	}
+
+	ImGui::Begin("Settings");
+
+	const char* items[] = { "2560x1440", "1920x1080", "1280x720", "640x360", "384x216" };
+	static int item_current_idx = 0; // Here we store our selection data as an index.
+	const char* combo_preview_value = items[item_current_idx];  // Pass in the preview value visible before opening the combo (it could be anything)
+	bool change_res = false;
+	if (ImGui::BeginCombo("Resolutions", combo_preview_value))
+	{
+		for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+		{
+			const bool is_selected = (item_current_idx == n);
+			if (ImGui::Selectable(items[n], is_selected))
+			{
+				item_current_idx = n;
+				change_res = true;
+			}
+			// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+			if (is_selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	if (change_res)
+	{
+		if (item_current_idx == 0)		on_change_resolution(2560, 1440);
+		if (item_current_idx == 1)		on_change_resolution(1920, 1080);
+		if (item_current_idx == 2)		on_change_resolution(1280, 720);
+		if (item_current_idx == 3)		on_change_resolution(640, 360);
+		if (item_current_idx == 4)		on_change_resolution(384, 216);
+	}
+
+	ImGui::End();
+
+}
+
+void Renderer::declare_profiler_ui()
+{
+	bool open = true;
+	ImGui::Begin(fmt::format("Times (avg. over {} frames)", FrameProfiler::s_averaging_frames).c_str(), &open, ImGuiWindowFlags_NoTitleBar);
+
+	const auto& frame_data = perf::profiler->get_frame_statistics();
+
+	ImGui::SetNextItemOpen(true);
+	if (ImGui::TreeNode("CPU"))
+	{
+		for (const auto& profiles : frame_data.profiles)
+		{
+			const auto& name = profiles.first;
+			const auto& avg_cpu_time = profiles.second.avg_cpu_time;
+			if (abs(avg_cpu_time) <= std::numeric_limits<float>::epsilon())		// skip negligible profiles
+				continue;
+
+			ImGui::Text(fmt::format("{:s}: {:.3f} ms", name.c_str(), avg_cpu_time).c_str());
+		}
+		ImGui::TreePop();
+	}
+
+	ImGui::SetNextItemOpen(true);
+	if (ImGui::TreeNode("GPU"))
+	{
+		for (const auto& profiles : frame_data.profiles)
+		{
+			const auto& name = profiles.first;
+			const auto& avg_gpu_time = profiles.second.avg_gpu_time;
+			if (abs(avg_gpu_time) <= std::numeric_limits<float>::epsilon())		// skip negligible profiles
+				continue;
+
+			ImGui::Text(fmt::format("{:s}: {:.3f} ms", name.c_str(), avg_gpu_time).c_str());
+		}
+		ImGui::TreePop();
+	}
+
+	// Get FPS
+	const auto& full_frame = frame_data.profiles.find("*** Full Frame ***");
+	if (full_frame != frame_data.profiles.cend())
+	{
+		auto avg_frame_time = (full_frame->second.avg_cpu_time + full_frame->second.avg_gpu_time) / 2.f;
+		avg_frame_time /= 1000.f;
+		ImGui::Text(fmt::format("FPS: {:.1f}", 1.f / avg_frame_time).c_str());
+	}
+
+	ImGui::End();
+}
+
+void Renderer::declare_shader_reloader_ui()
+{
+	if (do_once)
+	{
+		const std::string path = "shaders";
+		for (const auto& entry : std::filesystem::directory_iterator(path))
+		{
+			if (std::filesystem::path(entry).extension() == ".hlsli")	// discard hlsli
+				continue;
+
+			shader_filenames.insert(std::filesystem::path(entry).stem().string());
+
+		}
+		selected_item = shader_filenames.cbegin()->c_str();
+		do_once = false;
+	}
+
+	ImGui::Begin("Shader Reloader");
+
+	const char* combo_preview_value = selected_item;
+	if (ImGui::BeginCombo("Files", combo_preview_value))
+	{
+		for (const auto& filename : shader_filenames)
+		{
+			const bool is_selected = strcmp(selected_item, filename.c_str());
+
+			if (ImGui::Selectable(filename.c_str(), is_selected))
+			{
+				selected_item = filename.c_str();
+				combo_preview_value = selected_item;
+			}
+
+			if (is_selected)
+				ImGui::SetItemDefaultFocus();
+		}
+
+		ImGui::EndCombo();
+	}
+	if (ImGui::SmallButton("Reload"))
+		gfx::dev->recompile_pipeline_shaders_by_name(std::string(selected_item));
+
+	ImGui::End();
 }
 

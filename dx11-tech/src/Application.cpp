@@ -11,7 +11,7 @@
 #include "Graphics/MaterialManager.h"
 #include "Graphics/ModelManager.h"
 #include "Graphics/Model.h"
-#include "Graphics/Renderer.h"
+#include "Graphics/Renderer/Renderer.h"
 
 // Important that Globals is defined last, as the extern members need to be defined!
 // We can define GfxGlobals.h if we want to have a separation layer later 
@@ -19,9 +19,6 @@
 // And only allow GfxGlobals in that Renderer.cpp
 // Just an idea.
 #include "Globals.h"
-
-#include "Graphics/Drawable/CustomTestDrawable.h"
-
 
 Application::Application()
 {
@@ -33,12 +30,12 @@ Application::Application()
 	constexpr UINT WIDTH = WIN_WIDTH;
 	constexpr UINT HEIGHT = WIN_HEIGHT;
 
-	// Window and Input
+	// Initialize window and input
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
 	m_win = make_unique<Window>(GetModuleHandle(NULL), win_proc, WIN_WIDTH, WIN_HEIGHT);
 	m_input = make_unique<Input>(m_win->get_hwnd());
 
-	// Initialize singletons (with clear dependencies)
+	// Initialize systems
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
 	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
 	ImGuiDevice::initialize(gfx::dev);
@@ -49,20 +46,17 @@ Application::Application()
 	
 	Renderer::initialize();
 
-	// Declare UI 
-	ImGuiDevice::add_ui("default ui", [&]() { declare_ui(); });
-	ImGuiDevice::add_ui("profiler", [&]() { declare_profiler_ui();  });
-	ImGuiDevice::add_ui("shader reloading", [&]() { declare_shader_reloader_ui();  });
-
 	// Create perspective camera
 	m_cam = make_unique<FPPCamera>(90.f, (float)WIDTH/HEIGHT, 0.1f, 1000.f);
-	m_cam_zoom = make_unique<FPPCamera>(28.f, (float)WIDTH / HEIGHT, 0.1f, 1000.f);	// zoomed in
-	
+	m_cam_zoom = make_unique<FPPCamera>(28.f, (float)WIDTH / HEIGHT, 0.1f, 1000.f);		// Zoomed in secondary camera
+
 	// Create a First-Person Camera Controller and attach a First-Person Perspective camera
 	m_camera_controller = make_unique<FPCController>(m_input.get());
 	m_camera_controller->set_camera(m_cam.get());
 	m_camera_controller->set_secondary_camera(m_cam_zoom.get());
 
+	// Set main camera for rendering
+	gfx::rend->set_camera(m_camera_controller->get_active_camera());
 }
 
 Application::~Application()
@@ -84,204 +78,35 @@ void Application::run()
 		perf::profiler->frame_start();
 		Timer frame_time;
 
-		// Block here if paused
+		// Block if paused
 		while (m_paused);
+		
 		m_win->pump_messages();
 
+		// Begin taking input
 		m_input->begin();
 			
 		// Update CPU states
 		update(dt);
 	
 		// Render GPU
-		gfx::rend->set_camera(m_camera_controller->get_active_camera());
 		gfx::rend->render();
-
+		
+		// End taking input
 		m_input->end();
-
-		++m_curr_frame;
-		dt = frame_time.elapsed(Timer::Unit::Seconds);
-		perf::profiler->frame_end();
-	
-		// Resize once at the end of a frame
-		// Avoid resizing constantly
+		
+		// Re-size if requested
 		if (m_should_resize)
 		{
 			on_resize(m_resized_client_area.first, m_resized_client_area.second);
 			m_should_resize = false;
 		}
+
+		// End
+		++m_curr_frame;
+		dt = frame_time.elapsed(Timer::Unit::Seconds);
+		perf::profiler->frame_end();
 	}
-}
-
-void Application::declare_ui()
-{
-	ImGui::Begin("Settings");
-	ImGui::Checkbox("Vsync", &m_vsync);
-	ImGui::End();
-
-
-	// Declare things to draw UI overlay
-	bool show_demo_window = true;
-	ImGui::ShowDemoWindow(&show_demo_window);
-
-	ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-	ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-	ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-	ImGui::Checkbox("Another Window", &show_demo_window);
-
-	ImGui::SameLine();
-
-	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-	ImGui::End();
-
-	// Main menu
-	if (ImGui::BeginMainMenuBar())
-	{
-		if (ImGui::BeginMenu("File"))
-		{
-			ImGui::EndMenu();
-		}
-		if (ImGui::BeginMenu("Edit"))
-		{
-			if (ImGui::MenuItem("Undo", "CTRL+Z")) { fmt::print("Undid!\n"); }
-			if (ImGui::MenuItem("Redo", "CTRL+Y", false, false)) {}  // Disabled item
-			ImGui::Separator();
-			if (ImGui::MenuItem("Cut", "CTRL+X")) {}
-			if (ImGui::MenuItem("Copy", "CTRL+C")) {}
-			if (ImGui::MenuItem("Paste", "CTRL+V")) {}
-			ImGui::EndMenu();
-		}
-		ImGui::EndMainMenuBar();
-
-	}
-
-	ImGui::Begin("Settings");
-
-	const char* items[] = { "2560x1440", "1920x1080", "1280x720", "640x360", "384x216" };
-	static int item_current_idx = 0; // Here we store our selection data as an index.
-	const char* combo_preview_value = items[item_current_idx];  // Pass in the preview value visible before opening the combo (it could be anything)
-	bool change_res = false;
-	if (ImGui::BeginCombo("Resolutions", combo_preview_value))
-	{
-		for (int n = 0; n < IM_ARRAYSIZE(items); n++)
-		{
-			const bool is_selected = (item_current_idx == n);
-			if (ImGui::Selectable(items[n], is_selected))
-			{
-				item_current_idx = n;
-				change_res = true;
-			}
-			// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-			if (is_selected)
-				ImGui::SetItemDefaultFocus();
-		}
-		ImGui::EndCombo();
-	}
-	if (change_res)
-	{
-		if (item_current_idx == 0)		gfx::rend->on_change_resolution(2560, 1440);
-		if (item_current_idx == 1)		gfx::rend->on_change_resolution(1920, 1080);
-		if (item_current_idx == 2)		gfx::rend->on_change_resolution(1280, 720);
-		if (item_current_idx == 3)		gfx::rend->on_change_resolution(640, 360);
-		if (item_current_idx == 4)		gfx::rend->on_change_resolution(384, 216);
-	}
-
-	ImGui::End();
-
-}
-
-void Application::declare_profiler_ui()
-{
-	bool open = true;
-	ImGui::Begin(fmt::format("Times (avg. over {} frames)", FrameProfiler::s_averaging_frames).c_str(), &open, ImGuiWindowFlags_NoTitleBar);
-
-	const auto& frame_data = perf::profiler->get_frame_statistics();
-
-	ImGui::SetNextItemOpen(true);
-	if (ImGui::TreeNode("CPU"))
-	{
-		for (const auto& profiles : frame_data.profiles)
-		{
-			const auto& name = profiles.first;
-			const auto& avg_cpu_time = profiles.second.avg_cpu_time;
-			if (abs(avg_cpu_time) <= std::numeric_limits<float>::epsilon())		// skip negligible profiles
-				continue;
-
-			ImGui::Text(fmt::format("{:s}: {:.3f} ms", name.c_str(), avg_cpu_time).c_str());
-		}
-		ImGui::TreePop();
-	}
-
-	ImGui::SetNextItemOpen(true);
-	if (ImGui::TreeNode("GPU"))
-	{
-		for (const auto& profiles : frame_data.profiles)
-		{
-			const auto& name = profiles.first;
-			const auto& avg_gpu_time = profiles.second.avg_gpu_time;
-			if (abs(avg_gpu_time) <= std::numeric_limits<float>::epsilon())		// skip negligible profiles
-				continue;
-
-			ImGui::Text(fmt::format("{:s}: {:.3f} ms", name.c_str(), avg_gpu_time).c_str());
-		}
-		ImGui::TreePop();
-	}
-
-	// Get FPS
-	const auto& full_frame = frame_data.profiles.find("*** Full Frame ***");
-	if (full_frame != frame_data.profiles.cend())
-	{
-		auto avg_frame_time = (full_frame->second.avg_cpu_time + full_frame->second.avg_gpu_time) / 2.f;
-		avg_frame_time /= 1000.f;
-		ImGui::Text(fmt::format("FPS: {:.1f}", 1.f / avg_frame_time).c_str());
-	}
-
-	ImGui::End();
-}
-
-void Application::declare_shader_reloader_ui()
-{
-	if (do_once)
-	{
-		const std::string path = "shaders";
-		for (const auto& entry : std::filesystem::directory_iterator(path))
-		{
-			if (std::filesystem::path(entry).extension() == ".hlsli")	// discard hlsli
-				continue;
-
-			shader_filenames.insert(std::filesystem::path(entry).stem().string());
-
-		}
-		selected_item = shader_filenames.cbegin()->c_str();
-		do_once = false;
-	}
-
-	ImGui::Begin("Shader Reloader");
-
-	const char* combo_preview_value = selected_item;
-	if (ImGui::BeginCombo("Files", combo_preview_value))
-	{
-		for (const auto& filename : shader_filenames)
-		{
-			const bool is_selected = strcmp(selected_item, filename.c_str());
-
-			if (ImGui::Selectable(filename.c_str(), is_selected))
-			{
-				selected_item = filename.c_str();
-				combo_preview_value = selected_item;
-			}
-
-			if (is_selected)
-				ImGui::SetItemDefaultFocus();
-		}
-
-		ImGui::EndCombo();
-	}
-	if (ImGui::SmallButton("Reload"))
-		gfx::dev->recompile_pipeline_shaders_by_name(std::string(selected_item));
-
-	ImGui::End();
 }
 
 void Application::on_resize(UINT width, UINT height)

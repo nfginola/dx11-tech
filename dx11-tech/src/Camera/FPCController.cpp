@@ -2,7 +2,7 @@
 #include "Camera/FPCController.h"
 #include "Camera/FPPCamera.h"
 #include "Input.h"
-#include "Graphics/ImGuiDevice.h"
+#include "Graphics/API/ImGuiDevice.h"
 
 FPCController::FPCController(Input* input) : 
 	m_cam(nullptr), 
@@ -41,13 +41,14 @@ void FPCController::update(float dt)
 	if (m_input->rmb_down())
 	{
 		m_input->set_mouse_mode(MouseMode::Relative);	// Hide mouse
+
+		// Update orientation
 		auto [x_delta, y_delta] = m_input->get_mouse_delta();
 		m_cam->update_orientation((float)x_delta, (float)y_delta, dt);
 		m_cam_2->update_orientation((float)x_delta, (float)y_delta, dt);
-
 	}
 
-	// Unhide mouse
+	// Show mouse
 	if (m_input->rmb_released())		m_input->set_mouse_mode(MouseMode::Absolute);
 
 	/*
@@ -73,7 +74,8 @@ void FPCController::update(float dt)
 	m_cam_2->set_sensitivity(m_mouse_sens);
 	m_cam_2->update_position(m_right_state, m_up_state, m_fwd_state, dt);
 	m_cam_2->update_matrices();
-
+	
+	// Hold MMB to use secondary camera
 	if (m_input->mmb_pressed() || m_input->mmb_released())
 		std::swap(m_cam, m_cam_2);
 }

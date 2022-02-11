@@ -15,13 +15,7 @@ public:
 
 	void update(float dt);
 
-private:
-	/*
-		Note that the Camera that is non-owned below should have its own
-		position and orientation, which is persistent should this controller
-		possess another Camera.
-	*/
-	
+private:	
 	FPPCamera* m_cam_2;
 	FPPCamera* m_cam;
 	Input* m_input;

@@ -1,6 +1,6 @@
 #pragma once
-#include "Graphics/GfxDevice.h"
-#include "Graphics/ImGuiDevice.h"
+#include "Graphics/API/GfxDevice.h"
+#include "Graphics/API/ImGuiDevice.h"
 #include "Profiler/FrameProfiler.h"
 
 #include "Graphics/Model.h"
@@ -20,10 +20,6 @@ public:
 
 private:
 	LRESULT custom_win_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-
-	void declare_ui();
-	void declare_profiler_ui();
-	void declare_shader_reloader_ui();
 
 	void on_resize(UINT width, UINT height);
 
@@ -47,12 +43,7 @@ private:
 
 	uint64_t m_curr_frame = 0;
 
-	/*
-		Shader reloader variables
-	*/
-	std::set<std::string> shader_filenames;
-	bool do_once = true;
-	const char* selected_item = "";
+
 
 	class IDrawable* m_drawable;
 

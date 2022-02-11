@@ -1,6 +1,6 @@
 #pragma once
-#include "Graphics/GfxCommon.h"
-#include "Graphics/GfxHelperTypes.h"
+#include "Graphics/API/GfxCommon.h"
+#include "Graphics/API/GfxHelperTypes.h"
 
 class BufferDesc
 {

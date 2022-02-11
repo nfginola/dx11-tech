@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics/GfxCommon.h"
+#include "Graphics/API/GfxCommon.h"
 
 // User can get a GPU Profiler from the GfxDevice
 // Uses the internal annotator from DXDevice, not the user exposed GPUAnnotator

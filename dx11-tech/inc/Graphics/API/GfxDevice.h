@@ -1,10 +1,10 @@
 #pragma once
-#include "Graphics/GfxCommon.h"
-#include "Graphics/GfxDescriptorsPrimitive.h"
-#include "Graphics/GfxDescriptorsAbstraction.h"
-#include "Graphics/GfxVertexTypes.h"
-#include "Graphics/GfxTypes.h"
-#include "Graphics/GfxHelperTypes.h"
+#include "Graphics/API/GfxCommon.h"
+#include "Graphics/API/GfxDescriptorsPrimitive.h"
+#include "Graphics/API/GfxDescriptorsAbstraction.h"
+#include "Graphics/API/GfxVertexTypes.h"
+#include "Graphics/API/GfxTypes.h"
+#include "Graphics/API/GfxHelperTypes.h"
 #include "Profiler/GPUProfiler.h"
 
 /*

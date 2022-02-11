@@ -2,8 +2,8 @@
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
-#include "Graphics/ImGuiDevice.h"
-#include "Graphics/GfxDevice.h"
+#include "Graphics/API/ImGuiDevice.h"
+#include "Graphics/API/GfxDevice.h"
 
 namespace gfx
 {

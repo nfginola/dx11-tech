@@ -39,28 +39,28 @@
     <ClCompile Include="src\Camera\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\GfxCommon.cpp">
+    <ClCompile Include="src\Graphics\API\GfxCommon.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\GfxDevice.cpp">
+    <ClCompile Include="src\Graphics\API\GfxDevice.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\DXDevice.cpp">
+    <ClCompile Include="src\Graphics\API\DXDevice.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\GfxDescriptorsPrimitive.cpp">
+    <ClCompile Include="src\Graphics\API\GfxDescriptorsPrimitive.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\GfxTypes.cpp">
+    <ClCompile Include="src\Graphics\API\GfxTypes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\GfxHelperTypes.cpp">
+    <ClCompile Include="src\Graphics\API\GfxHelperTypes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\GfxDescriptorsAbstraction.cpp">
+    <ClCompile Include="src\Graphics\API\GfxDescriptorsAbstraction.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\GfxVertexTypes.cpp">
+    <ClCompile Include="src\Graphics\API\GfxVertexTypes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Profiler\FrameProfiler.cpp">
@@ -78,7 +78,7 @@
     <ClCompile Include="src\Camera\FPCController.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\ImGuiDevice.cpp">
+    <ClCompile Include="src\Graphics\API\ImGuiDevice.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="vendor\imgui-docking\imgui.cpp">
@@ -123,7 +123,7 @@
     <ClCompile Include="src\Graphics\Drawable\CustomTestDrawable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\Renderer.cpp">
+    <ClCompile Include="src\Graphics\Renderer\Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -149,28 +149,28 @@
     <ClInclude Include="inc\Camera\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\GfxCommon.h">
+    <ClInclude Include="inc\Graphics\API\GfxCommon.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\GfxDevice.h">
+    <ClInclude Include="inc\Graphics\API\GfxDevice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\DXDevice.h">
+    <ClInclude Include="inc\Graphics\API\DXDevice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\GfxDescriptorsPrimitive.h">
+    <ClInclude Include="inc\Graphics\API\GfxDescriptorsPrimitive.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\GfxTypes.h">
+    <ClInclude Include="inc\Graphics\API\GfxTypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\GfxHelperTypes.h">
+    <ClInclude Include="inc\Graphics\API\GfxHelperTypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\GfxDescriptorsAbstraction.h">
+    <ClInclude Include="inc\Graphics\API\GfxDescriptorsAbstraction.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\GfxVertexTypes.h">
+    <ClInclude Include="inc\Graphics\API\GfxVertexTypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inc\Globals.h">
@@ -191,7 +191,7 @@
     <ClInclude Include="inc\Camera\FPCController.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\ImGuiDevice.h">
+    <ClInclude Include="inc\Graphics\API\ImGuiDevice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="vendor\imgui-docking\imgui.h">
@@ -251,7 +251,7 @@
     <ClInclude Include="inc\Graphics\Drawable\CustomTestDrawable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\Renderer.h">
+    <ClInclude Include="inc\Graphics\Renderer\Renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

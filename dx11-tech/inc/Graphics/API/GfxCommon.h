@@ -1,7 +1,7 @@
 #pragma once
 #include <optional>
 #include <variant>
-#include "Graphics/DXDevice.h"
+#include "Graphics/API/DXDevice.h"
 
 // https://docs.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-devices-downlevel-intro
 

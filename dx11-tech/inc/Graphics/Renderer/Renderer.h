@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics/GfxTypes.h"
+#include "Graphics/API/GfxTypes.h"
 
 class Renderer
 {
@@ -11,9 +11,8 @@ public:
 	Renderer(const Renderer&) = delete;
 
 	//void submit(class ICustomDrawable* drawable);
-
-
 	//void set_scene(class Scene* scene);
+
 	void set_camera(class Camera* cam);
 
 	void render();
@@ -25,6 +24,10 @@ private:
 	Renderer();
 	~Renderer();
 
+	void declare_ui();
+	void declare_profiler_ui();
+	void declare_shader_reloader_ui();
+
 private:
 	void create_resolution_dependent_resources(UINT width, UINT height);
 
@@ -34,11 +37,18 @@ private:
 	//std::vector<ICustomDrawable*> m_custom_drawables;
 
 	//class Scene* m_curr_scene;
-	
+
 	// temp
 	std::vector<const class Model*> m_models;
 	Camera* m_main_cam;
 
+
+	/*
+		Shader reloader variables
+	*/
+	std::set<std::string> shader_filenames;
+	bool do_once = true;
+	const char* selected_item = "";
 
 
 
@@ -89,4 +99,5 @@ private:
 
 
 };
+
 

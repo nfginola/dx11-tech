@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics/GfxCommon.h"
+#include "Graphics/API/GfxCommon.h"
 
 // User can get an annotator from the GfxDevice
 class GPUAnnotator

@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics/GfxCommon.h"
+#include "Graphics/API/GfxCommon.h"
 
 
 // Vertex types

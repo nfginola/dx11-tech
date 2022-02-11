@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Graphics/GfxDescriptorsAbstraction.h"
+#include "Graphics/API/GfxDescriptorsAbstraction.h"
 
 PipelineDesc& PipelineDesc::set_shaders(VertexShader vs, PixelShader ps, std::optional<GeometryShader> gs, std::optional<HullShader> hs, std::optional<DomainShader> ds)
 {

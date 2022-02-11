@@ -1,6 +1,6 @@
 #pragma once
-#include "Graphics/GfxTypes.h"
-#include "Graphics/GfxDevice.h"
+#include "Graphics/API/GfxTypes.h"
+#include "Graphics/API/GfxDevice.h"
 
 class DiskTextureManager
 {

@@ -1,5 +1,5 @@
 #pragma once
-#include "GfxTypes.h"
+#include "Graphics/API/GfxTypes.h"
 #include "Graphics/Material.h"
 
 struct Mesh
