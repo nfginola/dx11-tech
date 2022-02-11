@@ -22,7 +22,7 @@ private:
 	MaterialManager* m_mat_mgr = nullptr;
 
 	uint64_t m_def_counter = 0;
-	std::map<std::filesystem::path, std::string> m_paths_to_name;
+	std::map<std::filesystem::path, std::string> m_path_mapper;
 	std::map<std::string, Model> m_models;
 
 };

@@ -38,6 +38,7 @@ public:
 	GPUProfiler* get_profiler();
 	GPUAnnotator* get_annotator();
 
+	std::pair<UINT, UINT> get_sc_dim();
 	void resize_swapchain(UINT width, UINT height);
 
 	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname, Shader* shader);

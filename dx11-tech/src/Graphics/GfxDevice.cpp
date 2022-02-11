@@ -1069,8 +1069,6 @@ void GfxDevice::bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format, U
 }
 
 
-
-
 GPUTexture* GfxDevice::get_backbuffer()
 {
 	return &m_backbuffer;
@@ -1084,6 +1082,12 @@ GPUProfiler* GfxDevice::get_profiler()
 GPUAnnotator* GfxDevice::get_annotator()
 {
 	return m_annotator.get();
+}
+
+std::pair<UINT, UINT> GfxDevice::get_sc_dim()
+{
+	auto sc_desc = m_dev->get_sc_desc();
+	return { sc_desc.BufferDesc.Width, sc_desc.BufferDesc.Height };
 }
 
 void GfxDevice::resize_swapchain(UINT width, UINT height)

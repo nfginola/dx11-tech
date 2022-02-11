@@ -74,14 +74,6 @@ void FPCController::update(float dt)
 	m_cam_2->update_position(m_right_state, m_up_state, m_fwd_state, dt);
 	m_cam_2->update_matrices();
 
-	FPPCamera* tmp = nullptr;
 	if (m_input->mmb_pressed() || m_input->mmb_released())
-	{ 
-		//m_cam_2->set_yaw(m_cam->get_yaw());
-		//m_cam_2->set_pitch(m_cam->get_pitch());
-
-		tmp = m_cam;
-		m_cam = m_cam_2;
-		m_cam_2 = tmp;
-	}		
+		std::swap(m_cam, m_cam_2);
 }

@@ -8,6 +8,7 @@ namespace gfx
 	extern class DiskTextureManager* tex_mgr;
 	extern class MaterialManager* mat_mgr;
 	extern class ModelManager* model_mgr;
+	extern class Renderer* rend;
 }
 
 namespace perf

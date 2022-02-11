@@ -39,10 +39,8 @@ private:
 	unique_ptr<class Input> m_input;
 
 	unique_ptr<class FPCController> m_camera_controller;
-	unique_ptr<class FPPCamera> m_cam;
-	unique_ptr<class FPPCamera> m_cam_zoom;
+	unique_ptr<class FPPCamera> m_cam, m_cam_zoom;
 
-	std::vector<D3D11_VIEWPORT> viewports;										
 
 	bool m_resize_allowed = false;
 	bool m_should_resize = false;
@@ -57,49 +55,43 @@ private:
 	bool do_once = true;
 	const char* selected_item = "";
 
+	class IDrawable* m_drawable;
 
+	///*
+	//	Renderer variables
+	//*/
+	//std::vector<D3D11_VIEWPORT> viewports;
 
-	/*
-		Renderer variables
-	*/
+	//std::vector<const Model*> m_models;
 
-	std::vector<const Model*> m_models;
+	//struct PerFrameData
+	//{
+	//	DirectX::XMMATRIX view_mat, proj_mat;
+	//} m_cb_dat;
 
-	struct PerFrameData
-	{
-		DirectX::XMMATRIX view_mat, proj_mat;
-	} m_cb_dat;
+	//struct alignas(256) CBElement
+	//{
+	//	DirectX::XMMATRIX world_mat;
+	//};
+	//std::array<CBElement, 1> m_cb_elements;
 
-	struct alignas(256) CBElement
-	{
-		DirectX::XMMATRIX world_mat;
-	};
-	std::array<CBElement, 1> m_cb_elements;
+	//// cbuffer
+	//GPUBuffer m_cb_per_frame;
+	//GPUBuffer m_big_cb;
 
-	// cbuffer
-	GPUBuffer m_cb_per_frame;
-	GPUBuffer m_big_cb;
+	//// render to texture 
+	//GPUTexture d_32;
+	//GPUTexture r_tex;		
+	//Framebuffer r_fb;		
+	//GraphicsPipeline p;		
 
-	// render to texture 
-	GPUTexture d_32;
-	GPUTexture r_tex;		
-	Framebuffer r_fb;		
-	GraphicsPipeline p;		
+	//// render to backbuffer
+	//Framebuffer fb;		
+	//GraphicsPipeline r_p;
 
-	// render to backbuffer
-	Framebuffer fb;		
-	GraphicsPipeline r_p;
-
-	// linear minmagmip
-	Sampler def_samp;
-	Sampler repeat_samp;
-
-
-
-
-
-
-
+	//// linear minmagmip
+	//Sampler def_samp;
+	//Sampler repeat_samp;
 
 };
 

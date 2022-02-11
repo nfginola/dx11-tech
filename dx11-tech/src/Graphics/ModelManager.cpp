@@ -32,8 +32,8 @@ ModelManager::ModelManager(GfxDevice* dev, MaterialManager* mat_mgr) :
 const Model* ModelManager::load_model(const std::filesystem::path& path, const std::string& name)
 {
 	// If path already exists, return the model
-	auto it = m_paths_to_name.find(path);
-	if (it != m_paths_to_name.cend())
+	auto it = m_path_mapper.find(path);
+	if (it != m_path_mapper.cend())
 		return &(m_models.find(it->second)->second);
 
 	if (m_models.find(name) != m_models.cend())
@@ -83,6 +83,7 @@ const Model* ModelManager::load_model(const std::filesystem::path& path, const s
 	if (model_name.empty())
 		model_name = "Model" + std::to_string(m_def_counter++);
 
+	m_path_mapper.insert({ path, model_name });
 	auto ret_it = m_models.insert({ model_name, model });
 	return &(ret_it.first->second);
 }
@@ -94,5 +95,14 @@ const Model* ModelManager::get_model(const std::string& name)
 
 void ModelManager::remove_model(const std::string& name)
 {
+	// Remove model
 	m_models.erase(name);
+
+	// Remove path
+	std::map<std::filesystem::path, std::string>::iterator del_it;
+	for (auto it = m_path_mapper.begin(); it != m_path_mapper.end(); ++it)
+		if (it->second == name)
+			del_it = it;
+	if (del_it != m_path_mapper.end())
+		m_path_mapper.erase(del_it);
 }

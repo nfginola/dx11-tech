@@ -125,6 +125,9 @@ private:
 	std::vector<DXGI_MODE_DESC> m_available_display_modes;
 
 	static constexpr UINT s_buffer_count = 2;
+
+	UINT m_sc_width = 0;
+	UINT m_sc_height = 0;
 };
 
 

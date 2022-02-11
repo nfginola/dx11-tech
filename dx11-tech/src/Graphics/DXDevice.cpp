@@ -244,6 +244,9 @@ void DXDevice::resize_swapchain(UINT width, UINT height)
 	best_mode.Width = width;
 	best_mode.Height = height;
 
+	// Update mode
+	m_sc_desc.BufferDesc = best_mode;
+
 	HRCHECK(m_sc->ResizeTarget(&best_mode));
 	HRCHECK(m_sc->ResizeBuffers(s_buffer_count, width, height, best_mode.Format, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
 	// Automatically choose the width and height to match the client rect for HWNDs

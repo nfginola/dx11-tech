@@ -171,6 +171,8 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Graphics\Renderer.cpp" />
+    <ClCompile Include="src\Graphics\Drawable\CustomTestDrawable.cpp" />
     <ClCompile Include="src\Graphics\ModelManager.cpp" />
     <ClCompile Include="src\Graphics\MaterialManager.cpp" />
     <ClCompile Include="src\Graphics\Model.cpp" />
@@ -248,8 +250,11 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="inc\Graphics\Drawable\CustomTestDrawable.h" />
     <ClInclude Include="inc\AssimpLoader.h" />
     <ClInclude Include="inc\AssimpTypes.h" />
+    <ClInclude Include="inc\Graphics\Drawable\ICustomDrawable.h" />
+    <ClInclude Include="inc\Graphics\Drawable\IDrawable.h" />
     <ClInclude Include="inc\Graphics\ImGuiDevice.h" />
     <ClInclude Include="inc\Camera\FPCController.h" />
     <ClInclude Include="inc\Profiler\CPUProfiler.h" />
@@ -277,6 +282,7 @@
     <ClInclude Include="inc\Graphics\Model.h" />
     <ClInclude Include="inc\Graphics\MaterialManager.h" />
     <ClInclude Include="inc\Graphics\ModelManager.h" />
+    <ClInclude Include="inc\Graphics\Renderer.h" />
     <ClInclude Include="vendor\imgui-docking\backends\imgui_impl_dx11.h" />
     <ClInclude Include="vendor\imgui-docking\backends\imgui_impl_win32.h" />
     <ClInclude Include="vendor\imgui-docking\imconfig.h" />
