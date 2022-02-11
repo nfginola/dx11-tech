@@ -14,12 +14,12 @@ public:
 
 
 	//void set_scene(class Scene* scene);
-
 	void set_camera(class Camera* cam);
 
 	void render();
 
 	void on_resize(UINT width, UINT height);
+	void on_change_resolution(UINT width, UINT height);
 
 private:
 	Renderer();
@@ -27,6 +27,7 @@ private:
 
 private:
 	void create_resolution_dependent_resources(UINT width, UINT height);
+
 
 	// Misc
 private:

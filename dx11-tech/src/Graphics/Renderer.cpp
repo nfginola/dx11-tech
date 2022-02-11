@@ -257,6 +257,11 @@ void Renderer::render()
 
 void Renderer::on_resize(UINT width, UINT height)
 {
+
+}
+
+void Renderer::on_change_resolution(UINT width, UINT height)
+{
 	create_resolution_dependent_resources(width, height);
 }
 
