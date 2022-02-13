@@ -74,7 +74,7 @@ public:
 	ShaderHandle create_shader(ShaderStage stage, const ShaderBytecode& bytecode);
 	SamplerHandle create_sampler(const SamplerDesc& desc);
 
-	// Manual resource destruction
+	// Resource destruction
 	void free_buffer(BufferHandle hdl);
 	void free_texture(TextureHandle hdl);
 	void free_sampler(SamplerHandle hdl);
@@ -118,41 +118,14 @@ public:
 	void present(bool vsync = true);
 
 
-
-
-private:
-	void create_texture(const TextureDesc& desc, GPUTexture* texture, std::optional<SubresourceData> subres = {});
-	void bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource);
-
-	void bind_vertex_buffers(UINT start_slot, UINT count, const GPUBuffer* buffers, const UINT* strides, const UINT* offsets = nullptr);
-	void bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format = DXGI_FORMAT_R32_UINT, UINT offset = 0);
-
-	void create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres = {});
-
-	void begin_pass(const RenderPass* RenderPass, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
-	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname, Shader* shader, bool recompilation = false);
-	void compile_shader(ShaderStage stage, const std::filesystem::path& fname, ShaderBytecode* bytecode, bool recompilation);
-	void create_shader(ShaderStage stage, const ShaderBytecode& bytecode, Shader* shader);
-	void create_renderpass(const RenderPassDesc& desc, RenderPass* RenderPass);
-	void bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource, UINT initial_count);
-	void create_sampler(const SamplerDesc& desc, Sampler* sampler);
-	void bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler);
-	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer, UINT offset56s = 0, UINT range56s = 1);
-	void update_subresource(const GPUResource* dst, const SubresourceData& data, const D3D11_BOX& dst_box, UINT dst_subres_idx = 0);
-	void create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline);
-	void bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
-	void map_copy(const GPUResource* dst, const SubresourceData& data, D3D11_MAP map_type = D3D11_MAP_WRITE_DISCARD, UINT dst_subres_idx = 0);
-
-
-
 	/*
-		
+
 	Priority implement:
 		DrawIndexedInstanced
 		Map
 		Unmap
 		UpdateSubresource
-	
+
 	Second prio:
 		Begin
 		End
@@ -177,6 +150,30 @@ private:
 		DrawInstancedIndirect
 	*/
 
+
+
+	// Helper implementations
+private:
+
+	void create_texture(const TextureDesc& desc, GPUTexture* texture, std::optional<SubresourceData> subres = {});
+	void create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres = {});
+	void create_shader(ShaderStage stage, const ShaderBytecode& bytecode, Shader* shader);
+	void create_sampler(const SamplerDesc& desc, Sampler* sampler);
+	void compile_shader(ShaderStage stage, const std::filesystem::path& fname, ShaderBytecode* bytecode, bool recompilation);
+	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname, Shader* shader, bool recompilation = false);
+	void create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline);
+	void create_renderpass(const RenderPassDesc& desc, RenderPass* RenderPass);
+
+	void begin_pass(const RenderPass* RenderPass, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
+
+	void bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource);
+	void bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource, UINT initial_count);
+	void bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler);
+	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer, UINT offset56s = 0, UINT range56s = 1);
+	void bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
+	
+	void update_subresource(const GPUResource* dst, const SubresourceData& data, const D3D11_BOX& dst_box, UINT dst_subres_idx = 0);
+	void map_copy(const GPUResource* dst, const SubresourceData& data, D3D11_MAP map_type = D3D11_MAP_WRITE_DISCARD, UINT dst_subres_idx = 0);
 
 public:
 	static void initialize(unique_ptr<DXDevice> dx_device);

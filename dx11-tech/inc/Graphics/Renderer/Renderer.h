@@ -45,19 +45,11 @@ private:
 
 
 	/*
-		Shader reloader variables
+		Shader reloader ImGUI variables
 	*/
 	std::set<std::string> shader_filenames;
 	bool do_once = true;
 	const char* selected_item = "";
-
-
-
-
-
-
-
-
 
 
 

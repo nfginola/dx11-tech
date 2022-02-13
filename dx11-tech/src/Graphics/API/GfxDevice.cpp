@@ -459,6 +459,50 @@ void GfxDevice::free_renderpass(RenderPassHandle hdl)
 
 
 
+void GfxDevice::begin_pass(RenderPassHandle rp, DepthStencilClear ds_clear)
+{
+	begin_pass(m_renderpasses.look_up(rp.hdl), ds_clear);
+}
+
+void GfxDevice::end_pass()
+{
+	assert(m_inside_pass == true);
+	m_inside_pass = false;
+	auto& ctx = m_dev->get_context();
+
+	// set render targets / raster uavs 
+	if (m_raster_rw_range_this_pass > 0)
+	{
+		ctx->OMSetRenderTargetsAndUnorderedAccessViews(
+			gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr,
+			0, gfxconstants::MAX_RASTER_UAVS, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, nullptr);
+		m_raster_rw_range_this_pass = 0;
+	}
+	else
+	{
+		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr);
+	}
+
+
+	// resolve any ms targets if any
+	if (!m_active_RenderPass->m_resolve_targets.empty())
+	{
+		for (int i = 0; i < m_active_RenderPass->m_targets.size(); ++i)
+		{
+			auto src = (ID3D11Texture2D*)m_textures.look_up(std::get<TextureHandle>(m_active_RenderPass->m_targets[i]).hdl)->m_internal_resource.Get();
+			auto dst = (ID3D11Texture2D*)m_textures.look_up(m_active_RenderPass->m_resolve_targets[i].hdl)->m_internal_resource.Get();
+			auto format = std::get<DXGI_FORMAT>(m_active_RenderPass->m_targets[i]);
+			ctx->ResolveSubresource(dst, 0, src, 0, format);
+		}
+	}
+
+	// TO-DO: resolve depth target using compute shader
+	// https://wickedengine.net/2016/11/13/how-to-resolve-an-msaa-depthbuffer/#comments
+
+	m_active_RenderPass = nullptr;
+}
+
+
 
 void GfxDevice::bind_pipeline(PipelineHandle pipeline, std::array<FLOAT, 4> blend_factor, UINT stencil_ref)
 {
@@ -490,7 +534,7 @@ void GfxDevice::bind_vertex_buffers(UINT start_slot, const std::vector<std::tupl
 
 void GfxDevice::bind_index_buffer(BufferHandle buffer, DXGI_FORMAT format, UINT offset)
 {
-	bind_index_buffer(m_buffers.look_up(buffer.hdl), format, offset);
+	m_dev->get_context()->IASetIndexBuffer((ID3D11Buffer*)m_buffers.look_up(buffer.hdl)->m_internal_resource.Get(), format, offset);
 }
 
 void GfxDevice::map_copy(BufferHandle dst, const SubresourceData& data, D3D11_MAP map_type, UINT dst_subres_idx)
@@ -543,10 +587,18 @@ void GfxDevice::bind_sampler(UINT slot, ShaderStage stage, SamplerHandle sampler
 	bind_sampler(slot, stage, m_samplers.look_up(sampler.hdl));
 }
 
-void GfxDevice::begin_pass(RenderPassHandle rp, DepthStencilClear ds_clear)
+void GfxDevice::bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports)
 {
-	begin_pass(m_renderpasses.look_up(rp.hdl), ds_clear);
+	auto& ctx = m_dev->get_context();
+	ctx->RSSetViewports((UINT)viewports.size(), viewports.data());
 }
+
+void GfxDevice::bind_scissors(const std::vector<D3D11_RECT>& rects)
+{
+	auto& ctx = m_dev->get_context();
+	ctx->RSSetScissorRects((UINT)rects.size(), rects.data());
+}
+
 
 
 
@@ -593,7 +645,7 @@ void GfxDevice::present(bool vsync)
 
 
 /*
-	=========================================	INTERNAL IMPLEMENTATION BELOW    =================================================
+	=========================================	HELPER INTERNAL IMPLEMENTATIONS BELOW    =================================================
 
 */
 
@@ -1195,56 +1247,6 @@ void GfxDevice::begin_pass(const RenderPass* RenderPass, DepthStencilClear ds_cl
 
 }
 
-void GfxDevice::end_pass()
-{
-	assert(m_inside_pass == true);
-	m_inside_pass = false;
-	auto& ctx = m_dev->get_context();
-
-	// set render targets / raster uavs 
-	if (m_raster_rw_range_this_pass > 0)
-	{
-		ctx->OMSetRenderTargetsAndUnorderedAccessViews(
-			gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr,
-			0, gfxconstants::MAX_RASTER_UAVS, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, nullptr);
-		m_raster_rw_range_this_pass = 0;
-	}
-	else
-	{
-		ctx->OMSetRenderTargets(gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr);
-	}
-
-
-	// resolve any ms targets if any
-	if (!m_active_RenderPass->m_resolve_targets.empty())
-	{
-		for (int i = 0; i < m_active_RenderPass->m_targets.size(); ++i)
-		{
-			auto src = (ID3D11Texture2D*)m_textures.look_up(std::get<TextureHandle>(m_active_RenderPass->m_targets[i]).hdl)->m_internal_resource.Get();
-			auto dst = (ID3D11Texture2D*)m_textures.look_up(m_active_RenderPass->m_resolve_targets[i].hdl)->m_internal_resource.Get();
-			auto format = std::get<DXGI_FORMAT>(m_active_RenderPass->m_targets[i]);
-			ctx->ResolveSubresource(dst, 0, src, 0, format);
-		}
-	}
-
-	// TO-DO: resolve depth target using compute shader
-	// https://wickedengine.net/2016/11/13/how-to-resolve-an-msaa-depthbuffer/#comments
-
-	m_active_RenderPass = nullptr;
-}
-
-void GfxDevice::bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports)
-{
-	auto& ctx = m_dev->get_context();
-	ctx->RSSetViewports((UINT)viewports.size(), viewports.data());
-}
-
-void GfxDevice::bind_scissors(const std::vector<D3D11_RECT>& rects)
-{
-	auto& ctx = m_dev->get_context();
-	ctx->RSSetScissorRects((UINT)rects.size(), rects.data());
-}
-
 void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer, UINT offset56s, UINT range56s)
 {
 	ID3D11Buffer* cbs[] = { (ID3D11Buffer*)buffer->m_internal_resource.Get() };
@@ -1432,24 +1434,6 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 	ctx->OMSetDepthStencilState((ID3D11DepthStencilState*)pipeline->m_depth_stencil.m_internal_resource.Get(), stencil_ref);
 	ctx->OMSetBlendState((ID3D11BlendState*)pipeline->m_blend.m_internal_resource.Get(), blend_factor.data(), pipeline->m_sample_mask);
 
-}
-
-void GfxDevice::bind_vertex_buffers(UINT start_slot, UINT count, const GPUBuffer* buffers, const UINT* strides, const UINT* offsets)
-{
-	assert(count < 31);	// slot 31 is reserved for instancing
-	ID3D11Buffer* vbs[gfxconstants::MAX_INPUT_SLOTS] = {};
-	for (UINT i = 0; i < count; ++i)
-	{
-		vbs[i] = (ID3D11Buffer*)buffers[i].m_internal_resource.Get();
-	}
-	m_dev->get_context()->IASetVertexBuffers(start_slot, count, vbs,
-		strides ? strides : (UINT*)gfxconstants::NULL_RESOURCE,
-		offsets ? offsets : (UINT*)gfxconstants::NULL_RESOURCE);
-}
-
-void GfxDevice::bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format, UINT offset)
-{
-	m_dev->get_context()->IASetIndexBuffer((ID3D11Buffer*)buffer->m_internal_resource.Get(), format, offset);
 }
 
 
