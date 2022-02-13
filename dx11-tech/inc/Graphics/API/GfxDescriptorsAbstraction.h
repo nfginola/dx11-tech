@@ -16,15 +16,22 @@ public:
 		std::vector<GPUTexture*> resolve_targets = {},
 		GPUTexture* depth_stencil_resolve = nullptr) 
 		: 
-		m_targets(render_targets), m_depth_stencil_target(depth_stencil_target), 
-		m_resolve_targets(resolve_targets), m_depth_stencil_target_resolve(depth_stencil_resolve) {};
+		m_depth_stencil_target(depth_stencil_target), 
+		m_resolve_targets(resolve_targets), m_depth_stencil_target_resolve(depth_stencil_resolve) 
+	{
+		// Always set clear texture to black
+		for (const auto& target_in : render_targets)
+		{
+			m_targets.push_back({ target_in, RenderTextureClear::black() });
+		}
+	};
 
 	FramebufferDesc() = default;
 	FramebufferDesc& operator=(const FramebufferDesc&) = default;
 	FramebufferDesc(const FramebufferDesc&) = default;
 
 private:
-	std::vector<GPUTexture*> m_targets;
+	std::vector<std::tuple<GPUTexture*, RenderTextureClear>> m_targets;
 	std::vector<GPUTexture*> m_resolve_targets;
 	GPUTexture* m_depth_stencil_target = nullptr;
 	GPUTexture* m_depth_stencil_target_resolve = nullptr;

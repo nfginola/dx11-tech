@@ -41,7 +41,6 @@ private:
 	bool m_should_resize = false;
 	std::pair<UINT, UINT> m_resized_client_area;
 
-	uint64_t m_curr_frame = 0;
 
 
 

@@ -7,7 +7,6 @@ class Material
 public:
 	enum class Texture
 	{
-		// Phong
 		eAlbedo,
 		eNormal
 	};

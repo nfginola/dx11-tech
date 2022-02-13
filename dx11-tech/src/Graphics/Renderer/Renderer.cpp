@@ -1,16 +1,16 @@
 #include "pch.h"
-#include "Graphics/Renderer/Renderer.h"
 #include "Graphics/API/GfxDevice.h"
-#include "Profiler/FrameProfiler.h"
 #include "Graphics/API/ImGuiDevice.h"
+#include "Graphics/Renderer/Renderer.h"
+#include "Profiler/FrameProfiler.h"
 #include "Camera/Camera.h"
-#include "Graphics/Drawable/ICustomDrawable.h"
 
 
 // Temp
 #include "Graphics/Model.h"
 #include "Graphics/ModelManager.h"
 
+// Global dependencies
 namespace gfx
 {
 	Renderer* rend = nullptr;
@@ -93,7 +93,7 @@ Renderer::Renderer()
 	// fullscreen quad pass to backbuffer
 	{
 		// create framebuffer for render to tex
-		gfx::dev->create_framebuffer(FramebufferDesc({ gfx::dev->get_backbuffer() }), &fb);
+		gfx::dev->create_framebuffer(FramebufferDesc({ gfx::dev->get_backbuffer(), }), &fb);
 
 		// create fullscreen quad shaders
 		Shader fs_vs, fs_ps;
@@ -108,8 +108,6 @@ Renderer::Renderer()
 		// create and bind persistent sampler
 		gfx::dev->create_sampler(SamplerDesc(), &def_samp);
 		gfx::dev->bind_sampler(0, ShaderStage::ePixel, &def_samp);
-
-
 	}
 
 	// sponza requires wrapping texture, we will also use anisotropic filtering here (16) 
@@ -209,11 +207,25 @@ void Renderer::render()
 		gfx::dev->bind_viewports({ viewports[1] });
 		gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 0);
 
-		gfx::dev->bind_pipeline(&p);
 		for (const auto& model : m_models)
 		{
+			gfx::dev->bind_pipeline(&p);
 			gfx::dev->bind_vertex_buffers(0, (UINT)model->get_vbs().size(), model->get_vbs().data(), model->get_vb_strides().data());
 			gfx::dev->bind_index_buffer(model->get_ib());
+
+			/*
+				
+			OPAQUE PASS:
+				sort submeshes by material (pipeline, then textures)
+				
+				copy instance data for this model into Instance Buffer
+
+				for each submesh:
+					bind_pipeline
+					draw_instanced()
+			
+			*/
+
 
 			// draw each submesh
 			const auto& meshes = model->get_meshes();

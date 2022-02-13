@@ -250,6 +250,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="inc\ResourceHandleStack.h" />
     <ClInclude Include="inc\Graphics\Drawable\CustomTestDrawable.h" />
     <ClInclude Include="inc\AssimpLoader.h" />
     <ClInclude Include="inc\AssimpTypes.h" />

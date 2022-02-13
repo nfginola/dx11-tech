@@ -41,7 +41,8 @@ class GPUTexture : public GPUResource
 	friend class GfxDevice;
 	friend class DiskTextureManager;
 private:
-	TextureDesc m_desc;
+	//TextureDesc m_desc;
+	TextureType m_type = TextureType::eNone;
 	DsvPtr m_dsv;
 };
 
@@ -49,7 +50,6 @@ class GPUBuffer : public GPUResource
 {
 	friend class GfxDevice;
 private:
-	BufferDesc m_desc;
 };
 
 class Shader : public GPUType
@@ -59,6 +59,10 @@ public:
 	Shader() = default;
 	operator Shader () { return *this; }
 	ShaderStage get_stage() { return m_stage; }
+
+	bool operator==(const Shader& rhs) const { return m_internal_resource == rhs.m_internal_resource; };
+	bool operator!=(const Shader& rhs) const { return !(m_internal_resource == rhs.m_internal_resource); };
+
 private:
 	ShaderStage m_stage = ShaderStage::eNone;
 	ShaderBytecode m_blob;
@@ -73,15 +77,40 @@ using HullShader = NamedType<Shader, struct HullShaderPhantom>;
 using DomainShader = NamedType<Shader, struct DomainShaderPhantom>;
 using ComputeShader = NamedType<Shader, struct ComputeShaderPhantom>;
 
-class Sampler : public GPUType { friend class GfxDevice; };
+class Sampler : public GPUType 
+{
+	friend class GfxDevice;
+	bool operator==(const Sampler& rhs) const { return m_internal_resource == rhs.m_internal_resource; };
+	bool operator!=(const Sampler& rhs) const { return !(m_internal_resource == rhs.m_internal_resource); };
+};
 
-class RasterizerState : public GPUType { friend class GfxDevice; };
+class RasterizerState : public GPUType 
+{ 
+	friend class GfxDevice; 
+	bool operator==(const RasterizerState& rhs) const { return m_internal_resource == rhs.m_internal_resource; };
+	bool operator!=(const RasterizerState& rhs) const { return !(m_internal_resource == rhs.m_internal_resource); };
+};
 
-class InputLayout : public GPUType { friend class GfxDevice; };
+class InputLayout : public GPUType 
+{ 
+	friend class GfxDevice; 
+	bool operator==(const InputLayout& rhs) const { return m_internal_resource == rhs.m_internal_resource; };
+	bool operator!=(const InputLayout& rhs) const { return !(m_internal_resource == rhs.m_internal_resource); };
+};
 
-class BlendState : public GPUType { friend class GfxDevice; };
+class BlendState : public GPUType 
+{ 
+	friend class GfxDevice; 
+	bool operator==(const BlendState& rhs) const { return m_internal_resource == rhs.m_internal_resource; };
+	bool operator!=(const BlendState& rhs) const { return !(m_internal_resource == rhs.m_internal_resource); };
+};
 
-class DepthStencilState : public GPUType { friend class GfxDevice; };
+class DepthStencilState : public GPUType
+{ 
+	friend class GfxDevice;
+	bool operator==(const DepthStencilState& rhs) const { return m_internal_resource == rhs.m_internal_resource; };
+	bool operator!=(const DepthStencilState& rhs) const { return !(m_internal_resource == rhs.m_internal_resource); };
+};
 
 
 
@@ -91,13 +120,13 @@ class Framebuffer
 	friend class GfxDevice;
 public:
 	Framebuffer() = default;
-private:
-	Framebuffer& operator=(const Framebuffer&) = delete;
+	Framebuffer& operator=(const Framebuffer&) = default;
 	Framebuffer(const Framebuffer&) = default;
+
 private:
 	bool m_is_registered = false;
-	
-	std::vector<GPUTexture*> m_targets;
+
+	std::vector<std::tuple<GPUTexture*, RenderTextureClear, DXGI_FORMAT, DXGI_SAMPLE_DESC>> m_targets;
 	std::vector<GPUTexture*> m_resolve_targets;
 	//std::array<GPUTexture, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_targets;
 	GPUTexture* m_depth_stencil_target = nullptr;
@@ -110,9 +139,9 @@ class GraphicsPipeline
 public:
 	GraphicsPipeline() = default;
 	~GraphicsPipeline() = default;
-private:
-	GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
+	GraphicsPipeline& operator=(const GraphicsPipeline&) = default;
 	GraphicsPipeline(const GraphicsPipeline&) = default;
+
 private:
 	bool m_is_registered = false;
 

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Graphics/GfxDevice.h"
+#include "Graphics/API/GfxDevice.h"
 
 // Globals
 namespace gfx
@@ -51,15 +51,23 @@ GfxDevice::GfxDevice(std::unique_ptr<DXDevice> dev) :
 	// Initialize backbuffer texture primitive
 	m_backbuffer.m_internal_resource = m_dev->get_bb_texture();
 	m_backbuffer.m_rtv = m_dev->get_bb_target();
-	m_backbuffer.m_desc.m_type = TextureType::e2D;
-	m_backbuffer.m_desc.m_render_target_clear = RenderTextureClear::black();
-	m_dev->get_bb_texture()->GetDesc(&m_backbuffer.m_desc.m_desc);
+	m_backbuffer.m_type = TextureType::e2D;
+	//m_backbuffer.m_desc.m_type = TextureType::e2D;
+	//m_backbuffer.m_desc.m_render_target_clear = RenderTextureClear::black();
+	//m_dev->get_bb_texture()->GetDesc(&m_backbuffer.m_desc.m_desc);
 
 	// Initialize annotator
 	m_annotator = make_unique<GPUAnnotator>(m_dev->get_annotation());
 
 	// Initialize profiler
 	m_profiler = make_unique<GPUProfiler>(m_dev.get());
+
+	// Initialize resource storage
+	m_buffers = std::make_unique<ResourceHandleStack<GPUBuffer>>();
+	m_textures = std::make_unique<ResourceHandleStack<GPUTexture>>();
+	m_samplers = std::make_unique<ResourceHandleStack<Sampler, MAX_SAMPLER_STORAGE>>();
+	m_framebuffers = std::make_unique<ResourceHandleStack<Framebuffer, MAX_FRAMEBUFFER_STORAGE>>();
+	m_pipelines = std::make_unique<ResourceHandleStack<GraphicsPipeline, MAX_PIPELINE_STORAGE>>();
 }
 
 GfxDevice::~GfxDevice()
@@ -235,14 +243,10 @@ void GfxDevice::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::op
 {
 	const auto& d3d_desc = desc.m_desc;
 
-	buffer->m_desc.m_type = desc.m_type;
-
 	HRCHECK(m_dev->get_device()->CreateBuffer(
 		&d3d_desc,
 		subres ? &subres->m_subres : nullptr,
 		(ID3D11Buffer**)buffer->m_internal_resource.ReleaseAndGetAddressOf()));
-
-	buffer->m_desc.m_desc = d3d_desc;
 
 	// Create views
 	if (d3d_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE)
@@ -259,7 +263,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 {
 	auto d3d_desc = desc.m_desc;
 
-	texture->m_desc.m_type = desc.m_type;
+	//texture->m_desc.m_type = desc.m_type;
 
 	// Grab misc. data
 	bool is_array = d3d_desc.ArraySize > 1 ? true : false;
@@ -311,7 +315,8 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 		break;
 	}
 
-	texture->m_desc.m_desc = d3d_desc;
+	texture->m_type = desc.m_type;
+	//texture->m_desc.m_desc = d3d_desc;
 
 	// Create views
 	if (d3d_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE)
@@ -641,8 +646,12 @@ void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* fra
 
 
 	if (render_targets_exist && desc.m_depth_stencil_target)
-	{
-		const auto& d3d_desc_0 = desc.m_targets[0];
+	{	
+		// Get D3D11 desc
+		const auto& tex = std::get<GPUTexture*>(desc.m_targets[0]);
+		assert(tex->m_type == TextureType::e2D);
+		D3D11_TEXTURE2D_DESC d3d_desc_0{};
+		((ID3D11Texture2D*)tex->m_internal_resource.Get())->GetDesc(&d3d_desc_0);
 		/*
 			https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-omsetrendertargets
 			If render targets use multisample anti-aliasing, all bound render targets and depth buffer
@@ -650,15 +659,29 @@ void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* fra
 		*/
 
 		// if multisamp on, sanitize
-		if (d3d_desc_0->m_desc.m_desc.SampleDesc.Count > 1)
+		if (d3d_desc_0.SampleDesc.Count > 1)
 		{
 			assert(desc.m_targets.size() == desc.m_resolve_targets.size()); // check that resolve targets exists for all render targets
 
 			// check so that all bound rts and ds have ethe same sample counts (as per above specs)
-			UINT samp_count = d3d_desc_0->m_desc.m_desc.SampleDesc.Count;
+			UINT samp_count = d3d_desc_0.SampleDesc.Count;
 			for (int i = 0; i < desc.m_targets.size(); ++i)
-				assert(desc.m_targets[i]->m_desc.m_desc.SampleDesc.Count == samp_count);
-			assert(desc.m_depth_stencil_target->m_desc.m_desc.SampleDesc.Count == samp_count);
+			{
+				// Get D3D11 desc
+				const auto& other_tex = std::get<GPUTexture*>(desc.m_targets[i]);
+				assert(other_tex->m_type == TextureType::e2D);
+				D3D11_TEXTURE2D_DESC d3d_desc_n{};
+				((ID3D11Texture2D*)other_tex->m_internal_resource.Get())->GetDesc(&d3d_desc_n);
+
+				assert(d3d_desc_n.SampleDesc.Count == samp_count);
+			}
+
+			// Get D3D11 desc
+			assert(desc.m_depth_stencil_target->m_type == TextureType::e2D);
+			D3D11_TEXTURE2D_DESC ds_desc{};
+			((ID3D11Texture2D*)desc.m_depth_stencil_target->m_internal_resource.Get())->GetDesc(&ds_desc);
+
+			assert(ds_desc.SampleDesc.Count == samp_count);
 		}
 
 	}
@@ -674,8 +697,18 @@ void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* fra
 	framebuffer->m_targets.reserve(desc.m_targets.size());
 	for (int i = 0; i < desc.m_targets.size(); ++i)
 	{
-		if (desc.m_targets[i])
-			framebuffer->m_targets.push_back(desc.m_targets[i]);
+		const auto& other_tex = std::get<GPUTexture*>(desc.m_targets[i]);
+		assert(other_tex->m_type == TextureType::e2D);
+		D3D11_TEXTURE2D_DESC d3d_desc_n{};
+		((ID3D11Texture2D*)other_tex->m_internal_resource.Get())->GetDesc(&d3d_desc_n);
+
+		if (std::get<GPUTexture*>(desc.m_targets[i]))
+			framebuffer->m_targets.push_back({
+				std::get<GPUTexture*>(desc.m_targets[i]),
+				std::get<RenderTextureClear>(desc.m_targets[i]),
+				d3d_desc_n.Format,
+				d3d_desc_n.SampleDesc
+				});
 	}
 	framebuffer->m_resolve_targets = desc.m_resolve_targets;
 
@@ -792,12 +825,12 @@ void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_
 	{
 		// get target
 		auto& target = framebuffer->m_targets[i];
-		if (!target)
+		if (!std::get<GPUTexture*>(target))
 			break;
-		rtvs[i] = target->m_rtv.Get();
+		rtvs[i] = std::get<GPUTexture*>(target)->m_rtv.Get();
 
 		// clear target
-		ctx->ClearRenderTargetView(target->m_rtv.Get(), target->m_desc.m_render_target_clear.m_rgba.data());
+		ctx->ClearRenderTargetView(std::get<GPUTexture*>(target)->m_rtv.Get(), std::get<RenderTextureClear>(target).m_rgba.data());
 	}
 
 	ID3D11DepthStencilView* dsv = nullptr;
@@ -845,9 +878,9 @@ void GfxDevice::end_pass()
 	{
 		for (int i = 0; i < m_active_framebuffer->m_targets.size(); ++i)
 		{
-			auto src = (ID3D11Texture2D*)m_active_framebuffer->m_targets[i]->m_internal_resource.Get();
+			auto src = (ID3D11Texture2D*)std::get<GPUTexture*>(m_active_framebuffer->m_targets[i])->m_internal_resource.Get();
 			auto dst = (ID3D11Texture2D*)m_active_framebuffer->m_resolve_targets[i]->m_internal_resource.Get();
-			auto format = m_active_framebuffer->m_targets[i]->m_desc.m_desc.Format;
+			auto format = std::get<DXGI_FORMAT>(m_active_framebuffer->m_targets[i]);
 			ctx->ResolveSubresource(dst, 0, src, 0, format);
 		}
 	}
@@ -1017,6 +1050,14 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 		assert(false);
 		return;
 	}
+	
+	// Identical pipeline already bound
+	// We do checking at a pipeline level, just to get comfy with DX12/VK with PSOs/Pipeline
+	if (m_curr_pipeline == pipeline)
+		return;
+
+	m_curr_pipeline = pipeline;
+
 
 	auto& ctx = m_dev->get_context();
 
@@ -1048,6 +1089,7 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 	ctx->RSSetState((ID3D11RasterizerState*)pipeline->m_rasterizer.m_internal_resource.Get());
 	ctx->OMSetDepthStencilState((ID3D11DepthStencilState*)pipeline->m_depth_stencil.m_internal_resource.Get(), stencil_ref);
 	ctx->OMSetBlendState((ID3D11BlendState*)pipeline->m_blend.m_internal_resource.Get(), blend_factor.data(), pipeline->m_sample_mask);
+
 }
 
 void GfxDevice::bind_vertex_buffers(UINT start_slot, UINT count, const GPUBuffer* buffers, const UINT* strides, const UINT* offsets)
@@ -1101,9 +1143,10 @@ void GfxDevice::resize_swapchain(UINT width, UINT height)
 	// recreate primitive texture
 	m_backbuffer.m_internal_resource = m_dev->get_bb_texture();
 	m_backbuffer.m_rtv = m_dev->get_bb_target();
-	m_backbuffer.m_desc.m_type = TextureType::e2D;
-	m_backbuffer.m_desc.m_render_target_clear = RenderTextureClear::black();
-	m_dev->get_bb_texture()->GetDesc(&m_backbuffer.m_desc.m_desc);
+	m_backbuffer.m_type = TextureType::e2D;
+	//m_backbuffer.m_desc.m_type = TextureType::e2D;
+	//m_backbuffer.m_desc.m_render_target_clear = RenderTextureClear::black();
+	//m_dev->get_bb_texture()->GetDesc(&m_backbuffer.m_desc.m_desc);
 }
 
 void GfxDevice::draw(UINT vertex_count, UINT start_loc)

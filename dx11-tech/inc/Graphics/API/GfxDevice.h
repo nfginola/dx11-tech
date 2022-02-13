@@ -6,6 +6,7 @@
 #include "Graphics/API/GfxTypes.h"
 #include "Graphics/API/GfxHelperTypes.h"
 #include "Profiler/GPUProfiler.h"
+#include "ResourceHandleStack.h"
 
 /*
 	Once performance has been measured, only then should we allow binding multiple resources instead of single slot bindings.
@@ -162,23 +163,44 @@ public:
 	GfxDevice(const GfxDevice&) = delete;
 
 private:
+	// Backend device
 	unique_ptr<DXDevice> m_dev;
 
+	// Miscellaneous
 	GPUTexture m_backbuffer;
 	unique_ptr<GPUProfiler> m_profiler;
 	unique_ptr<GPUAnnotator> m_annotator;
 
+	// Raster UAVs (bindable to VS, DS, HS, GS, PS)
 	std::array<ID3D11UnorderedAccessView*, gfxconstants::MAX_RASTER_UAVS> m_raster_uavs;
 	std::array<UINT, gfxconstants::MAX_RASTER_UAVS> m_raster_uav_initial_counts;
 	UINT m_raster_rw_range_this_pass = 0;
 
+	// State
 	bool m_inside_pass = false;
 	const Framebuffer* m_active_framebuffer = nullptr;
+	const GraphicsPipeline* m_curr_pipeline = nullptr;
 
+	// Should be refactored into a 
 	std::map<std::string, std::vector<GraphicsPipeline*>> m_loaded_pipelines;
 	bool m_reloading_on = true;
 
+	// Resource storage (reasonable max limits hardcoded)
+	static constexpr uint64_t MAX_SAMPLER_STORAGE = 32;
+	static constexpr  uint64_t MAX_FRAMEBUFFER_STORAGE = 256;
+	static constexpr  uint64_t MAX_PIPELINE_STORAGE = 1024;
+
+	std::unique_ptr<ResourceHandleStack<GPUBuffer>> m_buffers;
+	std::unique_ptr<ResourceHandleStack<GPUTexture>> m_textures;
+	std::unique_ptr<ResourceHandleStack<Sampler, MAX_SAMPLER_STORAGE>> m_samplers;
+	std::unique_ptr<ResourceHandleStack<Framebuffer, MAX_FRAMEBUFFER_STORAGE>> m_framebuffers;
+	std::unique_ptr<ResourceHandleStack<GraphicsPipeline, MAX_PIPELINE_STORAGE>> m_pipelines;
+
+
+
 };
+
+
 
 
 
