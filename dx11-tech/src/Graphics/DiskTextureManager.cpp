@@ -30,14 +30,11 @@ DiskTextureManager::~DiskTextureManager()
 {
 }
 
-GPUTexture* DiskTextureManager::load_from(const std::filesystem::path& fpath)
+TextureHandle DiskTextureManager::load_from(const std::filesystem::path& fpath)
 {
-	auto it = m_path_mapper.find(fpath);
-	if (it != m_path_mapper.cend())
-	{
-		// Texture already exists
-		return &m_textures.find(it->second)->second;
-	}
+	auto it = m_path_to_tex.find(fpath);
+	if (it != m_path_to_tex.end())
+		return it->second;
 
 	// Load with STB Image 
 	int width = 0;
@@ -49,7 +46,7 @@ GPUTexture* DiskTextureManager::load_from(const std::filesystem::path& fpath)
 	// If failed to load..
 	if (width == 0 || height == 0)
 	{
-		return nullptr;
+		return TextureHandle{0};
 	}
 
 	// Always assuming SRGB
@@ -58,49 +55,27 @@ GPUTexture* DiskTextureManager::load_from(const std::filesystem::path& fpath)
 		D3D11_BIND_SHADER_RESOURCE, 0, 1, D3D11_USAGE_DEFAULT, 0, 1, 0,
 		D3D11_RESOURCE_MISC_GENERATE_MIPS);
 	
-	// Create texture
-	GPUTexture new_texture;
-	m_dev->create_texture(desc, &new_texture, SubresourceData(image_data, row_in_bytes, 0));
+	auto tex = m_dev->create_texture(desc, SubresourceData(image_data, row_in_bytes, 0));
 
 	// Free data from host
 	stbi_image_free(image_data);
-
-	// Track using the internal resource
-	void* internal_resource = new_texture.m_internal_resource.Get();
-	m_path_mapper.insert({ fpath, internal_resource });
-
-	// Insert to persistent textures map and get texture
-	auto tex_it = m_textures.insert({ internal_resource, new_texture });
-	GPUTexture* tex = &tex_it.first->second;
+	
+	m_path_to_tex.insert({ fpath, tex });
+	m_tex_to_path.insert({ tex, fpath });
 
 	return tex;
 }
 
-void DiskTextureManager::remove(const GPUTexture* texture)
+void DiskTextureManager::remove(TextureHandle texture)
 {
-	auto internal_res = texture->m_internal_resource.Get();
+	// Delete from bimap
 
-	// Remove from textures
-	auto tex_it = m_textures.find(internal_res);
-	if (tex_it == m_textures.cend())	
-		return;		// exit early if no textures found
-	m_textures.erase(internal_res);
+	auto it = m_tex_to_path.find(texture);
 
-	// Remove from path mapper
-	std::map<std::filesystem::path, void*>::iterator del_it;
-	for (auto it = m_path_mapper.begin(); it != m_path_mapper.end(); ++it)
-	{
-		if (it->second == internal_res)
-		{
-			del_it = it;
-			break;
-		}
-	}
-	m_path_mapper.erase(del_it);
-	
-	/*
-		For the resource to be deleted, all the outstanding external references must be gone.
-		It is not at least not persistently stored in the global texture list.
-		Responsibility is up to the user after this to ensure that the texture is actually gone.
-	*/
+	if (it == m_tex_to_path.end())
+		return; // Didn't find the texture
+
+	const auto associated_path = it->second;
+	m_tex_to_path.erase(texture);
+	m_path_to_tex.erase(associated_path);
 }

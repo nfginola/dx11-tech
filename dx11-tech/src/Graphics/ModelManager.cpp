@@ -49,19 +49,18 @@ const Model* ModelManager::load_model(const std::filesystem::path& path, const s
 	const auto& mats = loader.get_materials();
 	assert(meshes.size() == mats.size());
 
-	GPUBuffer pos, uv, nor, idx;
-	m_dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), &pos, SubresourceData((void*)positions.data()));
-	m_dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), &uv, SubresourceData((void*)uvs.data()));
-	m_dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), &nor, SubresourceData((void*)normals.data()));
-	m_dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), &idx, SubresourceData((void*)indices.data()));
+	auto pos_buffer = m_dev->create_buffer(BufferDesc::vertex(positions.size() * sizeof(positions[0])), SubresourceData((void*)positions.data()));
+	auto uv_buffer = m_dev->create_buffer(BufferDesc::vertex(uvs.size() * sizeof(uvs[0])), SubresourceData((void*)uvs.data()));
+	auto nor_buffer = m_dev->create_buffer(BufferDesc::vertex(normals.size() * sizeof(normals[0])), SubresourceData((void*)normals.data()));
+	auto idx_buffer = m_dev->create_buffer(BufferDesc::index(indices.size() * sizeof(indices[0])), SubresourceData((void*)indices.data()));
 
-	std::vector<std::pair<GPUBuffer, UINT>> vbs_and_strides;
-	vbs_and_strides.push_back({ pos, (UINT)sizeof(positions[0]) });
-	vbs_and_strides.push_back({ uv, (UINT)sizeof(uvs[0]) });
-	vbs_and_strides.push_back({ nor, (UINT)sizeof(normals[0]) });
+	std::vector<std::tuple<BufferHandle, UINT, UINT>> vbs_and_strides;
+	vbs_and_strides.push_back({ pos_buffer, (UINT)sizeof(positions[0]), 0 });
+	vbs_and_strides.push_back({ uv_buffer, (UINT)sizeof(uvs[0]), 0 });
+	vbs_and_strides.push_back({ nor_buffer, (UINT)sizeof(normals[0]), 0 });
 
 	// Set partial geometry data for model
-	auto model = Model().set_ib(idx).set_vbs(vbs_and_strides);
+	auto model = Model().set_ib(idx_buffer).set_vbs(vbs_and_strides);
 
 	for (int i = 0; i < meshes.size(); ++i)
 	{

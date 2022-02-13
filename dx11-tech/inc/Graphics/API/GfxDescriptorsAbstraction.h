@@ -13,10 +13,10 @@ class FramebufferDesc
 	friend class GfxDevice;
 public:
 	FramebufferDesc(
-		std::vector<GPUTexture*> render_targets,
-		GPUTexture* depth_stencil_target = nullptr,
-		std::vector<GPUTexture*> resolve_targets = {},
-		GPUTexture* depth_stencil_resolve = nullptr) 
+		std::vector<TextureHandle> render_targets,
+		TextureHandle depth_stencil_target = TextureHandle{ 0 },
+		std::vector<TextureHandle> resolve_targets = {},
+		TextureHandle depth_stencil_resolve = TextureHandle{ 0 })
 		: 
 		m_depth_stencil_target(depth_stencil_target), 
 		m_resolve_targets(resolve_targets), m_depth_stencil_target_resolve(depth_stencil_resolve) 
@@ -33,10 +33,10 @@ public:
 	FramebufferDesc(const FramebufferDesc&) = default;
 
 private:
-	std::vector<std::tuple<GPUTexture*, RenderTextureClear>> m_targets;
-	std::vector<GPUTexture*> m_resolve_targets;
-	GPUTexture* m_depth_stencil_target = nullptr;
-	GPUTexture* m_depth_stencil_target_resolve = nullptr;
+	std::vector<std::tuple<TextureHandle, RenderTextureClear>> m_targets;
+	std::vector<TextureHandle> m_resolve_targets;
+	TextureHandle m_depth_stencil_target;
+	TextureHandle m_depth_stencil_target_resolve;
 };
 
 class PipelineDesc
@@ -59,8 +59,6 @@ public:
 	PipelineDesc(const PipelineDesc&) = default;
 
 private:
-	//Shader m_vs, m_ps;
-	//std::optional<Shader> m_gs, m_hs, m_ds;
 	ShaderHandle m_vs, m_ps;
 	std::optional<ShaderHandle> m_gs, m_hs, m_ds;
 

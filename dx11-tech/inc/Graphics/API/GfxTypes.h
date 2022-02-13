@@ -4,12 +4,6 @@
 #include "ResourceHandleStack.h"
 #include "Graphics/API/GfxHandles.h"
 
-#ifdef USE_64_BIT_RES_HANDLE
-using res_handle = uint64_t;
-#else
-using res_handle = uint32_t;
-#endif
-
 
 /*
 	GPU related types/resources.
@@ -28,11 +22,9 @@ using res_handle = uint32_t;
 
 struct GPUType
 {
-//public:
 	bool is_valid() const { return m_internal_resource != nullptr; }
 	GPUType() = default;		// Not a public object!
 
-//protected:
 
 	DeviceChildPtr m_internal_resource;
 
@@ -43,8 +35,6 @@ struct GPUType
 
 struct GPUResource : public GPUType
 {
-	friend class GfxDevice;
-//protected:
 	SrvPtr m_srv;
 	UavPtr m_uav;
 	RtvPtr m_rtv;
@@ -54,22 +44,18 @@ struct GPUTexture : public GPUResource
 {
 	friend class GfxDevice;
 	friend class DiskTextureManager;
-//private:
-	//TextureDesc m_desc;
+
 	TextureType m_type = TextureType::eNone;
 	DsvPtr m_dsv;
 };
 
 struct GPUBuffer : public GPUResource
 {
-	friend class GfxDevice;
-//private:
+
 };
 
 struct Shader : public GPUType
 {
-	friend class GfxDevice;
-//public:
 	Shader() = default;
 	operator Shader () { return *this; }
 	ShaderStage get_stage() { return m_stage; }
@@ -77,7 +63,6 @@ struct Shader : public GPUType
 	bool operator==(const Shader& rhs) const { return m_internal_resource == rhs.m_internal_resource; };
 	bool operator!=(const Shader& rhs) const { return !(m_internal_resource == rhs.m_internal_resource); };
 
-//private:
 	ShaderStage m_stage = ShaderStage::eNone;
 	ShaderBytecode m_blob;
 };
@@ -131,20 +116,17 @@ class DepthStencilState : public GPUType
 
 struct Framebuffer 
 {
-	friend class GfxDevice;
-//public:
 	Framebuffer() = default;
 	Framebuffer& operator=(const Framebuffer&) = default;
 	Framebuffer(const Framebuffer&) = default;
 
-//private:
 	bool m_is_registered = false;
 
-	std::vector<std::tuple<GPUTexture*, RenderTextureClear, DXGI_FORMAT, DXGI_SAMPLE_DESC>> m_targets;
-	std::vector<GPUTexture*> m_resolve_targets;
+	std::vector<std::tuple<TextureHandle, RenderTextureClear, DXGI_FORMAT, DXGI_SAMPLE_DESC>> m_targets;
+	std::vector<TextureHandle> m_resolve_targets;
 	//std::array<GPUTexture, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_targets;
-	GPUTexture* m_depth_stencil_target = nullptr;
-	GPUTexture* m_depth_stencil_resolve_target = nullptr;
+	TextureHandle m_depth_stencil_target;
+	TextureHandle m_depth_stencil_resolve_target;
 
 	// Resource handle
 	res_handle handle = RES_INVALID_HANDLE;
@@ -153,14 +135,11 @@ struct Framebuffer
 
 struct GraphicsPipeline 
 {
-	friend class GfxDevice;
-//public:
 	GraphicsPipeline() = default;
 	~GraphicsPipeline() = default;
 	GraphicsPipeline& operator=(const GraphicsPipeline&) = default;
 	GraphicsPipeline(const GraphicsPipeline&) = default;
 
-//private:
 	bool m_is_registered = false;
 
 	ShaderHandle m_vs, m_ps, m_gs, m_hs, m_ds;

@@ -69,18 +69,11 @@ Renderer::Renderer()
 		create_resolution_dependent_resources(sc_dim.first, sc_dim.second);
 
 		// make cbuffer
-		//gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)), &m_cb_per_frame);
-		//gfx::dev->create_buffer(BufferDesc::constant(256 * 3), &m_big_cb);
-
-		m_cb_per_frame = gfx::dev->create_buffer_2(BufferDesc::constant(sizeof(PerFrameData)));
-		m_big_cb = gfx::dev->create_buffer_2(BufferDesc::constant(256 * 3));
+		m_cb_per_frame = gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)));
+		m_big_cb = gfx::dev->create_buffer(BufferDesc::constant(256 * 3));
 
 
 		// compile and create shaders
-		//Shader vs, ps;
-		//gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "VertexShader.hlsl", &vs);
-		//gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "PixelShader.hlsl", &ps);
-
 		ShaderHandle vs, ps;
 		vs = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "VertexShader.hlsl");
 		ps = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "PixelShader.hlsl");
@@ -96,20 +89,15 @@ Renderer::Renderer()
 			.set_shaders(VertexShader(vs), PixelShader(ps))
 			.set_input_layout(layout);
 		//gfx::dev->create_pipeline(p_d, &p);
-		p = gfx::dev->create_pipeline_2(p_d);
+		p = gfx::dev->create_pipeline(p_d);
 	}
 
 	// fullscreen quad pass to backbuffer
 	{
 		// create framebuffer for render to tex
-		//gfx::dev->create_framebuffer(FramebufferDesc({ gfx::dev->get_backbuffer(), }), &fb);
-		fb2 = gfx::dev->create_renderpass_2(FramebufferDesc({ gfx::dev->get_backbuffer(), }));
+		fb = gfx::dev->create_renderpass(FramebufferDesc({ gfx::dev->get_backbuffer(), }));
 
 		// create fullscreen quad shaders
-		//Shader fs_vs, fs_ps;
-		//gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "fullscreenQuadVS.hlsl", &fs_vs);
-		//gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "fullscreenQuadPS.hlsl", &fs_ps);
-
 		ShaderHandle fs_vs, fs_ps;
 		fs_vs = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "fullscreenQuadVS.hlsl");
 		fs_ps = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "fullscreenQuadPS.hlsl");
@@ -117,13 +105,11 @@ Renderer::Renderer()
 		// fullscreen quad pipeline
 		auto rp_d = PipelineDesc()
 			.set_shaders(VertexShader(fs_vs), PixelShader(fs_ps));
-		r_p = gfx::dev->create_pipeline_2(rp_d);
+		r_p = gfx::dev->create_pipeline(rp_d);
 
 		// create and bind persistent sampler
-		//gfx::dev->create_sampler(SamplerDesc(), &def_samp);
-		//gfx::dev->bind_sampler(0, ShaderStage::ePixel, &def_samp);
-		def_samp = gfx::dev->create_sampler_2(SamplerDesc());
-		gfx::dev->bind_sampler_2(0, ShaderStage::ePixel, def_samp);
+		def_samp = gfx::dev->create_sampler(SamplerDesc());
+		gfx::dev->bind_sampler(0, ShaderStage::ePixel, def_samp);
 	}
 
 	// sponza requires wrapping texture, we will also use anisotropic filtering here (16) 
@@ -140,8 +126,8 @@ Renderer::Renderer()
 	//gfx::dev->create_sampler(repeat, &repeat_samp);
 	//gfx::dev->bind_sampler(1, ShaderStage::ePixel, &repeat_samp);
 
-	repeat_samp = gfx::dev->create_sampler_2(repeat);
-	gfx::dev->bind_sampler_2(1, ShaderStage::ePixel, repeat_samp);
+	repeat_samp = gfx::dev->create_sampler(repeat);
+	gfx::dev->bind_sampler(1, ShaderStage::ePixel, repeat_samp);
 
 
 
@@ -157,17 +143,17 @@ void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
 		viewports[1].Height = (FLOAT)height;
 
 		// create depth tex
-		gfx::dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, width, height, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE), &d_32);
+		d_32 = gfx::dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, width, height, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
 
 		// create render to texture (HDR)
-		gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET), &r_tex);
+		r_tex = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET));
 
 		//gfx::dev->create_framebuffer(FramebufferDesc(
 		//	{ &r_tex }, &d_32),
 		//	&r_fb);
 
-		r_fb2 =	gfx::dev->create_renderpass_2(FramebufferDesc(
-			{ &r_tex }, &d_32));
+		r_fb =	gfx::dev->create_renderpass(FramebufferDesc(
+			{ r_tex }, d_32));
 	}
 }
 
@@ -214,28 +200,29 @@ void Renderer::render()
 	gfx::imgui->begin_frame();
 
 	// Upload per frame data to GPU
-	gfx::dev->map_copy_2(m_cb_per_frame, SubresourceData(&m_cb_dat, sizeof(m_cb_dat)));
+	gfx::dev->map_copy(m_cb_per_frame, SubresourceData(&m_cb_dat, sizeof(m_cb_dat)));
 
 	// Bind per frame data
-	gfx::dev->bind_constant_buffer_2(0, ShaderStage::eVertex, m_cb_per_frame, 0);
+	gfx::dev->bind_constant_buffer(0, ShaderStage::eVertex, m_cb_per_frame, 0);
 
 	// Upload per draw data to GPU at once
-	gfx::dev->map_copy_2(m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
+	gfx::dev->map_copy(m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
 
 	// Geometry Pass
 	{
 		auto _ = FrameProfiler::Scoped("Geometry Pass");
 		//gfx::dev->begin_pass(&r_fb);
-		gfx::dev->begin_pass(r_fb2);
+		gfx::dev->begin_pass(r_fb);
 		gfx::dev->bind_viewports({ viewports[1] });
 		//gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 0);
-		gfx::dev->bind_constant_buffer_2(1, ShaderStage::eVertex, m_big_cb, 0);
+		gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, m_big_cb, 0);
 
 		for (const auto& model : m_models)
 		{
 			//gfx::dev->bind_pipeline(&p);
-			gfx::dev->bind_pipeline_2(p);
-			gfx::dev->bind_vertex_buffers(0, (UINT)model->get_vbs().size(), model->get_vbs().data(), model->get_vb_strides().data());
+			gfx::dev->bind_pipeline(p);
+			//gfx::dev->bind_vertex_buffers(0, (UINT)model->get_vbs().size(), model->get_vbs().data(), model->get_vb_strides().data());
+			gfx::dev->bind_vertex_buffers(0, model->get_vb());
 			gfx::dev->bind_index_buffer(model->get_ib());
 
 			/*
@@ -270,10 +257,10 @@ void Renderer::render()
 	{
 		auto _ = FrameProfiler::Scoped("Fullscreen Pass");
 		//gfx::dev->begin_pass(&fb);
-		gfx::dev->begin_pass(fb2);
-		gfx::dev->bind_resource(0, ShaderStage::ePixel, &r_tex);
+		gfx::dev->begin_pass(fb);
+		gfx::dev->bind_resource(0, ShaderStage::ePixel, r_tex);
 		gfx::dev->bind_viewports(viewports);
-		gfx::dev->bind_pipeline_2(r_p);
+		gfx::dev->bind_pipeline(r_p);
 		gfx::dev->draw(6);
 
 		gfx::imgui->draw();		// Draw ImGUI overlay 

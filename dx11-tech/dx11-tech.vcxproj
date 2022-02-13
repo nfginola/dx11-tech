@@ -171,6 +171,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Graphics\API\GfxHandles.cpp" />
     <ClCompile Include="src\Graphics\Drawable\CustomTestDrawable.cpp" />
     <ClCompile Include="src\Graphics\ModelManager.cpp" />
     <ClCompile Include="src\Graphics\MaterialManager.cpp" />

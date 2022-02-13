@@ -37,6 +37,10 @@ const Material* MaterialManager::load_material(const AssimpMaterialData& mat_dat
 	// Load textures
 	auto diffuse = m_disk_tex_mgr->load_from(paths.diffuse);
 
+	// Load a default texture if no texture loaded
+	if (diffuse.hdl == 0)
+		diffuse = m_disk_tex_mgr->load_from("textures/pink.jpg");
+
 	// Create material
 	auto mat = Material().
 		set_texture(Material::Texture::eAlbedo, diffuse);

@@ -85,13 +85,14 @@ private:
 	SamplerHandle def_samp, repeat_samp;
 	
 	// render to texture 
-	GPUTexture d_32;
-	GPUTexture r_tex;
-	RenderPassHandle r_fb2;
+	TextureHandle d_32;
+	TextureHandle r_tex;
+
+	RenderPassHandle r_fb;
 	PipelineHandle p;
 
 	// render to backbuffer
-	RenderPassHandle fb2;
+	RenderPassHandle fb;
 	PipelineHandle r_p;
 
 
