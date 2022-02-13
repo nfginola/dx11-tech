@@ -189,12 +189,14 @@ private:
 	static constexpr uint64_t MAX_SAMPLER_STORAGE = 32;
 	static constexpr  uint64_t MAX_FRAMEBUFFER_STORAGE = 256;
 	static constexpr  uint64_t MAX_PIPELINE_STORAGE = 1024;
+	static constexpr  uint64_t MAX_SHADER_STORAGE = 256;
 
 	std::unique_ptr<ResourceHandleStack<GPUBuffer>> m_buffers;
 	std::unique_ptr<ResourceHandleStack<GPUTexture>> m_textures;
 	std::unique_ptr<ResourceHandleStack<Sampler, MAX_SAMPLER_STORAGE>> m_samplers;
 	std::unique_ptr<ResourceHandleStack<Framebuffer, MAX_FRAMEBUFFER_STORAGE>> m_framebuffers;
 	std::unique_ptr<ResourceHandleStack<GraphicsPipeline, MAX_PIPELINE_STORAGE>> m_pipelines;
+	std::unique_ptr<ResourceHandleStack<Shader, MAX_SHADER_STORAGE>> m_compiled_shaders;
 
 
 

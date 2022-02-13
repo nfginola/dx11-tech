@@ -68,6 +68,16 @@ GfxDevice::GfxDevice(std::unique_ptr<DXDevice> dev) :
 	m_samplers = std::make_unique<ResourceHandleStack<Sampler, MAX_SAMPLER_STORAGE>>();
 	m_framebuffers = std::make_unique<ResourceHandleStack<Framebuffer, MAX_FRAMEBUFFER_STORAGE>>();
 	m_pipelines = std::make_unique<ResourceHandleStack<GraphicsPipeline, MAX_PIPELINE_STORAGE>>();
+	m_compiled_shaders = std::make_unique<ResourceHandleStack<Shader, MAX_SHADER_STORAGE>>();
+
+	uint64_t storage_mem_footprint = 0;
+	storage_mem_footprint += m_buffers->get_memory_footprint();
+	storage_mem_footprint += m_textures->get_memory_footprint();
+	storage_mem_footprint += m_samplers->get_memory_footprint();
+	storage_mem_footprint += m_framebuffers->get_memory_footprint();
+	storage_mem_footprint += m_pipelines->get_memory_footprint();
+	storage_mem_footprint += m_compiled_shaders->get_memory_footprint();
+	fmt::print("GfxDevice storage memory footprint: {} bytes (~{:.3f} MB)\n", storage_mem_footprint, storage_mem_footprint / (float)10e5);
 }
 
 GfxDevice::~GfxDevice()

@@ -11,7 +11,7 @@
 // Do NOT change the value. You are free to change the name if any collision arises in your program.
 static constexpr uint8_t RES_INVALID_HANDLE = 0;
 
-// Use res_handle_t 
+// Use res_handle in application code
 #ifdef USE_64_BIT_RES_HANDLE
 using res_handle = uint64_t;
 #else
