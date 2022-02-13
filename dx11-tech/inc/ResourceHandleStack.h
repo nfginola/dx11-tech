@@ -140,6 +140,11 @@ public:
 		return &resources[idx];
 	}
 
+	uint64_t get_memory_footprint()
+	{
+		return total_resource_bytes + total_bookkeeping_bytes + 3 * sizeof(uint64_t) + sizeof(half_key);
+	}
+
 private:
 	// Total number of elements including the reserved 0 index
 	// Stored as a member variable just so we can easily check size in debugger
