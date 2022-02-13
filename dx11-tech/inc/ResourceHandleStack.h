@@ -11,12 +11,12 @@
 // Do NOT change the value. You are free to change the name if any collision arises in your program.
 static constexpr uint8_t RES_INVALID_HANDLE = 0;
 
-// Use res_handle in application code
-#ifdef USE_64_BIT_RES_HANDLE
-using res_handle = uint64_t;
-#else
-using res_handle = uint32_t;
-#endif
+// Copy below in application code to define res_handle (you are free to change name too)
+//#ifdef USE_64_BIT_RES_HANDLE
+//using res_handle = uint64_t;
+//#else
+//using res_handle = uint32_t;
+//#endif
 
 // Uses ~2 MB when max_usable_elements = UINT16_MAX - 1 (default)
 template <typename T, uint64_t max_usable_elements = std::numeric_limits<uint16_t>::max() - 1>
@@ -72,7 +72,15 @@ public:
 		slots_enabled[0] = false;	// reserved
 		std::fill(slots_enabled.begin() + 1, slots_enabled.end(), true);
 	}
-	~ResourceHandleStack() = default;
+	~ResourceHandleStack()
+	{
+		// Automatically free all remaining resources on destruction
+		for (auto& res : resources)
+		{
+			res.free();
+			res.handle = 0;
+		}
+	};
 
 	// Get next free handle
 	std::pair<full_key, T*> get_next_free_handle()
@@ -144,6 +152,13 @@ public:
 	{
 		return total_resource_bytes + total_bookkeeping_bytes + 3 * sizeof(uint64_t) + sizeof(half_key);
 	}
+
+	auto begin() { return resources.begin(); }
+	auto end() { return resources.end(); }
+	auto cbegin() const { return resources.begin(); }
+	auto cend() const { return resources.end(); }
+	auto begin() const { return resources.begin(); }
+	auto end() const { return resources.end(); }
 
 private:
 	// Total number of elements including the reserved 0 index

@@ -1,6 +1,14 @@
 #pragma once
 #include "Graphics/API/GfxCommon.h"
 #include "Graphics/API/GfxDescriptorsPrimitive.h"
+#include "ResourceHandleStack.h"
+#include "Graphics/API/GfxHandles.h"
+
+#ifdef USE_64_BIT_RES_HANDLE
+using res_handle = uint64_t;
+#else
+using res_handle = uint32_t;
+#endif
 
 
 /*
@@ -16,46 +24,52 @@
 		- Use the GPUType "is_valid()" for internal checks
 */
 
-class GPUType
-{
-public:
-	bool is_valid() const { return m_internal_resource != nullptr; }
 
-protected:
+
+struct GPUType
+{
+//public:
+	bool is_valid() const { return m_internal_resource != nullptr; }
 	GPUType() = default;		// Not a public object!
 
+//protected:
+
 	DeviceChildPtr m_internal_resource;
+
+	// Resource handle
+	res_handle handle = RES_INVALID_HANDLE;
+	void free() { m_internal_resource.Reset(); }
 };
 
-class GPUResource : public GPUType
+struct GPUResource : public GPUType
 {
 	friend class GfxDevice;
-protected:
+//protected:
 	SrvPtr m_srv;
 	UavPtr m_uav;
 	RtvPtr m_rtv;
 };
 
-class GPUTexture : public GPUResource
+struct GPUTexture : public GPUResource
 {
 	friend class GfxDevice;
 	friend class DiskTextureManager;
-private:
+//private:
 	//TextureDesc m_desc;
 	TextureType m_type = TextureType::eNone;
 	DsvPtr m_dsv;
 };
 
-class GPUBuffer : public GPUResource
+struct GPUBuffer : public GPUResource
 {
 	friend class GfxDevice;
-private:
+//private:
 };
 
-class Shader : public GPUType
+struct Shader : public GPUType
 {
 	friend class GfxDevice;
-public:
+//public:
 	Shader() = default;
 	operator Shader () { return *this; }
 	ShaderStage get_stage() { return m_stage; }
@@ -63,19 +77,19 @@ public:
 	bool operator==(const Shader& rhs) const { return m_internal_resource == rhs.m_internal_resource; };
 	bool operator!=(const Shader& rhs) const { return !(m_internal_resource == rhs.m_internal_resource); };
 
-private:
+//private:
 	ShaderStage m_stage = ShaderStage::eNone;
 	ShaderBytecode m_blob;
 };
 
 // Strongly typed shaders for safer public interface
 // https://www.fluentcpp.com/2016/12/08/strong-types-for-strong-interfaces/
-using VertexShader = NamedType<Shader, struct VertexShaderPhantom>;
-using PixelShader = NamedType<Shader, struct PixelShaderPhantom>;
-using GeometryShader = NamedType<Shader, struct GeometryShaderPhantom>;
-using HullShader = NamedType<Shader, struct HullShaderPhantom>;
-using DomainShader = NamedType<Shader, struct DomainShaderPhantom>;
-using ComputeShader = NamedType<Shader, struct ComputeShaderPhantom>;
+using VertexShader = NamedType<ShaderHandle, struct VertexShaderPhantom>;
+using PixelShader = NamedType<ShaderHandle, struct PixelShaderPhantom>;
+using GeometryShader = NamedType<ShaderHandle, struct GeometryShaderPhantom>;
+using HullShader = NamedType<ShaderHandle, struct HullShaderPhantom>;
+using DomainShader = NamedType<ShaderHandle, struct DomainShaderPhantom>;
+using ComputeShader = NamedType<ShaderHandle, struct ComputeShaderPhantom>;
 
 class Sampler : public GPUType 
 {
@@ -115,15 +129,15 @@ class DepthStencilState : public GPUType
 
 
 
-class Framebuffer 
+struct Framebuffer 
 {
 	friend class GfxDevice;
-public:
+//public:
 	Framebuffer() = default;
 	Framebuffer& operator=(const Framebuffer&) = default;
 	Framebuffer(const Framebuffer&) = default;
 
-private:
+//private:
 	bool m_is_registered = false;
 
 	std::vector<std::tuple<GPUTexture*, RenderTextureClear, DXGI_FORMAT, DXGI_SAMPLE_DESC>> m_targets;
@@ -131,21 +145,25 @@ private:
 	//std::array<GPUTexture, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_targets;
 	GPUTexture* m_depth_stencil_target = nullptr;
 	GPUTexture* m_depth_stencil_resolve_target = nullptr;
+
+	// Resource handle
+	res_handle handle = RES_INVALID_HANDLE;
+	void free() { m_is_registered = false; }
 };
 
-class GraphicsPipeline 
+struct GraphicsPipeline 
 {
 	friend class GfxDevice;
-public:
+//public:
 	GraphicsPipeline() = default;
 	~GraphicsPipeline() = default;
 	GraphicsPipeline& operator=(const GraphicsPipeline&) = default;
 	GraphicsPipeline(const GraphicsPipeline&) = default;
 
-private:
+//private:
 	bool m_is_registered = false;
 
-	Shader m_vs, m_ps, m_gs, m_hs, m_ds;
+	ShaderHandle m_vs, m_ps, m_gs, m_hs, m_ds;
 
 	// IA
 	InputLayout m_input_layout;
@@ -163,6 +181,10 @@ private:
 	UINT m_sample_mask = 0xffffffff;	
 
 	DepthStencilState m_depth_stencil;
+
+	// Resource handle
+	res_handle handle = RES_INVALID_HANDLE;
+	void free() { m_is_registered = false; }
 };
 
 class ComputePipeline {};

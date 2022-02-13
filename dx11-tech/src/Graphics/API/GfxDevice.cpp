@@ -63,20 +63,20 @@ GfxDevice::GfxDevice(std::unique_ptr<DXDevice> dev) :
 	m_profiler = make_unique<GPUProfiler>(m_dev.get());
 
 	// Initialize resource storage
-	m_buffers = std::make_unique<ResourceHandleStack<GPUBuffer>>();
-	m_textures = std::make_unique<ResourceHandleStack<GPUTexture>>();
-	m_samplers = std::make_unique<ResourceHandleStack<Sampler, MAX_SAMPLER_STORAGE>>();
-	m_framebuffers = std::make_unique<ResourceHandleStack<Framebuffer, MAX_FRAMEBUFFER_STORAGE>>();
-	m_pipelines = std::make_unique<ResourceHandleStack<GraphicsPipeline, MAX_PIPELINE_STORAGE>>();
-	m_compiled_shaders = std::make_unique<ResourceHandleStack<Shader, MAX_SHADER_STORAGE>>();
+	//m_buffers = std::make_unique<ResourceHandleStack<GPUBuffer>>();
+	//m_textures = std::make_unique<ResourceHandleStack<GPUTexture>>();
+	//m_samplers = std::make_unique<ResourceHandleStack<Sampler, MAX_SAMPLER_STORAGE>>();
+	//m_framebuffers = std::make_unique<ResourceHandleStack<Framebuffer, MAX_FRAMEBUFFER_STORAGE>>();
+	//m_pipelines = std::make_unique<ResourceHandleStack<GraphicsPipeline, MAX_PIPELINE_STORAGE>>();
+	//m_compiled_shaders = std::make_unique<ResourceHandleStack<Shader, MAX_SHADER_STORAGE>>();
 
 	uint64_t storage_mem_footprint = 0;
-	storage_mem_footprint += m_buffers->get_memory_footprint();
-	storage_mem_footprint += m_textures->get_memory_footprint();
-	storage_mem_footprint += m_samplers->get_memory_footprint();
-	storage_mem_footprint += m_framebuffers->get_memory_footprint();
-	storage_mem_footprint += m_pipelines->get_memory_footprint();
-	storage_mem_footprint += m_compiled_shaders->get_memory_footprint();
+	storage_mem_footprint += m_buffers.get_memory_footprint();
+	storage_mem_footprint += m_textures.get_memory_footprint();
+	storage_mem_footprint += m_samplers.get_memory_footprint();
+	storage_mem_footprint += m_framebuffers.get_memory_footprint();
+	storage_mem_footprint += m_pipelines.get_memory_footprint();
+	storage_mem_footprint += m_shaders.get_memory_footprint();
 	fmt::print("GfxDevice storage memory footprint: {} bytes (~{:.3f} MB)\n", storage_mem_footprint, storage_mem_footprint / (float)10e5);
 }
 
@@ -118,14 +118,14 @@ void GfxDevice::frame_end()
 
 
 
-void GfxDevice::compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname, Shader* shader)
+void GfxDevice::compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname, Shader* shader, bool recompilation)
 {
 	ShaderBytecode bc;
-	compile_shader(stage, fname, &bc);
+	compile_shader(stage, fname, &bc, recompilation);
 	create_shader(stage, bc, shader);
 }
 
-void GfxDevice::compile_shader(ShaderStage stage, const std::filesystem::path& fname, ShaderBytecode* bytecode)
+void GfxDevice::compile_shader(ShaderStage stage, const std::filesystem::path& fname, ShaderBytecode* bytecode, bool recompilation)
 {
 	std::string target;
 	switch (stage)
@@ -179,7 +179,8 @@ void GfxDevice::compile_shader(ShaderStage stage, const std::filesystem::path& f
 		{
 			OutputDebugStringA((char*)error_blob->GetBufferPointer());
 			std::cout << (char*)error_blob->GetBufferPointer() << "\n";
-			assert(false);
+			if (!recompilation)	
+				assert(false);
 			return;
 		}
 	}
@@ -192,62 +193,84 @@ void GfxDevice::compile_shader(ShaderStage stage, const std::filesystem::path& f
 
 void GfxDevice::recompile_pipeline_shaders_by_name(const std::string& name)
 {
-	/*
-		using the current solution with the map can lead to a dangling pointer!!
-		all pipelines created must be kept alive or else recompilation will iterate over 
-		pipelines that are potentially dead.
-	*/
 	if (!m_reloading_on)
 		return;
 
 	auto fname = name + std::string(".hlsl");		// append extension
 
-	// grab all the pipeline states connected with the shader name
+	// grab all the pipeline states associated with the shader name
 	auto it = m_loaded_pipelines.find(fname);
 	if (it == m_loaded_pipelines.end())
-	{
 		assert(false);
-	}
 	auto& pipelines = it->second;
 
-	const auto& sample_pipeline = pipelines[0];
+	/*
+		Recompile 
+	*/
+	const auto& sample_pipeline = m_pipelines.look_up(pipelines[0].hdl);
 
 	// get filenames to all shaders in the pipelines
-	const auto& vs_name = sample_pipeline->m_vs.m_blob.fname;
-	const auto& ps_name = sample_pipeline->m_ps.m_blob.fname;
-	const auto& gs_name = sample_pipeline->m_gs.m_blob.fname;
-	const auto& hs_name = sample_pipeline->m_hs.m_blob.fname;
-	const auto& ds_name = sample_pipeline->m_ds.m_blob.fname;
+	auto existing_vs = m_shaders.look_up(sample_pipeline->m_vs.hdl);
+	auto existing_ps = m_shaders.look_up(sample_pipeline->m_ps.hdl);
+	const auto& vs_name = existing_vs->m_blob.fname;
+	const auto& ps_name = existing_ps->m_blob.fname;
 
 	// compile shaders
-	Shader vs, ps, gs, ds, hs;
-	compile_and_create_shader(ShaderStage::eVertex, vs_name, &vs);
-	compile_and_create_shader(ShaderStage::ePixel, ps_name, &ps);
+	compile_and_create_shader(ShaderStage::eVertex, vs_name, existing_vs, true);
+	compile_and_create_shader(ShaderStage::ePixel, ps_name, existing_ps, true);
 
-	if (!gs_name.empty())
-		compile_and_create_shader(ShaderStage::eGeometry, gs_name, &gs);
-
-	if (!hs_name.empty())
-		compile_and_create_shader(ShaderStage::eHull, hs_name, &hs);
-
-	if (!ds_name.empty())
-		compile_and_create_shader(ShaderStage::eDomain, ds_name, &ds);
-
-	/*
-		dangling pointer possible if Pipeline is destroyed outside.
-		Ignoring for now
-	*/
-	for (auto& pipeline : pipelines)
+	if (sample_pipeline->m_gs.hdl != 0)
 	{
-		if (vs.is_valid())
-			pipeline->m_vs = vs;
-		if (ps.is_valid())
-			pipeline->m_ps = ps;
-		pipeline->m_gs = gs;
-		pipeline->m_hs = hs;
-		pipeline->m_ds = ds;
+		auto existing_gs = m_shaders.look_up(sample_pipeline->m_gs.hdl);
+		if (const auto& gs_name = existing_gs->m_blob.fname; !gs_name.empty())
+			compile_and_create_shader(ShaderStage::eGeometry, gs_name, existing_gs, true);
+	}
+
+	if (sample_pipeline->m_hs.hdl != 0)
+	{
+		auto existing_hs = m_shaders.look_up(sample_pipeline->m_hs.hdl);
+		if (const auto& hs_name = existing_hs->m_blob.fname; !hs_name.empty())
+			compile_and_create_shader(ShaderStage::eHull, hs_name, existing_hs, true);
+	}
+
+	if (sample_pipeline->m_ds.hdl != 0)
+	{
+		auto existing_ds = m_shaders.look_up(sample_pipeline->m_ds.hdl);
+		if (const auto& ds_name = existing_ds->m_blob.fname; !ds_name.empty())
+			compile_and_create_shader(ShaderStage::eDomain, ds_name, existing_ds, true);
+	}
+
+	//for (auto& existing_pipeline : pipelines)
+	//{
+
+	//}
+
+	// Since we have recompiled the shaders, any pipeline which uses the shader handle associated with it has an updated version!
+	// No need to traverse pipelines (although we would need to do this in DX12 since we have to rebuild the PSO)
+	/*
+		Since this is a cold path, simply traversing 
+	*/
+
+	for (auto& pipeline : m_pipelines)
+	{
+		//if (pipeline.m_vs.hdl == sample_pipeline->m_vs.hdl)
+		//	pipeline.m_vs = sample_pipeline->m_vs;
+
+		//if (pipeline.m_ps.hdl == sample_pipeline->m_ps.hdl)
+		//	pipeline.m_ps = sample_pipeline->m_ps;
+
+		//if (pipeline.m_hs.hdl == sample_pipeline->m_hs.hdl)
+		//	pipeline.m_hs = sample_pipeline->m_hs;
+
+		//if (pipeline.m_gs.hdl == sample_pipeline->m_gs.hdl)
+		//	pipeline.m_gs = sample_pipeline->m_gs;
+
+		//if (pipeline.m_ds.hdl == sample_pipeline->m_ds.hdl)
+		//	pipeline.m_ds = sample_pipeline->m_ds;
 	}
 }
+
+
 
 void GfxDevice::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres)
 {
@@ -740,59 +763,231 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 	HRCHECK(dev->CreateDepthStencilState(&desc.m_depth_stencil_desc.m_depth_stencil_desc,
 		(ID3D11DepthStencilState**)pipeline->m_depth_stencil.m_internal_resource.ReleaseAndGetAddressOf()));
 
-	// create input layout (duplicates may be created here, we will ignore this for simplicity)
-	if (!desc.m_input_desc.m_input_descs.empty())
+	// Check shader validity
+	auto vs = m_shaders.look_up(desc.m_vs.hdl);
+	auto ps = m_shaders.look_up(desc.m_ps.hdl);
+
+	assert(vs->get_stage() == ShaderStage::eVertex);
+	assert(ps->get_stage() == ShaderStage::ePixel);
+
+	if (desc.m_hs.has_value())
 	{
-		HRCHECK(dev->CreateInputLayout(
-			desc.m_input_desc.m_input_descs.data(),
-			(UINT)desc.m_input_desc.m_input_descs.size(),
-			desc.m_vs.m_blob.code->data(),
-			(UINT)desc.m_vs.m_blob.code->size(),
-			(ID3D11InputLayout**)pipeline->m_input_layout.m_internal_resource.ReleaseAndGetAddressOf()));
+		assert(desc.m_hs->hdl != 0);
+		assert(m_shaders.look_up(desc.m_hs->hdl)->get_stage() == ShaderStage::eHull);
 	}
-
-	auto load_to_cache = [&](const std::string& fname)
-	{
-		auto it = m_loaded_pipelines.find(fname);
-		if (it != m_loaded_pipelines.end())
-			it->second.push_back(pipeline);
-		else
-			m_loaded_pipelines.insert({ fname, { pipeline } });
-	};
-
-	// add shaders and add pipeline to lookup table
-	pipeline->m_vs = desc.m_vs;
-	pipeline->m_ps = desc.m_ps;
-
-	if (m_reloading_on)
-	{
-		load_to_cache(desc.m_vs.m_blob.fname);
-		load_to_cache(desc.m_ps.m_blob.fname);
-	}
-
 
 	if (desc.m_gs.has_value())
 	{
-		pipeline->m_gs = *desc.m_gs;
-		if (m_reloading_on)
-			load_to_cache(desc.m_gs->m_blob.fname);
-	
+		assert(desc.m_gs->hdl != 0);
+		assert(m_shaders.look_up(desc.m_gs->hdl)->get_stage() == ShaderStage::eGeometry);
 	}
-	if (desc.m_hs.has_value())
-	{
-		pipeline->m_hs = *desc.m_hs;
-		if (m_reloading_on)
-			load_to_cache(desc.m_hs->m_blob.fname);
 
-	}
 	if (desc.m_ds.has_value())
 	{
-		pipeline->m_ds = *desc.m_ds;
-		if (m_reloading_on)
-			load_to_cache(desc.m_ds->m_blob.fname);
+		assert(desc.m_ds->hdl != 0);
+		assert(m_shaders.look_up(desc.m_ds->hdl)->get_stage() == ShaderStage::eDomain);
 	}
 
+
+	// create input layout (duplicates may be created here, we will ignore this for simplicity)
+	if (!desc.m_input_desc.m_input_descs.empty())
+	{
+		auto vs = m_shaders.look_up(desc.m_vs.hdl);
+
+		HRCHECK(dev->CreateInputLayout(
+			desc.m_input_desc.m_input_descs.data(),
+			(UINT)desc.m_input_desc.m_input_descs.size(),
+			vs->m_blob.code->data(),
+			(UINT)vs->m_blob.code->size(),
+			(ID3D11InputLayout**)pipeline->m_input_layout.m_internal_resource.ReleaseAndGetAddressOf()));
+	}
+
+	// add shaders
+	pipeline->m_vs = desc.m_vs;
+	pipeline->m_ps = desc.m_ps;
+
+
 	pipeline->m_is_registered = true;
+}
+
+
+ShaderHandle GfxDevice::compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname)
+{
+	auto [hdl, shader] = m_shaders.get_next_free_handle();
+	shader->handle = hdl;
+	compile_and_create_shader(stage, fname, shader);
+	return ShaderHandle{ hdl };
+}
+
+ShaderHandle GfxDevice::create_shader_2(ShaderStage stage, const ShaderBytecode& bytecode)
+{
+	auto [hdl, shader] = m_shaders.get_next_free_handle();
+	shader->handle = hdl;
+	create_shader(stage, bytecode, shader);
+	return ShaderHandle{ hdl };
+}
+
+SamplerHandle GfxDevice::create_sampler_2(const SamplerDesc& desc)
+{
+	auto [hdl, sampler] = m_samplers.get_next_free_handle();
+	sampler->handle = hdl;
+	create_sampler(desc, sampler);
+	return SamplerHandle{ hdl };
+}
+
+TextureHandle GfxDevice::create_texture_2(const TextureDesc& desc, std::optional<SubresourceData> subres)
+{
+	auto [hdl, texture] = m_textures.get_next_free_handle();
+	texture->handle = hdl;
+	create_texture(desc, texture, subres);
+	return TextureHandle{ hdl };
+}
+
+PipelineHandle GfxDevice::create_pipeline_2(const PipelineDesc& desc)
+{
+	auto [hdl, pipeline] = m_pipelines.get_next_free_handle();
+	pipeline->handle = hdl;
+	create_pipeline(desc, pipeline);
+
+	auto ret_hdl = PipelineHandle{ hdl };
+
+	// Add to lookup for reloading
+	if (m_reloading_on)
+	{
+		// add pipeline to lookup table
+		auto load_to_cache = [&](const std::string& fname)
+		{
+			auto it = m_loaded_pipelines.find(fname);
+			if (it != m_loaded_pipelines.end())
+				it->second.push_back(ret_hdl);
+			else
+				m_loaded_pipelines.insert({ fname, { ret_hdl } });
+		};
+
+		load_to_cache(m_shaders.look_up(pipeline->m_vs.hdl)->m_blob.fname);
+		load_to_cache(m_shaders.look_up(pipeline->m_ps.hdl)->m_blob.fname);
+
+		if (desc.m_gs.has_value())
+		{
+			pipeline->m_gs = *desc.m_gs;
+			if (m_reloading_on)
+				load_to_cache(m_shaders.look_up(desc.m_gs->hdl)->m_blob.fname);
+
+		}
+		if (desc.m_hs.has_value())
+		{
+			pipeline->m_hs = *desc.m_hs;
+			if (m_reloading_on)
+				load_to_cache(m_shaders.look_up(desc.m_hs->hdl)->m_blob.fname);
+
+		}
+		if (desc.m_ds.has_value())
+		{
+			pipeline->m_ds = *desc.m_ds;
+			if (m_reloading_on)
+				load_to_cache(m_shaders.look_up(desc.m_ds->hdl)->m_blob.fname);
+		}
+	}
+
+	return ret_hdl;
+}
+
+RenderPassHandle GfxDevice::create_renderpass_2(const FramebufferDesc& desc)
+{
+	auto [hdl, rp] = m_framebuffers.get_next_free_handle();
+	rp->handle = hdl;
+	create_framebuffer(desc, rp);
+	return RenderPassHandle{ hdl };
+}
+
+void GfxDevice::bind_pipeline_2(PipelineHandle pipeline, std::array<FLOAT, 4> blend_factor, UINT stencil_ref)
+{
+	bind_pipeline(m_pipelines.look_up(pipeline.hdl), blend_factor, stencil_ref);
+}
+
+BufferHandle GfxDevice::create_buffer_2(const BufferDesc& desc, std::optional<SubresourceData> subres)
+{
+	auto [hdl, buffer] = m_buffers.get_next_free_handle();
+	buffer->handle = hdl;
+	create_buffer(desc, buffer, subres);
+	return BufferHandle { hdl };
+}
+
+
+void GfxDevice::bind_vertex_buffers_2(UINT start_slot, const std::array<std::tuple<BufferHandle, UINT, UINT>, 12> buffers_strides_offsets)
+{
+	// Refactor this later. We want to remove the redundant Handle -> GPUBuffer -> D3D11Resource
+	GPUBuffer bufs[buffers_strides_offsets.size()] = {};
+	UINT strides[buffers_strides_offsets.size()] = {};
+	UINT offsets[buffers_strides_offsets.size()] = {};
+	for (int i = 0; i < buffers_strides_offsets.size(); ++i)
+	{
+		bufs[i] = *m_buffers.look_up(std::get<BufferHandle>(buffers_strides_offsets[i]).hdl);	// Shit!!!
+		strides[i] = std::get<1>(buffers_strides_offsets[i]);
+		offsets[i] = std::get<2>(buffers_strides_offsets[i]);
+	}
+	bind_vertex_buffers(start_slot, (UINT)buffers_strides_offsets.size(), bufs, strides, offsets);
+
+}
+
+void GfxDevice::bind_index_buffer_2(BufferHandle buffer, DXGI_FORMAT format, UINT offset)
+{
+	bind_index_buffer(m_buffers.look_up(buffer.hdl), format, offset);
+}
+
+void GfxDevice::map_copy_2(BufferHandle dst, const SubresourceData& data, D3D11_MAP map_type, UINT dst_subres_idx)
+{
+	map_copy(m_buffers.look_up(dst.hdl), data, map_type, dst_subres_idx);
+}
+
+void GfxDevice::map_copy_2(TextureHandle dst, const SubresourceData& data, D3D11_MAP map_type, UINT dst_subres_idx)
+{
+	map_copy(m_textures.look_up(dst.hdl), data, map_type, dst_subres_idx);
+}
+
+void GfxDevice::update_subresource(BufferHandle dst, const SubresourceData& data, const D3D11_BOX& dst_box, UINT dst_subres_idx)
+{
+	update_subresource(m_buffers.look_up(dst.hdl), data, dst_box, dst_subres_idx);
+}
+
+void GfxDevice::update_subresource(TextureHandle dst, const SubresourceData& data, const D3D11_BOX& dst_box, UINT dst_subres_idx)
+{
+	update_subresource(m_textures.look_up(dst.hdl), data, dst_box, dst_subres_idx);
+}
+
+void GfxDevice::bind_constant_buffer_2(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset_256s, UINT range_256s)
+{
+	bind_constant_buffer(slot, stage, m_buffers.look_up(buffer.hdl), offset_256s, range_256s);
+}
+
+void GfxDevice::bind_resource(UINT slot, ShaderStage stage, BufferHandle resource)
+{
+	bind_resource(slot, stage, m_buffers.look_up(resource.hdl));
+}
+
+void GfxDevice::bind_resource(UINT slot, ShaderStage stage, TextureHandle resource)
+{
+	bind_resource(slot, stage, m_buffers.look_up(resource.hdl));
+}
+
+void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, BufferHandle resource, UINT initial_count)
+{
+	bind_resource_rw(slot, stage, m_buffers.look_up(resource.hdl), initial_count);
+}
+
+void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, TextureHandle resource, UINT initial_count)
+{
+	bind_resource_rw(slot, stage, m_textures.look_up(resource.hdl), initial_count);
+}
+
+void GfxDevice::bind_sampler_2(UINT slot, ShaderStage stage, SamplerHandle sampler)
+{
+	bind_sampler(slot, stage, m_samplers.look_up(sampler.hdl));
+}
+
+void GfxDevice::begin_pass(RenderPassHandle rp, DepthStencilClear ds_clear)
+{
+	begin_pass(m_framebuffers.look_up(rp.hdl), ds_clear);
 }
 
 
@@ -1077,21 +1272,21 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 		ctx->IASetInputLayout(nullptr);
 
 	// bind shaders
-	ctx->VSSetShader((ID3D11VertexShader*)pipeline->m_vs.m_internal_resource.Get(), nullptr, 0);
-	ctx->PSSetShader((ID3D11PixelShader*)pipeline->m_ps.m_internal_resource.Get(), nullptr, 0);
+	ctx->VSSetShader((ID3D11VertexShader*)m_shaders.look_up(pipeline->m_vs.hdl)->m_internal_resource.Get(), nullptr, 0);
+	ctx->PSSetShader((ID3D11PixelShader*)m_shaders.look_up(pipeline->m_ps.hdl)->m_internal_resource.Get(), nullptr, 0);
 
-	if (pipeline->m_gs.is_valid())
-		ctx->GSSetShader((ID3D11GeometryShader*)pipeline->m_gs.m_internal_resource.Get(), nullptr, 0);
+	if (pipeline->m_gs.hdl != 0)
+		ctx->GSSetShader((ID3D11GeometryShader*)m_shaders.look_up(pipeline->m_gs.hdl)->m_internal_resource.Get(), nullptr, 0);
 	else
 		ctx->GSSetShader(nullptr, nullptr, 0);
 
-	if (pipeline->m_hs.is_valid())
-		ctx->HSSetShader((ID3D11HullShader*)pipeline->m_hs.m_internal_resource.Get(), nullptr, 0);
+	if (pipeline->m_hs.hdl != 0)
+		ctx->HSSetShader((ID3D11HullShader*)m_shaders.look_up(pipeline->m_hs.hdl)->m_internal_resource.Get(), nullptr, 0);
 	else
 		ctx->HSSetShader(nullptr, nullptr, 0);
 
-	if (pipeline->m_ds.is_valid())
-		ctx->DSSetShader((ID3D11DomainShader*)pipeline->m_ds.m_internal_resource.Get(), nullptr, 0);
+	if (pipeline->m_ds.hdl != 0)
+		ctx->DSSetShader((ID3D11DomainShader*)m_shaders.look_up(pipeline->m_ds.hdl)->m_internal_resource.Get(), nullptr, 0);
 	else
 		ctx->DSSetShader(nullptr, nullptr, 0);
 

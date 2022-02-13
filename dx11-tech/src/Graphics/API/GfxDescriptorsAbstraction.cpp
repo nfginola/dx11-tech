@@ -3,9 +3,12 @@
 
 PipelineDesc& PipelineDesc::set_shaders(VertexShader vs, PixelShader ps, std::optional<GeometryShader> gs, std::optional<HullShader> hs, std::optional<DomainShader> ds)
 {
-	// Catch errrors early for easy debugging
-	assert(vs.get().get_stage() == ShaderStage::eVertex);
-	assert(ps.get().get_stage() == ShaderStage::ePixel);
+	//// Catch errrors early for easy debugging
+	//assert(vs.get().get_stage() == ShaderStage::eVertex);
+	//assert(ps.get().get_stage() == ShaderStage::ePixel);
+
+	assert(vs.get().hdl != 0);
+	assert(ps.get().hdl != 0);
 
 	m_vs = vs.get();
 	m_ps = ps.get();
@@ -15,19 +18,19 @@ PipelineDesc& PipelineDesc::set_shaders(VertexShader vs, PixelShader ps, std::op
 	
 	if (gs.has_value())
 	{
-		assert(gs->get().get_stage() == ShaderStage::eGeometry);
+		//assert(gs->get().get_stage() == ShaderStage::eGeometry);
 		m_gs = gs->get();
 	}
 
 	if (hs.has_value())
 	{
-		assert(hs->get().get_stage() == ShaderStage::eHull);
+		//assert(hs->get().get_stage() == ShaderStage::eHull);
 		m_hs = hs->get();
 	}
 
 	if (ds.has_value())
 	{
-		assert(ds->get().get_stage() == ShaderStage::eDomain);
+		//assert(ds->get().get_stage() == ShaderStage::eDomain);
 		m_hs = ds->get();
 	}
 

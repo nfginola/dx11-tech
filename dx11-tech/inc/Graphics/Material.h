@@ -17,7 +17,7 @@ public:
 
 	bool operator==(const Material& other) const { return other.m_textures == m_textures; };
 
-	Material& set_texture(Texture type, const class GPUTexture* texture);
+	Material& set_texture(Texture type, const struct GPUTexture* texture);
 	const GPUTexture* get_texture(Texture type) const;
 
 private:

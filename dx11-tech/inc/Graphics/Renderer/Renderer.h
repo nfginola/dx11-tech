@@ -1,5 +1,6 @@
 #pragma once
 #include "Graphics/API/GfxTypes.h"
+#include "Graphics/API/GfxHandles.h"
 
 class Renderer
 {
@@ -79,22 +80,20 @@ private:
 	std::array<CBElement, 1> m_cb_elements;
 
 	// cbuffer
-	GPUBuffer m_cb_per_frame;
-	GPUBuffer m_big_cb;
-
+	BufferHandle m_cb_per_frame, m_big_cb;
+	
+	SamplerHandle def_samp, repeat_samp;
+	
 	// render to texture 
 	GPUTexture d_32;
 	GPUTexture r_tex;
-	Framebuffer r_fb;
-	GraphicsPipeline p;
+	RenderPassHandle r_fb2;
+	PipelineHandle p;
 
 	// render to backbuffer
-	Framebuffer fb;
-	GraphicsPipeline r_p;
+	RenderPassHandle fb2;
+	PipelineHandle r_p;
 
-	// linear minmagmip
-	Sampler def_samp;
-	Sampler repeat_samp;
 
 
 

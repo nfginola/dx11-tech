@@ -1,6 +1,8 @@
 #pragma once
 #include "Graphics/API/GfxTypes.h"
 
+#include "Graphics/API/GfxHandles.h"
+
 /*	
 	These descriptors are not "typical" descriptors such as for the Primitives.
 	These directly use the GPU types! (hence why they are placed in a separate file)
@@ -57,8 +59,10 @@ public:
 	PipelineDesc(const PipelineDesc&) = default;
 
 private:
-	Shader m_vs, m_ps;
-	std::optional<Shader> m_gs, m_hs, m_ds;
+	//Shader m_vs, m_ps;
+	//std::optional<Shader> m_gs, m_hs, m_ds;
+	ShaderHandle m_vs, m_ps;
+	std::optional<ShaderHandle> m_gs, m_hs, m_ds;
 
 	// IA
 	InputLayoutDesc m_input_desc;
