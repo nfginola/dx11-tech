@@ -1,6 +1,5 @@
 #pragma once
-#include "Graphics/API/GfxTypes.h"
-
+#include "Graphics/API/GfxDescriptorsPrimitive.h"
 #include "Graphics/API/GfxHandles.h"
 
 /*	
@@ -8,11 +7,11 @@
 	These directly use the GPU types! (hence why they are placed in a separate file)
 */
 
-class FramebufferDesc
+class RenderPassDesc
 {
 	friend class GfxDevice;
 public:
-	FramebufferDesc(
+	RenderPassDesc(
 		std::vector<TextureHandle> render_targets,
 		TextureHandle depth_stencil_target = TextureHandle{ 0 },
 		std::vector<TextureHandle> resolve_targets = {},
@@ -28,9 +27,9 @@ public:
 		}
 	};
 
-	FramebufferDesc() = default;
-	FramebufferDesc& operator=(const FramebufferDesc&) = default;
-	FramebufferDesc(const FramebufferDesc&) = default;
+	RenderPassDesc() = default;
+	RenderPassDesc& operator=(const RenderPassDesc&) = default;
+	RenderPassDesc(const RenderPassDesc&) = default;
 
 private:
 	std::vector<std::tuple<TextureHandle, RenderTextureClear>> m_targets;

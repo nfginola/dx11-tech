@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "Graphics/DiskTextureManager.h"
+#include "Graphics/API/GfxDevice.h"
+
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"

@@ -1,11 +1,10 @@
 #pragma once
-//#include "Graphics/API/GfxTypes.h"
-#include "Graphics/API/GfxDevice.h"
+#include "Graphics/API/GfxHandles.h"
 
 class DiskTextureManager
 {
 public:
-	static void initialize(GfxDevice* dev);
+	static void initialize(class GfxDevice* dev);
 	static void shutdown();
 
 	DiskTextureManager(GfxDevice* dev);

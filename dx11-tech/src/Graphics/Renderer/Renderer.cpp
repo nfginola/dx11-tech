@@ -1,9 +1,9 @@
 #include "pch.h"
+#include "Graphics/Renderer/Renderer.h"
+#include "Camera/Camera.h"
 #include "Graphics/API/GfxDevice.h"
 #include "Graphics/API/ImGuiDevice.h"
-#include "Graphics/Renderer/Renderer.h"
 #include "Profiler/FrameProfiler.h"
-#include "Camera/Camera.h"
 
 
 // Temp
@@ -94,8 +94,8 @@ Renderer::Renderer()
 
 	// fullscreen quad pass to backbuffer
 	{
-		// create framebuffer for render to tex
-		fb = gfx::dev->create_renderpass(FramebufferDesc({ gfx::dev->get_backbuffer(), }));
+		// create RenderPass for render to tex
+		fb = gfx::dev->create_renderpass(RenderPassDesc({ gfx::dev->get_backbuffer(), }));
 
 		// create fullscreen quad shaders
 		ShaderHandle fs_vs, fs_ps;
@@ -148,11 +148,7 @@ void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
 		// create render to texture (HDR)
 		r_tex = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET));
 
-		//gfx::dev->create_framebuffer(FramebufferDesc(
-		//	{ &r_tex }, &d_32),
-		//	&r_fb);
-
-		r_fb =	gfx::dev->create_renderpass(FramebufferDesc(
+		r_fb =	gfx::dev->create_renderpass(RenderPassDesc(
 			{ r_tex }, d_32));
 	}
 }

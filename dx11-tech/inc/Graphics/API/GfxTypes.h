@@ -6,25 +6,13 @@
 
 
 /*
-	GPU related types/resources.
-	We use an intermediary type so that:
-		- We can keep extra state/helpers
-		- Make the API "opaque" (meaning we dont directly touch the D3D11 inner workings)
-
-	Also an educational experience to see how this kind of interface feels (pros/cons, workflow, etc.)
-
-	Rule of thumb im trying to follow:
-		- Use std::optional for front-facing API (e.g Descriptors)
-		- Use the GPUType "is_valid()" for internal checks
+	Wrappers for DX11 resources
 */
-
-
 
 struct GPUType
 {
 	bool is_valid() const { return m_internal_resource != nullptr; }
-	GPUType() = default;		// Not a public object!
-
+	GPUType() = default;
 
 	DeviceChildPtr m_internal_resource;
 
@@ -67,16 +55,8 @@ struct Shader : public GPUType
 	ShaderBytecode m_blob;
 };
 
-// Strongly typed shaders for safer public interface
-// https://www.fluentcpp.com/2016/12/08/strong-types-for-strong-interfaces/
-using VertexShader = NamedType<ShaderHandle, struct VertexShaderPhantom>;
-using PixelShader = NamedType<ShaderHandle, struct PixelShaderPhantom>;
-using GeometryShader = NamedType<ShaderHandle, struct GeometryShaderPhantom>;
-using HullShader = NamedType<ShaderHandle, struct HullShaderPhantom>;
-using DomainShader = NamedType<ShaderHandle, struct DomainShaderPhantom>;
-using ComputeShader = NamedType<ShaderHandle, struct ComputeShaderPhantom>;
 
-class Sampler : public GPUType 
+struct Sampler : public GPUType 
 {
 	friend class GfxDevice;
 	bool operator==(const Sampler& rhs) const { return m_internal_resource == rhs.m_internal_resource; };
@@ -114,11 +94,11 @@ class DepthStencilState : public GPUType
 
 
 
-struct Framebuffer 
+struct RenderPass 
 {
-	Framebuffer() = default;
-	Framebuffer& operator=(const Framebuffer&) = default;
-	Framebuffer(const Framebuffer&) = default;
+	RenderPass() = default;
+	RenderPass& operator=(const RenderPass&) = default;
+	RenderPass(const RenderPass&) = default;
 
 	bool m_is_registered = false;
 

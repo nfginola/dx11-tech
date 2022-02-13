@@ -252,6 +252,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="inc\Graphics\API\GfxHandles.h" />
+    <ClInclude Include="inc\NamedType.h" />
     <ClInclude Include="inc\ResourceHandleStack.h" />
     <ClInclude Include="inc\Graphics\Drawable\CustomTestDrawable.h" />
     <ClInclude Include="inc\AssimpLoader.h" />

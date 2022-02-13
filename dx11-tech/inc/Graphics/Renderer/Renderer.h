@@ -1,6 +1,6 @@
 #pragma once
-#include "Graphics/API/GfxTypes.h"
 #include "Graphics/API/GfxHandles.h"
+#include "Graphics/API/GfxHelperTypes.h"
 
 class Renderer
 {

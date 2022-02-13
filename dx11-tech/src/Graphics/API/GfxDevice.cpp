@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "Graphics/API/GfxDevice.h"
+#include "Graphics/API/GfxTypes.h"
+
 
 // Globals
 namespace gfx
@@ -66,7 +68,7 @@ GfxDevice::GfxDevice(std::unique_ptr<DXDevice> dev) :
 	storage_mem_footprint += m_buffers.get_memory_footprint();
 	storage_mem_footprint += m_textures.get_memory_footprint();
 	storage_mem_footprint += m_samplers.get_memory_footprint();
-	storage_mem_footprint += m_framebuffers.get_memory_footprint();
+	storage_mem_footprint += m_renderpasses.get_memory_footprint();
 	storage_mem_footprint += m_pipelines.get_memory_footprint();
 	storage_mem_footprint += m_shaders.get_memory_footprint();
 	fmt::print("GfxDevice storage memory footprint: {} bytes (~{:.3f} MB)\n", storage_mem_footprint, storage_mem_footprint / (float)10e5);
@@ -263,6 +265,339 @@ void GfxDevice::recompile_pipeline_shaders_by_name(const std::string& name)
 
 
 
+TextureHandle GfxDevice::get_backbuffer()
+{
+	return m_backbuffer;
+}
+
+GPUProfiler* GfxDevice::get_profiler()
+{
+	return m_profiler.get();
+}
+
+GPUAnnotator* GfxDevice::get_annotator()
+{
+	return m_annotator.get();
+}
+
+std::pair<UINT, UINT> GfxDevice::get_sc_dim()
+{
+	auto sc_desc = m_dev->get_sc_desc();
+	return { sc_desc.BufferDesc.Width, sc_desc.BufferDesc.Height };
+}
+
+void GfxDevice::resize_swapchain(UINT width, UINT height)
+{
+	// Release the primitive texture
+	auto bb = m_textures.look_up(m_backbuffer.hdl);
+	bb->m_internal_resource.ReleaseAndGetAddressOf();
+	bb->m_rtv.ReleaseAndGetAddressOf();
+
+	// Recreate
+	m_dev->resize_swapchain(width, height);
+
+	// Retrieve new swapchain resources
+	bb->m_internal_resource = m_dev->get_bb_texture();
+	bb->m_rtv = m_dev->get_bb_target();
+	bb->m_type = TextureType::e2D;
+}
+
+void set_name_internal(GPUType* device_child, const std::string& name)
+{
+	HRCHECK(device_child->m_internal_resource->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)name.size(), name.data()));
+}
+
+void GfxDevice::set_name(BufferHandle res, const std::string& name)
+{
+	set_name_internal(m_buffers.look_up(res.hdl), name);
+}
+
+void GfxDevice::set_name(TextureHandle res, const std::string& name)
+{
+	set_name_internal(m_textures.look_up(res.hdl), name);
+}
+
+void GfxDevice::set_name(SamplerHandle res, const std::string& name)
+{
+	set_name_internal(m_samplers.look_up(res.hdl), name);
+}
+
+
+
+
+
+
+ShaderHandle GfxDevice::compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname)
+{
+	auto [hdl, shader] = m_shaders.get_next_free_handle();
+	shader->handle = hdl;
+	compile_and_create_shader(stage, fname, shader);
+	return ShaderHandle{ hdl };
+}
+
+ShaderHandle GfxDevice::create_shader(ShaderStage stage, const ShaderBytecode& bytecode)
+{
+	auto [hdl, shader] = m_shaders.get_next_free_handle();
+	shader->handle = hdl;
+	create_shader(stage, bytecode, shader);
+	return ShaderHandle{ hdl };
+}
+
+SamplerHandle GfxDevice::create_sampler(const SamplerDesc& desc)
+{
+	auto [hdl, sampler] = m_samplers.get_next_free_handle();
+	sampler->handle = hdl;
+	create_sampler(desc, sampler);
+	return SamplerHandle{ hdl };
+}
+
+TextureHandle GfxDevice::create_texture(const TextureDesc& desc, std::optional<SubresourceData> subres)
+{
+	auto [hdl, texture] = m_textures.get_next_free_handle();
+	texture->handle = hdl;
+	create_texture(desc, texture, subres);
+	return TextureHandle{ hdl };
+}
+
+PipelineHandle GfxDevice::create_pipeline(const PipelineDesc& desc)
+{
+	auto [hdl, pipeline] = m_pipelines.get_next_free_handle();
+	pipeline->handle = hdl;
+	create_pipeline(desc, pipeline);
+
+	auto ret_hdl = PipelineHandle{ hdl };
+
+	// Add to lookup for reloading
+	if (m_reloading_on)
+	{
+		// add pipeline to lookup table
+		auto load_to_cache = [&](const std::string& fname)
+		{
+			auto it = m_loaded_pipelines.find(fname);
+			if (it != m_loaded_pipelines.end())
+				it->second.push_back(ret_hdl);
+			else
+				m_loaded_pipelines.insert({ fname, { ret_hdl } });
+		};
+
+		load_to_cache(m_shaders.look_up(pipeline->m_vs.hdl)->m_blob.fname);
+		load_to_cache(m_shaders.look_up(pipeline->m_ps.hdl)->m_blob.fname);
+
+		if (desc.m_gs.has_value())
+		{
+			pipeline->m_gs = *desc.m_gs;
+			if (m_reloading_on)
+				load_to_cache(m_shaders.look_up(desc.m_gs->hdl)->m_blob.fname);
+
+		}
+		if (desc.m_hs.has_value())
+		{
+			pipeline->m_hs = *desc.m_hs;
+			if (m_reloading_on)
+				load_to_cache(m_shaders.look_up(desc.m_hs->hdl)->m_blob.fname);
+
+		}
+		if (desc.m_ds.has_value())
+		{
+			pipeline->m_ds = *desc.m_ds;
+			if (m_reloading_on)
+				load_to_cache(m_shaders.look_up(desc.m_ds->hdl)->m_blob.fname);
+		}
+	}
+
+	return ret_hdl;
+}
+
+RenderPassHandle GfxDevice::create_renderpass(const RenderPassDesc& desc)
+{
+	auto [hdl, rp] = m_renderpasses.get_next_free_handle();
+	rp->handle = hdl;
+	create_renderpass(desc, rp);
+	return RenderPassHandle{ hdl };
+}
+
+BufferHandle GfxDevice::create_buffer(const BufferDesc& desc, std::optional<SubresourceData> subres)
+{
+	auto [hdl, buffer] = m_buffers.get_next_free_handle();
+	buffer->handle = hdl;
+	create_buffer(desc, buffer, subres);
+	return BufferHandle{ hdl };
+}
+
+
+
+
+void GfxDevice::free_buffer(BufferHandle hdl)
+{
+	m_buffers.free_handle(hdl.hdl);
+}
+
+void GfxDevice::free_texture(TextureHandle hdl)
+{
+	m_textures.free_handle(hdl.hdl);
+}
+
+void GfxDevice::free_sampler(SamplerHandle hdl)
+{
+	m_samplers.free_handle(hdl.hdl);
+}
+
+void GfxDevice::free_shader(ShaderHandle hdl)
+{
+	m_shaders.free_handle(hdl.hdl);
+}
+
+void GfxDevice::free_pipeline(PipelineHandle hdl)
+{
+	m_pipelines.free_handle(hdl.hdl);
+}
+
+void GfxDevice::free_renderpass(RenderPassHandle hdl)
+{
+	m_renderpasses.free_handle(hdl.hdl);
+}
+
+
+
+
+void GfxDevice::bind_pipeline(PipelineHandle pipeline, std::array<FLOAT, 4> blend_factor, UINT stencil_ref)
+{
+	bind_pipeline(m_pipelines.look_up(pipeline.hdl), blend_factor, stencil_ref);
+}
+
+void GfxDevice::bind_vertex_buffers(UINT start_slot, const std::vector<std::tuple<BufferHandle, UINT, UINT>>& buffers_strides_offsets)
+{
+	// Refactor this later. We want to remove the redundant Handle -> GPUBuffer -> D3D11Resource
+	assert(buffers_strides_offsets.size() <= 12);
+	ID3D11Buffer* vbs[gfxconstants::MAX_INPUT_SLOTS] = {};
+	UINT strides[gfxconstants::MAX_INPUT_SLOTS] = {};
+	UINT offsets[gfxconstants::MAX_INPUT_SLOTS] = {};
+	for (int i = 0; i < buffers_strides_offsets.size(); ++i)
+	{
+		vbs[i] = (ID3D11Buffer*)(m_buffers.look_up(std::get<BufferHandle>(buffers_strides_offsets[i]).hdl)->m_internal_resource.Get());
+		strides[i] = std::get<1>(buffers_strides_offsets[i]);
+		offsets[i] = std::get<2>(buffers_strides_offsets[i]);
+	}
+
+	m_dev->get_context()->IASetVertexBuffers(
+		start_slot, (UINT)buffers_strides_offsets.size(), 
+		vbs,
+		strides ? strides : (UINT*)gfxconstants::NULL_RESOURCE,
+		offsets ? offsets : (UINT*)gfxconstants::NULL_RESOURCE);
+
+
+}
+
+void GfxDevice::bind_index_buffer(BufferHandle buffer, DXGI_FORMAT format, UINT offset)
+{
+	bind_index_buffer(m_buffers.look_up(buffer.hdl), format, offset);
+}
+
+void GfxDevice::map_copy(BufferHandle dst, const SubresourceData& data, D3D11_MAP map_type, UINT dst_subres_idx)
+{
+	map_copy(m_buffers.look_up(dst.hdl), data, map_type, dst_subres_idx);
+}
+
+void GfxDevice::map_copy(TextureHandle dst, const SubresourceData& data, D3D11_MAP map_type, UINT dst_subres_idx)
+{
+	map_copy(m_textures.look_up(dst.hdl), data, map_type, dst_subres_idx);
+}
+
+void GfxDevice::update_subresource(BufferHandle dst, const SubresourceData& data, const D3D11_BOX& dst_box, UINT dst_subres_idx)
+{
+	update_subresource(m_buffers.look_up(dst.hdl), data, dst_box, dst_subres_idx);
+}
+
+void GfxDevice::update_subresource(TextureHandle dst, const SubresourceData& data, const D3D11_BOX& dst_box, UINT dst_subres_idx)
+{
+	update_subresource(m_textures.look_up(dst.hdl), data, dst_box, dst_subres_idx);
+}
+
+void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset56s, UINT range56s)
+{
+	bind_constant_buffer(slot, stage, m_buffers.look_up(buffer.hdl), offset56s, range56s);
+}
+
+void GfxDevice::bind_resource(UINT slot, ShaderStage stage, BufferHandle resource)
+{
+	bind_resource(slot, stage, m_buffers.look_up(resource.hdl));
+}
+
+void GfxDevice::bind_resource(UINT slot, ShaderStage stage, TextureHandle resource)
+{
+	bind_resource(slot, stage, m_textures.look_up(resource.hdl));
+}
+
+void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, BufferHandle resource, UINT initial_count)
+{
+	bind_resource_rw(slot, stage, m_buffers.look_up(resource.hdl), initial_count);
+}
+
+void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, TextureHandle resource, UINT initial_count)
+{
+	bind_resource_rw(slot, stage, m_textures.look_up(resource.hdl), initial_count);
+}
+
+void GfxDevice::bind_sampler(UINT slot, ShaderStage stage, SamplerHandle sampler)
+{
+	bind_sampler(slot, stage, m_samplers.look_up(sampler.hdl));
+}
+
+void GfxDevice::begin_pass(RenderPassHandle rp, DepthStencilClear ds_clear)
+{
+	begin_pass(m_renderpasses.look_up(rp.hdl), ds_clear);
+}
+
+
+
+
+void GfxDevice::dispatch(UINT blocks_x, UINT blocks_y, UINT blocks_z)
+{
+	auto& ctx = m_dev->get_context();
+
+	ctx->Dispatch(blocks_x, blocks_y, blocks_z);
+
+	// https://on-demand.gputechconf.com/gtc/2010/presentations/S12312-DirectCompute-Pre-Conference-Tutorial.pdf
+	// How the hell do you know when it is safe to Unbind UAVs from Compute Shader???
+	// Ans: Check GP Discord, DirectX section, answer from jwki
+	// No need to sync with Fence
+	// https://stackoverflow.com/questions/55005420/how-to-do-a-blocking-wait-for-a-compute-shader-with-direct3d11
+	ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_CS_UAV, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
+}
+
+void GfxDevice::draw(UINT vertex_count, UINT start_loc)
+{
+	assert(m_inside_pass == true && "Draw call must be inside a Pass scope!");
+	m_dev->get_context()->Draw(vertex_count, start_loc);
+}
+
+void GfxDevice::draw_indexed(UINT index_count, UINT index_start, UINT vertex_start)
+{
+	m_dev->get_context()->DrawIndexed(index_count, index_start, vertex_start);
+}
+
+void GfxDevice::present(bool vsync)
+{
+	//m_profiler->begin("Presentation", false, false);
+	m_dev->get_sc()->Present(vsync ? 1 : 0, 0);
+	//m_profiler->end("Presentation");
+}
+
+
+
+
+
+
+
+
+
+
+/*
+	=========================================	INTERNAL IMPLEMENTATION BELOW    =================================================
+
+*/
+
+
 void GfxDevice::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres)
 {
 	const auto& d3d_desc = desc.m_desc;
@@ -298,7 +633,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 	// auto gen using GenerateMips requires texture to be written to (other subres)
 	// we automatically append this incase user forgets
 	if (misc_gen_mips)
-		d3d_desc.BindFlags |= D3D11_BIND_RENDER_TARGET;	
+		d3d_desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
 
 	if (ms_on && d3d_desc.MipLevels != 1)
 		assert(false);		// https://docs.microsoft.com/en-us/windows/win32/api/d3d11/ns-d3d11-d3d11_texture2d_desc MipLevels = 1 required for MS
@@ -411,7 +746,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 				-1,						// max mips down to the least detailed
 				0,						// first array slice	
 				-1);					// array size (auto calc from tex)
-			
+
 			// Depth-stencil as read (read only 32-bit depth part)
 			if (v_desc.Format == DXGI_FORMAT_R32_TYPELESS)
 				v_desc.Format = DXGI_FORMAT_R32_FLOAT;
@@ -435,7 +770,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 			&v_desc,
 			texture->m_srv.ReleaseAndGetAddressOf()
 		));
-	
+
 		// Auto-gen mips
 		if (misc_gen_mips)
 		{
@@ -445,7 +780,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 				We dont need to make staging resource because UpdateSubresource does that for us!
 				https://stackoverflow.com/questions/50396189/d3d11-usage-staging-what-kind-of-gpu-cpu-memory-is-used
 			*/
-			m_dev->get_context()->UpdateSubresource((ID3D11Texture2D*)texture->m_internal_resource.Get(), 
+			m_dev->get_context()->UpdateSubresource((ID3D11Texture2D*)texture->m_internal_resource.Get(),
 				0, nullptr, subres->m_subres.pSysMem, subres->m_subres.SysMemPitch, 0);
 
 			assert(d3d_desc.BindFlags & D3D11_BIND_RENDER_TARGET);
@@ -453,7 +788,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 		}
 
 	}
-	
+
 	if (d3d_desc.BindFlags & D3D11_BIND_RENDER_TARGET)
 	{
 		// Find dimension
@@ -491,7 +826,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 		}
 		if (view_dim == D3D11_RTV_DIMENSION_UNKNOWN)
 			assert(false);
-	
+
 		// Create desc
 		D3D11_RENDER_TARGET_VIEW_DESC v_desc{};
 		switch (desc.m_type)
@@ -515,7 +850,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 			assert(false);
 			break;
 		}
-		
+
 		// Create view
 		HRCHECK(m_dev->get_device()->CreateRenderTargetView(
 			(ID3D11Resource*)texture->m_internal_resource.Get(),
@@ -523,7 +858,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 			texture->m_rtv.ReleaseAndGetAddressOf()
 		));
 	}
-	
+
 	if (d3d_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
 	{
 		assert(false && "Texture Unordered Access View is not supported right now");
@@ -591,7 +926,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 				v_desc.Format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
 			else if (v_desc.Format == DXGI_FORMAT_R24G8_TYPELESS)
 				v_desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-				
+
 			break;
 		case TextureType::e3D:
 			assert(false && "RTV for Texture 3D is currently not supported");
@@ -613,7 +948,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 
 void GfxDevice::create_sampler(const SamplerDesc& desc, Sampler* sampler)
 {
-	HRCHECK(m_dev->get_device()->CreateSamplerState(&desc.m_sampler_desc, 
+	HRCHECK(m_dev->get_device()->CreateSamplerState(&desc.m_sampler_desc,
 		(ID3D11SamplerState**)sampler->m_internal_resource.ReleaseAndGetAddressOf()));
 }
 
@@ -657,21 +992,21 @@ void GfxDevice::create_shader(ShaderStage stage, const ShaderBytecode& bytecode,
 	shader->m_blob = bytecode;
 }
 
-void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer)
+void GfxDevice::create_renderpass(const RenderPassDesc& desc, RenderPass* RenderPass)
 {
-	//framebuffer->m_depth_stencil_resolve_target = nullptr;
-	//framebuffer->m_depth_stencil_target = nullptr;
-	framebuffer->m_resolve_targets.clear();
-	framebuffer->m_targets.clear();
+	//RenderPass->m_depth_stencil_resolve_target = nullptr;
+	//RenderPass->m_depth_stencil_target = nullptr;
+	RenderPass->m_resolve_targets.clear();
+	RenderPass->m_targets.clear();
 
 	bool render_targets_exist = true;
 	if (desc.m_targets.size() == 0)
 		render_targets_exist = false;
 
-	
+
 	// Sanitize (verify sample counts)
 	if (render_targets_exist)
-	{	
+	{
 		const auto& tex = m_textures.look_up(std::get<TextureHandle>(desc.m_targets[0]).hdl);
 		assert(tex->m_type == TextureType::e2D);
 		D3D11_TEXTURE2D_DESC d3d_desc_0{};
@@ -715,17 +1050,17 @@ void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* fra
 	if (desc.m_depth_stencil_target.hdl != 0)
 	{
 		// Add depth-stencil target
-		framebuffer->m_depth_stencil_target = desc.m_depth_stencil_target.hdl != 0 ? desc.m_depth_stencil_target : TextureHandle{ 0 };
+		RenderPass->m_depth_stencil_target = desc.m_depth_stencil_target.hdl != 0 ? desc.m_depth_stencil_target : TextureHandle{ 0 };
 
 		// dsv dont necessarily have to be resolved
 		// but do resolve it if a resolve target is supplied
 		if (desc.m_depth_stencil_target_resolve.hdl != 0)
-			framebuffer->m_depth_stencil_resolve_target = desc.m_depth_stencil_target_resolve;
+			RenderPass->m_depth_stencil_resolve_target = desc.m_depth_stencil_target_resolve;
 	}
 
 
 	// Add render targets
-	framebuffer->m_targets.reserve(desc.m_targets.size());
+	RenderPass->m_targets.reserve(desc.m_targets.size());
 	for (int i = 0; i < desc.m_targets.size(); ++i)
 	{
 		const auto& other_tex = m_textures.look_up(std::get<TextureHandle>(desc.m_targets[i]).hdl);
@@ -735,7 +1070,7 @@ void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* fra
 
 		if (std::get<TextureHandle>(desc.m_targets[i]).hdl != 0)
 		{
-			framebuffer->m_targets.push_back({
+			RenderPass->m_targets.push_back({
 				std::get<TextureHandle>(desc.m_targets[i]),
 				std::get<RenderTextureClear>(desc.m_targets[i]),
 				d3d_desc_n.Format,
@@ -743,9 +1078,9 @@ void GfxDevice::create_framebuffer(const FramebufferDesc& desc, Framebuffer* fra
 				});
 		}
 	}
-	framebuffer->m_resolve_targets = desc.m_resolve_targets;
+	RenderPass->m_resolve_targets = desc.m_resolve_targets;
 
-	framebuffer->m_is_registered = true;
+	RenderPass->m_is_registered = true;
 }
 
 void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipeline)
@@ -811,226 +1146,27 @@ void GfxDevice::create_pipeline(const PipelineDesc& desc, GraphicsPipeline* pipe
 }
 
 
-ShaderHandle GfxDevice::compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname)
+
+void GfxDevice::begin_pass(const RenderPass* RenderPass, DepthStencilClear ds_clear)
 {
-	auto [hdl, shader] = m_shaders.get_next_free_handle();
-	shader->handle = hdl;
-	compile_and_create_shader(stage, fname, shader);
-	return ShaderHandle{ hdl };
-}
-
-ShaderHandle GfxDevice::create_shader(ShaderStage stage, const ShaderBytecode& bytecode)
-{
-	auto [hdl, shader] = m_shaders.get_next_free_handle();
-	shader->handle = hdl;
-	create_shader(stage, bytecode, shader);
-	return ShaderHandle{ hdl };
-}
-
-SamplerHandle GfxDevice::create_sampler(const SamplerDesc& desc)
-{
-	auto [hdl, sampler] = m_samplers.get_next_free_handle();
-	sampler->handle = hdl;
-	create_sampler(desc, sampler);
-	return SamplerHandle{ hdl };
-}
-
-TextureHandle GfxDevice::create_texture(const TextureDesc& desc, std::optional<SubresourceData> subres)
-{
-	auto [hdl, texture] = m_textures.get_next_free_handle();
-	texture->handle = hdl;
-	create_texture(desc, texture, subres);
-	return TextureHandle{ hdl };
-}
-
-PipelineHandle GfxDevice::create_pipeline(const PipelineDesc& desc)
-{
-	auto [hdl, pipeline] = m_pipelines.get_next_free_handle();
-	pipeline->handle = hdl;
-	create_pipeline(desc, pipeline);
-
-	auto ret_hdl = PipelineHandle{ hdl };
-
-	// Add to lookup for reloading
-	if (m_reloading_on)
+	if (!RenderPass->m_is_registered)
 	{
-		// add pipeline to lookup table
-		auto load_to_cache = [&](const std::string& fname)
-		{
-			auto it = m_loaded_pipelines.find(fname);
-			if (it != m_loaded_pipelines.end())
-				it->second.push_back(ret_hdl);
-			else
-				m_loaded_pipelines.insert({ fname, { ret_hdl } });
-		};
-
-		load_to_cache(m_shaders.look_up(pipeline->m_vs.hdl)->m_blob.fname);
-		load_to_cache(m_shaders.look_up(pipeline->m_ps.hdl)->m_blob.fname);
-
-		if (desc.m_gs.has_value())
-		{
-			pipeline->m_gs = *desc.m_gs;
-			if (m_reloading_on)
-				load_to_cache(m_shaders.look_up(desc.m_gs->hdl)->m_blob.fname);
-
-		}
-		if (desc.m_hs.has_value())
-		{
-			pipeline->m_hs = *desc.m_hs;
-			if (m_reloading_on)
-				load_to_cache(m_shaders.look_up(desc.m_hs->hdl)->m_blob.fname);
-
-		}
-		if (desc.m_ds.has_value())
-		{
-			pipeline->m_ds = *desc.m_ds;
-			if (m_reloading_on)
-				load_to_cache(m_shaders.look_up(desc.m_ds->hdl)->m_blob.fname);
-		}
-	}
-
-	return ret_hdl;
-}
-
-RenderPassHandle GfxDevice::create_renderpass(const FramebufferDesc& desc)
-{
-	auto [hdl, rp] = m_framebuffers.get_next_free_handle();
-	rp->handle = hdl;
-	create_framebuffer(desc, rp);
-	return RenderPassHandle{ hdl };
-}
-
-void GfxDevice::bind_pipeline(PipelineHandle pipeline, std::array<FLOAT, 4> blend_factor, UINT stencil_ref)
-{
-	bind_pipeline(m_pipelines.look_up(pipeline.hdl), blend_factor, stencil_ref);
-}
-
-BufferHandle GfxDevice::create_buffer(const BufferDesc& desc, std::optional<SubresourceData> subres)
-{
-	auto [hdl, buffer] = m_buffers.get_next_free_handle();
-	buffer->handle = hdl;
-	create_buffer(desc, buffer, subres);
-	return BufferHandle { hdl };
-}
-
-
-void GfxDevice::bind_vertex_buffers(UINT start_slot, const std::vector<std::tuple<BufferHandle, UINT, UINT>>& buffers_strides_offsets)
-{
-	// Refactor this later. We want to remove the redundant Handle -> GPUBuffer -> D3D11Resource
-	assert(buffers_strides_offsets.size() <= 12);
-	GPUBuffer bufs[12] = {};
-	UINT strides[12] = {};
-	UINT offsets[12] = {};
-	for (int i = 0; i < buffers_strides_offsets.size(); ++i)
-	{
-		bufs[i] = *m_buffers.look_up(std::get<BufferHandle>(buffers_strides_offsets[i]).hdl);	// Shit!!!
-		strides[i] = std::get<1>(buffers_strides_offsets[i]);
-		offsets[i] = std::get<2>(buffers_strides_offsets[i]);
-	}
-	bind_vertex_buffers(start_slot, (UINT)buffers_strides_offsets.size(), bufs, strides, offsets);
-
-}
-
-void GfxDevice::bind_index_buffer(BufferHandle buffer, DXGI_FORMAT format, UINT offset)
-{
-	bind_index_buffer(m_buffers.look_up(buffer.hdl), format, offset);
-}
-
-void GfxDevice::map_copy(BufferHandle dst, const SubresourceData& data, D3D11_MAP map_type, UINT dst_subres_idx)
-{
-	map_copy(m_buffers.look_up(dst.hdl), data, map_type, dst_subres_idx);
-}
-
-void GfxDevice::map_copy(TextureHandle dst, const SubresourceData& data, D3D11_MAP map_type, UINT dst_subres_idx)
-{
-	map_copy(m_textures.look_up(dst.hdl), data, map_type, dst_subres_idx);
-}
-
-void GfxDevice::update_subresource(BufferHandle dst, const SubresourceData& data, const D3D11_BOX& dst_box, UINT dst_subres_idx)
-{
-	update_subresource(m_buffers.look_up(dst.hdl), data, dst_box, dst_subres_idx);
-}
-
-void GfxDevice::update_subresource(TextureHandle dst, const SubresourceData& data, const D3D11_BOX& dst_box, UINT dst_subres_idx)
-{
-	update_subresource(m_textures.look_up(dst.hdl), data, dst_box, dst_subres_idx);
-}
-
-void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset56s, UINT range56s)
-{
-	bind_constant_buffer(slot, stage, m_buffers.look_up(buffer.hdl), offset56s, range56s);
-}
-
-void GfxDevice::bind_resource(UINT slot, ShaderStage stage, BufferHandle resource)
-{
-	bind_resource(slot, stage, m_buffers.look_up(resource.hdl));
-}
-
-void GfxDevice::bind_resource(UINT slot, ShaderStage stage, TextureHandle resource)
-{
-	bind_resource(slot, stage, m_textures.look_up(resource.hdl));
-}
-
-void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, BufferHandle resource, UINT initial_count)
-{
-	bind_resource_rw(slot, stage, m_buffers.look_up(resource.hdl), initial_count);
-}
-
-void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, TextureHandle resource, UINT initial_count)
-{
-	bind_resource_rw(slot, stage, m_textures.look_up(resource.hdl), initial_count);
-}
-
-void GfxDevice::bind_sampler(UINT slot, ShaderStage stage, SamplerHandle sampler)
-{
-	bind_sampler(slot, stage, m_samplers.look_up(sampler.hdl));
-}
-
-void GfxDevice::begin_pass(RenderPassHandle rp, DepthStencilClear ds_clear)
-{
-	begin_pass(m_framebuffers.look_up(rp.hdl), ds_clear);
-}
-
-
-void GfxDevice::set_name(const GPUType* device_child, const std::string& name)
-{
-	HRCHECK(m_dev->get_context()->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)name.size(), name.data()));
-}
-
-void GfxDevice::dispatch(UINT blocks_x, UINT blocks_y, UINT blocks_z)
-{
-	auto& ctx = m_dev->get_context();
-
-	ctx->Dispatch(blocks_x, blocks_y, blocks_z);
-
-	// https://on-demand.gputechconf.com/gtc/2010/presentations/S12312-DirectCompute-Pre-Conference-Tutorial.pdf
-	// How the hell do you know when it is safe to Unbind UAVs from Compute Shader???
-	// Ans: Check GP Discord, DirectX section, answer from jwki
-	// No need to sync with Fence
-	// https://stackoverflow.com/questions/55005420/how-to-do-a-blocking-wait-for-a-compute-shader-with-direct3d11
-	ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_CS_UAV, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
-}
-
-void GfxDevice::begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear)
-{
-	if (!framebuffer->m_is_registered)
-	{
-		assert(false && "Framebuffer is not registered!");
+		assert(false && "RenderPass is not registered!");
 		return;
 	}
-	
-	m_active_framebuffer = framebuffer;
+
+	m_active_RenderPass = RenderPass;
 	m_inside_pass = true;
 
 	auto& ctx = m_dev->get_context();
-	auto& depth_tex = framebuffer->m_depth_stencil_target;
+	auto& depth_tex = RenderPass->m_depth_stencil_target;
 
-	// clear framebuffer and get render targets
+	// clear RenderPass and get render targets
 	ID3D11RenderTargetView* rtvs[gfxconstants::MAX_RENDER_TARGETS] = {};
-	for (int i = 0; i < framebuffer->m_targets.size(); ++i)
+	for (int i = 0; i < RenderPass->m_targets.size(); ++i)
 	{
 		// get target
-		auto& target = framebuffer->m_targets[i];
+		auto& target = RenderPass->m_targets[i];
 		if (std::get<TextureHandle>(target).hdl == 0)
 			break;
 		rtvs[i] = m_textures.look_up(std::get<TextureHandle>(target).hdl)->m_rtv.Get();
@@ -1080,13 +1216,13 @@ void GfxDevice::end_pass()
 
 
 	// resolve any ms targets if any
-	if (!m_active_framebuffer->m_resolve_targets.empty())
+	if (!m_active_RenderPass->m_resolve_targets.empty())
 	{
-		for (int i = 0; i < m_active_framebuffer->m_targets.size(); ++i)
+		for (int i = 0; i < m_active_RenderPass->m_targets.size(); ++i)
 		{
-			auto src = (ID3D11Texture2D*)m_textures.look_up(std::get<TextureHandle>(m_active_framebuffer->m_targets[i]).hdl)->m_internal_resource.Get();
-			auto dst = (ID3D11Texture2D*)m_textures.look_up(m_active_framebuffer->m_resolve_targets[i].hdl)->m_internal_resource.Get();
-			auto format = std::get<DXGI_FORMAT>(m_active_framebuffer->m_targets[i]);
+			auto src = (ID3D11Texture2D*)m_textures.look_up(std::get<TextureHandle>(m_active_RenderPass->m_targets[i]).hdl)->m_internal_resource.Get();
+			auto dst = (ID3D11Texture2D*)m_textures.look_up(m_active_RenderPass->m_resolve_targets[i].hdl)->m_internal_resource.Get();
+			auto format = std::get<DXGI_FORMAT>(m_active_RenderPass->m_targets[i]);
 			ctx->ResolveSubresource(dst, 0, src, 0, format);
 		}
 	}
@@ -1094,7 +1230,7 @@ void GfxDevice::end_pass()
 	// TO-DO: resolve depth target using compute shader
 	// https://wickedengine.net/2016/11/13/how-to-resolve-an-msaa-depthbuffer/#comments
 
-	m_active_framebuffer = nullptr;
+	m_active_RenderPass = nullptr;
 }
 
 void GfxDevice::bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports)
@@ -1183,8 +1319,8 @@ void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource
 
 	switch (stage)
 	{
-	// https://docs.microsoft.com/en-us/windows/win32/direct3d11/direct3d-11-1-features#use-uavs-at-every-pipeline-stage
-	// 11.1, use UAVs at every pipeline stage
+		// https://docs.microsoft.com/en-us/windows/win32/direct3d11/direct3d-11-1-features#use-uavs-at-every-pipeline-stage
+		// 11.1, use UAVs at every pipeline stage
 	case ShaderStage::eVertex:
 	case ShaderStage::ePixel:
 	case ShaderStage::eHull:
@@ -1256,7 +1392,7 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 		assert(false);
 		return;
 	}
-	
+
 	// Identical pipeline already bound
 	// We do checking at a pipeline level, just to get comfy with DX12/VK with PSOs/Pipeline
 	if (m_curr_pipeline == pipeline)
@@ -1316,59 +1452,4 @@ void GfxDevice::bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format, U
 	m_dev->get_context()->IASetIndexBuffer((ID3D11Buffer*)buffer->m_internal_resource.Get(), format, offset);
 }
 
-
-TextureHandle GfxDevice::get_backbuffer()
-{
-	return m_backbuffer;
-}
-
-GPUProfiler* GfxDevice::get_profiler()
-{
-	return m_profiler.get();
-}
-
-GPUAnnotator* GfxDevice::get_annotator()
-{
-	return m_annotator.get();
-}
-
-std::pair<UINT, UINT> GfxDevice::get_sc_dim()
-{
-	auto sc_desc = m_dev->get_sc_desc();
-	return { sc_desc.BufferDesc.Width, sc_desc.BufferDesc.Height };
-}
-
-void GfxDevice::resize_swapchain(UINT width, UINT height)
-{
-	// Release the primitive texture
-	auto bb = m_textures.look_up(m_backbuffer.hdl);
-	bb->m_internal_resource.ReleaseAndGetAddressOf();
-	bb->m_rtv.ReleaseAndGetAddressOf();
-
-	// Recreate
-	m_dev->resize_swapchain(width, height);
-
-	// Retrieve new swapchain resources
-	bb->m_internal_resource = m_dev->get_bb_texture();
-	bb->m_rtv = m_dev->get_bb_target();
-	bb->m_type = TextureType::e2D;
-}
-
-void GfxDevice::draw(UINT vertex_count, UINT start_loc)
-{
-	assert(m_inside_pass == true && "Draw call must be inside a Pass scope!");
-	m_dev->get_context()->Draw(vertex_count, start_loc);
-}
-
-void GfxDevice::draw_indexed(UINT index_count, UINT index_start, UINT vertex_start)
-{
-	m_dev->get_context()->DrawIndexed(index_count, index_start, vertex_start);
-}
-
-void GfxDevice::present(bool vsync)
-{
-	//m_profiler->begin("Presentation", false, false);
-	m_dev->get_sc()->Present(vsync ? 1 : 0, 0);
-	//m_profiler->end("Presentation");
-}
 

@@ -1,16 +1,24 @@
 #pragma once
+
+// Exposing only required dependencies and keeping types as internal implementation
 #include "Graphics/API/GfxCommon.h"
 #include "Graphics/API/GfxDescriptorsPrimitive.h"
 #include "Graphics/API/GfxDescriptorsAbstraction.h"
-#include "Graphics/API/GfxVertexTypes.h"
-#include "Graphics/API/GfxTypes.h"
 #include "Graphics/API/GfxHelperTypes.h"
+#include "Graphics/API/GfxHandles.h"
 #include "Profiler/GPUProfiler.h"
 #include "ResourceHandleStack.h"
 
-#include "Graphics/API/GfxHandles.h"
-
 #include <array>
+
+struct GPUType;
+struct GPUResource;
+struct GPUTexture;
+struct GPUBuffer;
+struct RenderPass;
+struct GraphicsPipeline;
+struct Shader;
+struct Sampler;
 
 /*
 	Once performance has been measured, only then should we allow binding multiple resources instead of single slot bindings.
@@ -36,7 +44,9 @@ public:
 
 	std::pair<UINT, UINT> get_sc_dim();
 	void resize_swapchain(UINT width, UINT height);
-	void set_name(const GPUType* device_child, const std::string& name);
+	void set_name(BufferHandle res, const std::string& name);
+	void set_name(TextureHandle res, const std::string& name);
+	void set_name(SamplerHandle res, const std::string& name);
 
 	/*
 		This should eventually be placed inside but in another class, e.g PipelineManager.
@@ -58,20 +68,19 @@ public:
 	BufferHandle create_buffer(const BufferDesc& desc, std::optional<SubresourceData> subres = {});
 	TextureHandle create_texture(const TextureDesc& desc, std::optional<SubresourceData> subres = {});
 	PipelineHandle create_pipeline(const PipelineDesc& desc);
-	RenderPassHandle create_renderpass(const FramebufferDesc& desc);
+	RenderPassHandle create_renderpass(const RenderPassDesc& desc);
 
 	ShaderHandle compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname);
 	ShaderHandle create_shader(ShaderStage stage, const ShaderBytecode& bytecode);
 	SamplerHandle create_sampler(const SamplerDesc& desc);
 
 	// Manual resource destruction
-	/*
-		void free_buffer(BufferHandle hdl);
-		void free_texture(TextureHandle hdl);
-		void free_sampler(SamplerHandle hdl);
-		void free_shader(ShaderHandle hdl);
-		void free_pipeline(PipelineHandle hdl);
-	*/
+	void free_buffer(BufferHandle hdl);
+	void free_texture(TextureHandle hdl);
+	void free_sampler(SamplerHandle hdl);
+	void free_shader(ShaderHandle hdl);
+	void free_pipeline(PipelineHandle hdl);
+	void free_renderpass(RenderPassHandle hdl);
 	
 	// Binds
 	//void bind_compute_pipeline(const ComputePipeline* pipeline);
@@ -112,23 +121,19 @@ public:
 
 
 private:
-
 	void create_texture(const TextureDesc& desc, GPUTexture* texture, std::optional<SubresourceData> subres = {});
 	void bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource);
 
-	// To fix
-	// Removing these needs refactoring on Model
 	void bind_vertex_buffers(UINT start_slot, UINT count, const GPUBuffer* buffers, const UINT* strides, const UINT* offsets = nullptr);
 	void bind_index_buffer(const GPUBuffer* buffer, DXGI_FORMAT format = DXGI_FORMAT_R32_UINT, UINT offset = 0);
 
-	// Removing these needs refactoring on Managers
 	void create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::optional<SubresourceData> subres = {});
 
-	void begin_pass(const Framebuffer* framebuffer, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
+	void begin_pass(const RenderPass* RenderPass, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
 	void compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname, Shader* shader, bool recompilation = false);
 	void compile_shader(ShaderStage stage, const std::filesystem::path& fname, ShaderBytecode* bytecode, bool recompilation);
 	void create_shader(ShaderStage stage, const ShaderBytecode& bytecode, Shader* shader);
-	void create_framebuffer(const FramebufferDesc& desc, Framebuffer* framebuffer);
+	void create_renderpass(const RenderPassDesc& desc, RenderPass* RenderPass);
 	void bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource, UINT initial_count);
 	void create_sampler(const SamplerDesc& desc, Sampler* sampler);
 	void bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler);
@@ -189,7 +194,6 @@ private:
 	unique_ptr<DXDevice> m_dev;
 
 	// Miscellaneous
-	//GPUTexture m_backbuffer;
 	TextureHandle m_backbuffer;
 	unique_ptr<GPUProfiler> m_profiler;
 	unique_ptr<GPUAnnotator> m_annotator;
@@ -201,19 +205,19 @@ private:
 
 	// State
 	bool m_inside_pass = false;
-	const Framebuffer* m_active_framebuffer = nullptr;
+	const RenderPass* m_active_RenderPass = nullptr;
 	const GraphicsPipeline* m_curr_pipeline = nullptr;
 
 	// Resource storage (reasonable max limits hardcoded)
-	static constexpr uint64_t MAX_SAMPLER_STORAGE = 32;
-	static constexpr uint64_t MAX_FRAMEBUFFER_STORAGE = 256;
+	static constexpr uint64_t MAX_SAMPLER_STORAGE = 64;
+	static constexpr uint64_t MAX_RenderPass_STORAGE = 256;
 	static constexpr uint64_t MAX_PIPELINE_STORAGE = 1024;
 	static constexpr uint64_t MAX_SHADER_STORAGE = 256;
 
 	ResourceHandleStack<GPUBuffer> m_buffers;
 	ResourceHandleStack<GPUTexture> m_textures;
 	ResourceHandleStack<Sampler, MAX_SAMPLER_STORAGE> m_samplers;
-	ResourceHandleStack<Framebuffer, MAX_FRAMEBUFFER_STORAGE> m_framebuffers;
+	ResourceHandleStack<RenderPass, MAX_RenderPass_STORAGE> m_renderpasses;
 	ResourceHandleStack<GraphicsPipeline, MAX_PIPELINE_STORAGE> m_pipelines;
 	ResourceHandleStack<Shader, MAX_SHADER_STORAGE> m_shaders;
 

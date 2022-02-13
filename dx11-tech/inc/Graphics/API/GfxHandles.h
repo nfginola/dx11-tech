@@ -1,4 +1,5 @@
 #pragma once
+#include "NamedType.h"
 #include <stdint.h>
 
 #define USE_64_BIT_RES_HANDLE
@@ -16,6 +17,15 @@ struct TextureHandle { res_handle hdl = 0; };
 struct SamplerHandle { res_handle hdl = 0; };
 struct ShaderHandle { res_handle hdl = 0; };
 struct RenderPassHandle { res_handle hdl = 0; };
+
+// Strongly typed shaders for safer public interface
+// https://www.fluentcpp.com/2016/12/08/strong-types-for-strong-interfaces/
+using VertexShader = NamedType<ShaderHandle, struct VertexShaderPhantom>;
+using PixelShader = NamedType<ShaderHandle, struct PixelShaderPhantom>;
+using GeometryShader = NamedType<ShaderHandle, struct GeometryShaderPhantom>;
+using HullShader = NamedType<ShaderHandle, struct HullShaderPhantom>;
+using DomainShader = NamedType<ShaderHandle, struct DomainShaderPhantom>;
+using ComputeShader = NamedType<ShaderHandle, struct ComputeShaderPhantom>;
 
 bool operator==(const PipelineHandle& lhs, const PipelineHandle& rhs);
 bool operator<(const PipelineHandle& lhs, const PipelineHandle& rhs);

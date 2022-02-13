@@ -1,5 +1,4 @@
 #pragma once
-#include "Graphics/API/GfxTypes.h"
 #include "Graphics/Material.h"
 
 struct Mesh
@@ -30,9 +29,6 @@ public:
 	const std::vector<const Material*>& get_materials() const;
 
 private:
-	//std::vector<GPUBuffer> m_vbs;
-	//std::vector<UINT> m_vb_strides;
-	//GPUBuffer m_ib;
 	std::vector<std::tuple<BufferHandle, UINT, UINT>> m_vbs_strides_offsets;
 	BufferHandle m_ib;
 
