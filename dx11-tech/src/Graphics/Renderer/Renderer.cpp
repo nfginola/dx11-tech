@@ -123,19 +123,43 @@ Renderer::Renderer()
 	repeat.MipLODBias = 0.0f;
 	repeat.MaxAnisotropy = 16;
 	repeat.ComparisonFunc = D3D11_COMPARISON_NEVER;
-	//gfx::dev->create_sampler(repeat, &repeat_samp);
-	//gfx::dev->bind_sampler(1, ShaderStage::ePixel, &repeat_samp);
 
 	repeat_samp = gfx::dev->create_sampler(repeat);
 	gfx::dev->bind_sampler(1, ShaderStage::ePixel, repeat_samp);
 
 
+	// create draw items
+	const auto& model = m_models[0];
+	const auto& meshes = model->get_meshes();
+	const auto& materials = model->get_materials();
+	for (int i = 0; i < meshes.size(); ++i)
+	{
+		const auto& mesh = meshes[i];
+		const auto& mat = materials[i];
+
+		DrawItem item;
+		item.pipeline = p;		// should come from material
+		item.vbs_strides_offsets = model->get_vb();
+		item.ib = model->get_ib();
+
+		item.index_count = mesh.index_count;
+		item.index_start = mesh.index_start;
+		item.vertex_start = mesh.vertex_start;
+
+		item.textures.push_back({ 0, ShaderStage::ePixel, mat->get_texture(Material::Texture::eAlbedo) });
+		item.constant_buffers.push_back({ 1, ShaderStage::eVertex, m_big_cb });
+		item.samplers.push_back({ 1, ShaderStage::ePixel, repeat_samp });
+
+		m_draw_items.push_back(item);
+	}
+	
+	fmt::print("woo\n");
 
 }
 
 void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
 {
-
+	
 	// Render to Texture
 	{
 		// viewport
@@ -153,14 +177,28 @@ void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
 	}
 }
 
+void Renderer::begin()
+{
+	gfx::dev->frame_start();
+	gfx::imgui->begin_frame();
+}
+
+void Renderer::end()
+{
+	// Present
+	{
+		// Profiler has to end before device frame end
+		auto _ = FrameProfiler::Scoped("Presentation");
+		gfx::dev->present(m_vsync);
+	}
+
+	gfx::imgui->end_frame();
+	gfx::dev->frame_end();
+}
+
 Renderer::~Renderer()
 {
 }
-
-//void Renderer::submit(ICustomDrawable* drawable)
-//{
-//	m_custom_drawables.push_back(drawable);
-//}
 
 void Renderer::set_camera(Camera* cam)
 {
@@ -169,90 +207,127 @@ void Renderer::set_camera(Camera* cam)
 
 void Renderer::render()
 {
-	// Update persistent per frame data
+	begin();
+
+	/*
+		forget these for now	
+		ParticleRenderer(Renderer core_renderer)
+		TerrainRenderer(Renderer core_renderer)
+
+		=========================
+
+		ModelRenderer(Renderer core_renderer)
+		ModelRenderer
+			void submit_model(Model* model, KeyProperties props, world_mat)		--> KeyProperties defined in core_renderer
+			{
+				// create DrawItem(s) (e.model --> grab geom, materials) ??????
+				// or DrawItem(s) have already been prepared and we simply grab them
+
+				// create Key(s) from properties from Entity ??????
+
+				
+				for each (key, draw_item) in draw_items:
+					if (model->transparent)
+						core_renderer->submit_transparent(key, draw_item)
+					else
+						core_renderer->submit_opaque(key, draw_item)
+			}	
+	
+	
+	*/
+
+
+
+	// Update persistent per frame camera data
 	m_cb_dat.view_mat = m_main_cam->get_view_mat();
 	m_cb_dat.proj_mat = m_main_cam->get_proj_mat();
 
 	// Update per draw
-	// https://developer.nvidia.com/content/constant-buffers-without-constant-pain-0
-	/*
-		Maybe its not such a good idea to do this now for draw calls (premature optimization).
-		Lets just stick with the normal cbuffers for now.
-
-		Each CBElement is aligned(256)
-	*/
 	m_cb_elements[0].world_mat = DirectX::XMMatrixScaling(0.07f, 0.07f, 0.07f);
-
-
-	//for (auto& dbl : m_custom_drawables)
-	//	dbl->pre_render();
-
-	//for (auto& dbl : m_custom_drawables)
-	//	dbl->on_render();
-
-
-	// Update graphics
-	gfx::dev->frame_start();
-	gfx::imgui->begin_frame();
 
 	// Upload per frame data to GPU
 	gfx::dev->map_copy(m_cb_per_frame, SubresourceData(&m_cb_dat, sizeof(m_cb_dat)));
 
-	// Bind per frame data
+	// Bind per frame data (should be bound to like slot 14 as reserved space)
 	gfx::dev->bind_constant_buffer(0, ShaderStage::eVertex, m_cb_per_frame, 0);
-
-	// Upload per draw data to GPU at once
-	gfx::dev->map_copy(m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
 
 	// Geometry Pass
 	{
 		auto _ = FrameProfiler::Scoped("Geometry Pass");
-		//gfx::dev->begin_pass(&r_fb);
 		gfx::dev->begin_pass(r_fb);
 		gfx::dev->bind_viewports({ viewports[1] });
-		//gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, &m_big_cb, 0);
-		gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, m_big_cb, 0);
 
-		for (const auto& model : m_models)
-		{
-			//gfx::dev->bind_pipeline(&p);
-			gfx::dev->bind_pipeline(p);
-			//gfx::dev->bind_vertex_buffers(0, (UINT)model->get_vbs().size(), model->get_vbs().data(), model->get_vb_strides().data());
-			gfx::dev->bind_vertex_buffers(0, model->get_vb());
-			gfx::dev->bind_index_buffer(model->get_ib());
-
-			/*
-				
-			OPAQUE PASS:
-				sort submeshes by material (pipeline, then textures)
-				
-				copy instance data for this model into Instance Buffer
-
-				for each submesh:
-					bind_pipeline
-					draw_instanced()
-			
-			*/
-
-
-			// draw each submesh
-			const auto& meshes = model->get_meshes();
-			const auto& materials = model->get_materials();
-			for (int i = 0; i < meshes.size(); ++i)
+		if (m_proto)
+		{	
+			for (const auto& draw_item : m_draw_items)
 			{
-				const auto& mesh = meshes[i];
-				const auto& mat = materials[i];
-				gfx::dev->bind_resource(0, ShaderStage::ePixel, mat->get_texture(Material::Texture::eAlbedo));
-				gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
+				// Upload per draw data to GPU
+				gfx::dev->map_copy(m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
+
+				gfx::dev->bind_pipeline(draw_item.pipeline);
+
+				for (const auto& sampler : draw_item.samplers)
+					gfx::dev->bind_sampler(std::get<UINT>(sampler), std::get<ShaderStage>(sampler), std::get<SamplerHandle>(sampler));
+
+				for (const auto& cb : draw_item.constant_buffers)
+					gfx::dev->bind_constant_buffer(std::get<UINT>(cb), std::get<ShaderStage>(cb), std::get<BufferHandle>(cb));
+
+				for (const auto& tex : draw_item.textures)
+					gfx::dev->bind_resource(std::get<UINT>(tex), std::get<ShaderStage>(tex), std::get<TextureHandle>(tex));
+
+				gfx::dev->bind_vertex_buffers(0, draw_item.vbs_strides_offsets);
+				gfx::dev->bind_index_buffer(draw_item.ib);
+				gfx::dev->draw_indexed(draw_item.index_count, draw_item.index_start, draw_item.vertex_start);
 			}
 		}
+		else
+		{
+			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, m_big_cb, 0);
+
+			for (const auto& model : m_models)
+			{
+				gfx::dev->bind_pipeline(p);
+				gfx::dev->bind_vertex_buffers(0, model->get_vb());
+				gfx::dev->bind_index_buffer(model->get_ib());
+
+				/*
+					
+				OPAQUE PASS:
+					sort submeshes by material (pipeline, then textures)
+					
+					copy instance data for this model into Instance Buffer
+
+					for each submesh:
+						bind_pipeline
+						draw_instanced()
+				
+				*/
+
+				// Draw each submesh
+				const auto& meshes = model->get_meshes();
+				const auto& materials = model->get_materials();
+				for (int i = 0; i < meshes.size(); ++i)
+				{
+					// Upload per draw data to GPU at once
+					gfx::dev->map_copy(m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
+
+					const auto& mesh = meshes[i];
+					const auto& mat = materials[i];
+					gfx::dev->bind_resource(0, ShaderStage::ePixel, mat->get_texture(Material::Texture::eAlbedo));
+					gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
+				}
+			}
+		}
+
+
+
+
 		gfx::dev->end_pass();
 	}
 
 	// Fullscreen Pass
 	{
 		auto _ = FrameProfiler::Scoped("Fullscreen Pass");
-		//gfx::dev->begin_pass(&fb);
 		gfx::dev->begin_pass(fb);
 		gfx::dev->bind_resource(0, ShaderStage::ePixel, r_tex);
 		gfx::dev->bind_viewports(viewports);
@@ -264,14 +339,7 @@ void Renderer::render()
 		gfx::dev->end_pass();
 	}
 
-	// Check present block CPU block (if vsync)
-	{
-		auto _ = FrameProfiler::Scoped("Presentation");
-		gfx::dev->present(m_vsync);
-	}
-
-	gfx::imgui->end_frame();
-	gfx::dev->frame_end();
+	end();
 }
 
 void Renderer::on_resize(UINT width, UINT height)
@@ -302,6 +370,9 @@ void Renderer::declare_ui()
 	ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
 	ImGui::Checkbox("Another Window", &show_demo_window);
 
+	ImGui::Checkbox("Proto", &m_proto);
+
+
 	ImGui::SameLine();
 
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -331,7 +402,7 @@ void Renderer::declare_ui()
 	ImGui::Begin("Settings");
 
 	const char* items[] = { "2560x1440", "1920x1080", "1280x720", "640x360", "384x216" };
-	static int item_current_idx = 0; // Here we store our selection data as an index.
+	static int item_current_idx = 1; // Here we store our selection data as an index.
 	const char* combo_preview_value = items[item_current_idx];  // Pass in the preview value visible before opening the combo (it could be anything)
 	bool change_res = false;
 	if (ImGui::BeginCombo("Resolutions", combo_preview_value))

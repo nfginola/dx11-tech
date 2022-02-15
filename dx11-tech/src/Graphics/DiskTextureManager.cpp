@@ -34,7 +34,7 @@ DiskTextureManager::~DiskTextureManager()
 
 TextureHandle DiskTextureManager::load_from(const std::filesystem::path& fpath)
 {
-	auto it = m_path_to_tex.find(fpath);
+	auto it = m_path_to_tex.find(fpath.string());
 	if (it != m_path_to_tex.end())
 		return it->second;
 
@@ -62,8 +62,8 @@ TextureHandle DiskTextureManager::load_from(const std::filesystem::path& fpath)
 	// Free data from host
 	stbi_image_free(image_data);
 	
-	m_path_to_tex.insert({ fpath, tex });
-	m_tex_to_path.insert({ tex, fpath });
+	m_path_to_tex.insert({ fpath.string(), tex});
+	m_tex_to_path.insert({ tex, fpath.string()});
 
 	return tex;
 }
@@ -77,7 +77,9 @@ void DiskTextureManager::remove(TextureHandle texture)
 	if (it == m_tex_to_path.end())
 		return; // Didn't find the texture
 
-	const auto associated_path = it->second;
+	m_dev->free_texture(texture);
 	m_tex_to_path.erase(texture);
+
+	const auto associated_path = it->second;
 	m_path_to_tex.erase(associated_path);
 }

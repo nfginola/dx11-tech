@@ -120,9 +120,6 @@
     <ClCompile Include="src\Graphics\ModelManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Graphics\Drawable\CustomTestDrawable.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\Graphics\Renderer\Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -245,25 +242,19 @@
     <ClInclude Include="inc\Graphics\ModelManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Graphics\Drawable\IDrawable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="inc\Graphics\Drawable\ICustomDrawable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="inc\Graphics\Drawable\CustomTestDrawable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="inc\Graphics\Renderer\Renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\ResourceHandleStack.h">
+    <ClInclude Include="inc\ResourceHandlePool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inc\Graphics\API\GfxHandles.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inc\NamedType.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\Graphics\DrawItem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

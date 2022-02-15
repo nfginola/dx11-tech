@@ -244,23 +244,23 @@ void GfxDevice::recompile_pipeline_shaders_by_name(const std::string& name)
 		Since this is a cold path, simply traversing 
 	*/
 
-	for (auto& pipeline : m_pipelines)
-	{
-		//if (pipeline.m_vs.hdl == sample_pipeline->m_vs.hdl)
-		//	pipeline.m_vs = sample_pipeline->m_vs;
+	//for (auto& pipeline : m_pipelines)
+	//{
+	//	//if (pipeline.m_vs.hdl == sample_pipeline->m_vs.hdl)
+	//	//	pipeline.m_vs = sample_pipeline->m_vs;
 
-		//if (pipeline.m_ps.hdl == sample_pipeline->m_ps.hdl)
-		//	pipeline.m_ps = sample_pipeline->m_ps;
+	//	//if (pipeline.m_ps.hdl == sample_pipeline->m_ps.hdl)
+	//	//	pipeline.m_ps = sample_pipeline->m_ps;
 
-		//if (pipeline.m_hs.hdl == sample_pipeline->m_hs.hdl)
-		//	pipeline.m_hs = sample_pipeline->m_hs;
+	//	//if (pipeline.m_hs.hdl == sample_pipeline->m_hs.hdl)
+	//	//	pipeline.m_hs = sample_pipeline->m_hs;
 
-		//if (pipeline.m_gs.hdl == sample_pipeline->m_gs.hdl)
-		//	pipeline.m_gs = sample_pipeline->m_gs;
+	//	//if (pipeline.m_gs.hdl == sample_pipeline->m_gs.hdl)
+	//	//	pipeline.m_gs = sample_pipeline->m_gs;
 
-		//if (pipeline.m_ds.hdl == sample_pipeline->m_ds.hdl)
-		//	pipeline.m_ds = sample_pipeline->m_ds;
-	}
+	//	//if (pipeline.m_ds.hdl == sample_pipeline->m_ds.hdl)
+	//	//	pipeline.m_ds = sample_pipeline->m_ds;
+	//}
 }
 
 
@@ -511,6 +511,17 @@ void GfxDevice::bind_pipeline(PipelineHandle pipeline, std::array<FLOAT, 4> blen
 
 void GfxDevice::bind_vertex_buffers(UINT start_slot, const std::vector<std::tuple<BufferHandle, UINT, UINT>>& buffers_strides_offsets)
 {
+	UINT identical = 0;
+	for (int i = 0; i < buffers_strides_offsets.size(); ++i)
+	{
+		const auto& buffer_handle = std::get<BufferHandle>(buffers_strides_offsets[i]);
+		if (buffer_handle.hdl == m_bound_vbs[start_slot + i].hdl)
+			++identical;
+	}
+	if (identical == buffers_strides_offsets.size())
+		return;
+
+
 	// Refactor this later. We want to remove the redundant Handle -> GPUBuffer -> D3D11Resource
 	assert(buffers_strides_offsets.size() <= 12);
 	ID3D11Buffer* vbs[gfxconstants::MAX_INPUT_SLOTS] = {};
@@ -518,9 +529,12 @@ void GfxDevice::bind_vertex_buffers(UINT start_slot, const std::vector<std::tupl
 	UINT offsets[gfxconstants::MAX_INPUT_SLOTS] = {};
 	for (int i = 0; i < buffers_strides_offsets.size(); ++i)
 	{
-		vbs[i] = (ID3D11Buffer*)(m_buffers.look_up(std::get<BufferHandle>(buffers_strides_offsets[i]).hdl)->m_internal_resource.Get());
+		const auto& buffer_handle = std::get<BufferHandle>(buffers_strides_offsets[i]);
+		vbs[i] = (ID3D11Buffer*)(m_buffers.look_up(buffer_handle.hdl)->m_internal_resource.Get());
 		strides[i] = std::get<1>(buffers_strides_offsets[i]);
 		offsets[i] = std::get<2>(buffers_strides_offsets[i]);
+
+		m_bound_vbs[start_slot + i] = buffer_handle;
 	}
 
 	m_dev->get_context()->IASetVertexBuffers(
@@ -529,12 +543,17 @@ void GfxDevice::bind_vertex_buffers(UINT start_slot, const std::vector<std::tupl
 		strides ? strides : (UINT*)gfxconstants::NULL_RESOURCE,
 		offsets ? offsets : (UINT*)gfxconstants::NULL_RESOURCE);
 
+	
 
 }
 
 void GfxDevice::bind_index_buffer(BufferHandle buffer, DXGI_FORMAT format, UINT offset)
 {
+	if (buffer.hdl == m_bound_ib.hdl)
+		return;
 	m_dev->get_context()->IASetIndexBuffer((ID3D11Buffer*)m_buffers.look_up(buffer.hdl)->m_internal_resource.Get(), format, offset);
+
+	m_bound_ib = buffer;
 }
 
 void GfxDevice::map_copy(BufferHandle dst, const SubresourceData& data, D3D11_MAP map_type, UINT dst_subres_idx)
@@ -559,17 +578,26 @@ void GfxDevice::update_subresource(TextureHandle dst, const SubresourceData& dat
 
 void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset56s, UINT range56s)
 {
+	if (m_bound_cbuffers[(UINT)stage - 1][slot].hdl == buffer.hdl)
+		return;
 	bind_constant_buffer(slot, stage, m_buffers.look_up(buffer.hdl), offset56s, range56s);
+	m_bound_cbuffers[(UINT)stage - 1][slot] = buffer;
 }
 
 void GfxDevice::bind_resource(UINT slot, ShaderStage stage, BufferHandle resource)
 {
+	if (m_bound_read_bufs[(UINT)stage - 1][slot].hdl == resource.hdl)
+		return;
 	bind_resource(slot, stage, m_buffers.look_up(resource.hdl));
+	m_bound_read_bufs[(UINT)stage - 1][slot] = resource;
 }
 
 void GfxDevice::bind_resource(UINT slot, ShaderStage stage, TextureHandle resource)
 {
+	if (m_bound_read_textures[(UINT)stage - 1][slot].hdl == resource.hdl)
+		return;
 	bind_resource(slot, stage, m_textures.look_up(resource.hdl));
+	m_bound_read_textures[(UINT)stage - 1][slot] = resource;
 }
 
 void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, BufferHandle resource, UINT initial_count)
@@ -584,7 +612,10 @@ void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, TextureHandle res
 
 void GfxDevice::bind_sampler(UINT slot, ShaderStage stage, SamplerHandle sampler)
 {
+	if (m_bound_samplers[(UINT)stage - 1][slot].hdl == sampler.hdl)
+		return;
 	bind_sampler(slot, stage, m_samplers.look_up(sampler.hdl));
+	m_bound_samplers[(UINT)stage - 1][slot] = sampler;
 }
 
 void GfxDevice::bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports)
@@ -1402,13 +1433,13 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 
 	m_curr_pipeline = pipeline;
 
-
 	auto& ctx = m_dev->get_context();
 
 	if (pipeline->m_input_layout.is_valid())
 		ctx->IASetInputLayout((ID3D11InputLayout*)pipeline->m_input_layout.m_internal_resource.Get());
 	else
 		ctx->IASetInputLayout(nullptr);
+
 
 	// bind shaders
 	ctx->VSSetShader((ID3D11VertexShader*)m_shaders.look_up(pipeline->m_vs.hdl)->m_internal_resource.Get(), nullptr, 0);
@@ -1433,7 +1464,6 @@ void GfxDevice::bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT
 	ctx->RSSetState((ID3D11RasterizerState*)pipeline->m_rasterizer.m_internal_resource.Get());
 	ctx->OMSetDepthStencilState((ID3D11DepthStencilState*)pipeline->m_depth_stencil.m_internal_resource.Get(), stencil_ref);
 	ctx->OMSetBlendState((ID3D11BlendState*)pipeline->m_blend.m_internal_resource.Get(), blend_factor.data(), pipeline->m_sample_mask);
-
 }
 
 

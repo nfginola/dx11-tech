@@ -1,7 +1,21 @@
 #pragma once
 #include "Graphics/API/GfxHandles.h"
 #include "Graphics/API/GfxHelperTypes.h"
+#include "Graphics/DrawItem.h"
 
+/*
+	
+	Master Renderer.
+	The render function here will have lots of if-branches and others.
+
+	Other type of Renderers (e.g ModelRenderer, TerrainRenderer) are expected to live here.
+	We do this to learn about the dependencies between different renderers before jumping to separating them!
+
+	e.g ModelRenderer is exposed through a Getter which we can use to submit our models.
+	TerrainRenderer is similarly exposed for terrain submission.
+
+
+*/
 class Renderer
 {
 public:
@@ -31,13 +45,17 @@ private:
 
 private:
 	void create_resolution_dependent_resources(UINT width, UINT height);
-
+	void begin();
+	void end();
 
 	// Misc
 private:
 	//std::vector<ICustomDrawable*> m_custom_drawables;
 
 	//class Scene* m_curr_scene;
+
+	std::vector<DrawItem> m_draw_items;	// precompiled draw items
+	bool m_proto = false;
 
 	// temp
 	std::vector<const class Model*> m_models;

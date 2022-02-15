@@ -36,7 +36,10 @@ float4 main(PixelInput input) : SV_TARGET
 
     // Gamma correction
     ldr_col = pow(abs(ldr_col), (1.f / GAMMA).xxx);
-    
+
+    //float2 p = (2.0 * input.uv * float2(1920, 1080) - float2(1920, 1080)) / 1080;
+    //ldr_col = smoothstep(2.0, 0.01, length(p)) * ldr_col;
+
     // luminosity
     //ldr_col = sqrt(0.299 * pow(ldr_col.r, 2) + 0.587 * pow(ldr_col.g, 2) + 0.114 * pow(ldr_col.b, 2)).xxx;
 

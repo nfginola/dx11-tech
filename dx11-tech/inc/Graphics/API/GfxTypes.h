@@ -1,7 +1,7 @@
 #pragma once
 #include "Graphics/API/GfxCommon.h"
 #include "Graphics/API/GfxDescriptorsPrimitive.h"
-#include "ResourceHandleStack.h"
+#include "ResourceHandlePool.h"
 #include "Graphics/API/GfxHandles.h"
 
 

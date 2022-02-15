@@ -20,7 +20,7 @@ static constexpr uint8_t RES_INVALID_HANDLE = 0;
 
 // Uses ~2 MB when max_usable_elements = UINT16_MAX - 1 (default)
 template <typename T, uint64_t max_usable_elements = std::numeric_limits<uint16_t>::max() - 1>
-class ResourceHandleStack
+class ResourceHandlePool
 {
 private:
 #ifdef USE_64_BIT_RES_HANDLE
@@ -47,7 +47,7 @@ private:
 	*/
 
 public:
-	ResourceHandleStack()
+	ResourceHandlePool()
 	{
 		assert(max_usable_elements > 3);
 
@@ -72,7 +72,7 @@ public:
 		slots_enabled[0] = false;	// reserved
 		std::fill(slots_enabled.begin() + 1, slots_enabled.end(), true);
 	}
-	~ResourceHandleStack()
+	~ResourceHandlePool()
 	{
 		// Automatically free all remaining resources on destruction
 		for (auto& res : resources)
@@ -152,13 +152,6 @@ public:
 	{
 		return total_resource_bytes + total_bookkeeping_bytes + 3 * sizeof(uint64_t) + sizeof(half_key);
 	}
-
-	auto begin() { return resources.begin(); }
-	auto end() { return resources.end(); }
-	auto cbegin() const { return resources.begin(); }
-	auto cend() const { return resources.end(); }
-	auto begin() const { return resources.begin(); }
-	auto end() const { return resources.end(); }
 
 private:
 	// Total number of elements including the reserved 0 index

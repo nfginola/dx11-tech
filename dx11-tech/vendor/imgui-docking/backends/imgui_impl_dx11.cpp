@@ -645,7 +645,7 @@ static void ImGui_ImplDX11_CreateWindow(ImGuiViewport* viewport)
     sd.BufferCount = 1;
     sd.OutputWindow = hwnd;
     sd.Windowed = TRUE;
-    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;       // Nad: Culprit for the warning
     sd.Flags = 0;
 
     IM_ASSERT(vd->SwapChain == NULL && vd->RTView == NULL);

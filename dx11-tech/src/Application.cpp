@@ -99,7 +99,14 @@ Application::Application()
 			- Add model repository									DONE
 				- Ignore MT contention problems
 
-			- Add enTT library for flexibility						TO-DO
+			- Add Pipeline cache									DONE
+				- Check prev_pipeline
+				- Also, use prev_ps to determine whether or not to
+				  bind the new VS AND Input Layout!
+				  They are connected!
+					- Even though we duplicate Input Layouts
+					  We can avoid binding the same ones
+					  at least.
 
 			- Create a Pipeline Manager								TO-DO
 				- Create Pipeline (naming too)
@@ -151,14 +158,7 @@ Application::Application()
 			- Check out JSON format and see if it is useful			TO-DO
 				- Check out nlohmanns JSON parser
 
-			- Add Pipeline cache									TO-DO
-				- Check prev_pipeline
-				- Also, use prev_ps to determine whether or not to
-				  bind the new VS AND Input Layout!
-				  They are connected!
-					- Even though we duplicate Input Layouts
-					  We can avoid binding the same ones
-					  at least.
+	
 
 
 	*/

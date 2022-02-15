@@ -7,9 +7,10 @@
 #include "Graphics/API/GfxHelperTypes.h"
 #include "Graphics/API/GfxHandles.h"
 #include "Profiler/GPUProfiler.h"
-#include "ResourceHandleStack.h"
+#include "ResourceHandlePool.h"
 
 #include <array>
+#include <variant>
 
 struct GPUType;
 struct GPUResource;
@@ -20,13 +21,13 @@ struct GraphicsPipeline;
 struct Shader;
 struct Sampler;
 
-/*
-	Once performance has been measured, only then should we allow binding multiple resources instead of single slot bindings.
-	We need to explore GPU Queries before we make any optimizations.
-	
+/*	
 	This API is D3D11 ONLY and is meant for:
 		- Exploration (exposing the learning "surface area" in a controlled manner)
 		- Techniques (using the new learned tools for practical purposes)
+
+	This API leverages the old slot-binding model for simplicity and aims to be as stateless as possible.
+	Although, states which make practical sense such as persistent samplers will be utilized.
 
 */
 class GfxDevice
@@ -205,18 +206,43 @@ private:
 	const RenderPass* m_active_RenderPass = nullptr;
 	const GraphicsPipeline* m_curr_pipeline = nullptr;
 
+	// Redundant state filtering
+	/*
+		Since we are going as stateless as possible with our workflow.
+		Submitted draws will likely have duplicate resources.
+		Hence by doing filtering here, higher level code can freely submit
+		all required resources for every draw without having to worry about
+		rebinding of the same resources 
+		(given that draws have been sorted by material)
+	*/
+	std::array<std::array<SamplerHandle, gfxconstants::MAX_SAMPLERS>, 6> m_bound_samplers;
+	std::array<std::array<BufferHandle, gfxconstants::MAX_CB_SLOTS>, 6>  m_bound_cbuffers;
+	std::array<std::array<TextureHandle, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS>, 6>  m_bound_read_textures;
+	std::array<std::array<BufferHandle, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS>, 6>  m_bound_read_bufs;
+
+	std::array<BufferHandle, gfxconstants::MAX_INPUT_SLOTS> m_bound_vbs;
+	BufferHandle m_bound_ib;
+
+	/*
+		TO-DO: We should create Common Samplers which we can return. (Check DXTK for common samplers reference)
+
+		using CommonSamplers = std::map<std::string, SamplerHandle>;
+		CommonSamplers get_common_samplers();
+
+	*/
+
 	// Resource storage (reasonable max limits hardcoded)
 	static constexpr uint64_t MAX_SAMPLER_STORAGE = 64;
-	static constexpr uint64_t MAX_RenderPass_STORAGE = 256;
+	static constexpr uint64_t MAX_RENDERPASS_STORAGE = 256;
 	static constexpr uint64_t MAX_PIPELINE_STORAGE = 1024;
 	static constexpr uint64_t MAX_SHADER_STORAGE = 256;
 
-	ResourceHandleStack<GPUBuffer> m_buffers;
-	ResourceHandleStack<GPUTexture> m_textures;
-	ResourceHandleStack<Sampler, MAX_SAMPLER_STORAGE> m_samplers;
-	ResourceHandleStack<RenderPass, MAX_RenderPass_STORAGE> m_renderpasses;
-	ResourceHandleStack<GraphicsPipeline, MAX_PIPELINE_STORAGE> m_pipelines;
-	ResourceHandleStack<Shader, MAX_SHADER_STORAGE> m_shaders;
+	ResourceHandlePool<GPUBuffer> m_buffers;
+	ResourceHandlePool<GPUTexture> m_textures;
+	ResourceHandlePool<Sampler, MAX_SAMPLER_STORAGE> m_samplers;
+	ResourceHandlePool<RenderPass, MAX_RENDERPASS_STORAGE> m_renderpasses;
+	ResourceHandlePool<GraphicsPipeline, MAX_PIPELINE_STORAGE> m_pipelines;
+	ResourceHandlePool<Shader, MAX_SHADER_STORAGE> m_shaders;
 
 	// Pipeline reloading by shader name (should be refactored into some PipelineManager)
 	std::map<std::string, std::vector<PipelineHandle>> m_loaded_pipelines;

@@ -17,8 +17,8 @@ private:
 	GfxDevice* m_dev;
 
 	// Bidirectional hash map
-	std::map<TextureHandle, std::filesystem::path> m_tex_to_path;
-	std::map<std::filesystem::path, TextureHandle> m_path_to_tex;
+	std::unordered_map<TextureHandle, std::string> m_tex_to_path;
+	std::unordered_map<std::string, TextureHandle> m_path_to_tex;
 
 
 

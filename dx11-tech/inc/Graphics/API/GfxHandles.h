@@ -28,26 +28,32 @@ using DomainShader = NamedType<ShaderHandle, struct DomainShaderPhantom>;
 using ComputeShader = NamedType<ShaderHandle, struct ComputeShaderPhantom>;
 
 bool operator==(const PipelineHandle& lhs, const PipelineHandle& rhs);
+bool operator!=(const PipelineHandle& lhs, const PipelineHandle& rhs);
 bool operator<(const PipelineHandle& lhs, const PipelineHandle& rhs);
 bool operator>(const PipelineHandle& lhs, const PipelineHandle& rhs);
 
 bool operator==(const BufferHandle& lhs, const BufferHandle& rhs);
+bool operator!=(const BufferHandle& lhs, const BufferHandle& rhs);
 bool operator<(const BufferHandle& lhs, const BufferHandle& rhs);
 bool operator>(const BufferHandle& lhs, const BufferHandle& rhs);
 
 bool operator==(const TextureHandle& lhs, const TextureHandle& rhs);
+bool operator!=(const TextureHandle& lhs, const TextureHandle& rhs);
 bool operator<(const TextureHandle& lhs, const TextureHandle& rhs);
 bool operator>(const TextureHandle& lhs, const TextureHandle& rhs);
 
 bool operator==(const SamplerHandle& lhs, const SamplerHandle& rhs);
+bool operator!=(const SamplerHandle& lhs, const SamplerHandle& rhs);
 bool operator<(const SamplerHandle& lhs, const SamplerHandle& rhs);
 bool operator>(const SamplerHandle& lhs, const SamplerHandle& rhs);
 
 bool operator==(const ShaderHandle& lhs, const ShaderHandle& rhs);
+bool operator!=(const ShaderHandle& lhs, const ShaderHandle& rhs);
 bool operator<(const ShaderHandle& lhs, const ShaderHandle& rhs);
 bool operator>(const ShaderHandle& lhs, const ShaderHandle& rhs);
 
 bool operator==(const RenderPassHandle& lhs, const RenderPassHandle& rhs);
+bool operator!=(const RenderPassHandle& lhs, const RenderPassHandle& rhs);
 bool operator<(const RenderPassHandle& lhs, const RenderPassHandle& rhs);
 bool operator>(const RenderPassHandle& lhs, const RenderPassHandle& rhs);
 
