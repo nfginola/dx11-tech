@@ -216,7 +216,7 @@ void Renderer::render()
 	for (auto& item : m_draw_items)
 	{
 
-		auto wm1_key = (((uint64_t)&m_pos1) & 0x000000FF) << 48; // place to the MSB
+		auto wm1_key = (((uint64_t)&m_pos1) & 0x000000FF) << 48; // explicitly place as MSBs
 		auto wm2_key = (((uint64_t)&m_pos2) & 0x000000FF) << 48;
 
 		// world matrix key and material key (mat is item.first) (world matrix takes higher priority)
