@@ -41,6 +41,14 @@ void Renderer::shutdown()
 	}
 }
 
+void Renderer::set_camera(Camera* cam)
+{
+	m_main_cam = cam;
+}
+
+Renderer::~Renderer()
+{
+}
 
 Renderer::Renderer()
 {
@@ -132,6 +140,9 @@ Renderer::Renderer()
 	const auto& model = m_models[0];
 	const auto& meshes = model->get_meshes();
 	const auto& materials = model->get_materials();
+
+
+	m_draw_items.reserve(1000);
 	for (int i = 0; i < meshes.size(); ++i)
 	{
 		const auto& mesh = meshes[i];
@@ -150,31 +161,31 @@ Renderer::Renderer()
 		item.constant_buffers.push_back({ 1, ShaderStage::eVertex, m_big_cb });
 		item.samplers.push_back({ 1, ShaderStage::ePixel, repeat_samp });
 
-		m_draw_items.push_back(item);
+		m_draw_items.push_back({ mat->get_texture(Material::Texture::eAlbedo).hdl, item });	// use texture as key
 	}
+
+	/*
+		Loading models should be done in 2 steps:
+
+			1) Loading the model and defining parameters (phong? pbr?). Essentially handling the data
+			2) Assign mapping to GPU --> Build DrawItems (e.g cbuf mapping, texture slot mapping, etc.)
+	 
+		
+		RenderableModel
+		{
+			std::vector<DrawItem> draw_items;
+		}
+
+		DrawItemBuilder builder(model);
+
+		builder.set_pipeline
+	
+	*/
+
+
 	
 	fmt::print("woo\n");
 
-}
-
-void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
-{
-	
-	// Render to Texture
-	{
-		// viewport
-		viewports[1].Width = (FLOAT)width;
-		viewports[1].Height = (FLOAT)height;
-
-		// create depth tex
-		d_32 = gfx::dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, width, height, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
-
-		// create render to texture (HDR)
-		r_tex = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET));
-
-		r_fb =	gfx::dev->create_renderpass(RenderPassDesc(
-			{ r_tex }, d_32));
-	}
 }
 
 void Renderer::begin()
@@ -196,18 +207,30 @@ void Renderer::end()
 	gfx::dev->frame_end();
 }
 
-Renderer::~Renderer()
-{
-}
-
-void Renderer::set_camera(Camera* cam)
-{
-	m_main_cam = cam;
-}
-
 void Renderer::render()
 {
 	begin();
+	m_submitted_draw_items.clear();
+
+	// emulate grabbing from model
+	for (auto& item : m_draw_items)
+	{
+
+		auto wm1_key = (((uint64_t)&m_pos1) & 0x000000FF) << 48; // place to the MSB
+		auto wm2_key = (((uint64_t)&m_pos2) & 0x000000FF) << 48;
+
+		// world matrix key and material key (mat is item.first) (world matrix takes higher priority)
+		m_submitted_draw_items.push_back({ wm1_key | (uint64_t)item.first & 0x000000FF, { &item.second, &m_pos1 }});
+		m_submitted_draw_items.push_back({ wm2_key | (uint64_t)item.first & 0x000000FF, { &item.second, &m_pos2 } });
+
+
+		// world matrix only
+		//m_submitted_draw_items.push_back({ ((uint64_t)&m_pos1), { &item.second, &m_pos1 } });
+		//m_submitted_draw_items.push_back({ ((uint64_t)&m_pos2), { &item.second, &m_pos2 } });
+
+	}
+
+
 
 	/*
 		forget these for now	
@@ -242,9 +265,6 @@ void Renderer::render()
 	m_cb_dat.view_mat = m_main_cam->get_view_mat();
 	m_cb_dat.proj_mat = m_main_cam->get_proj_mat();
 
-	// Update per draw
-	m_cb_elements[0].world_mat = DirectX::XMMatrixScaling(0.07f, 0.07f, 0.07f);
-
 	// Upload per frame data to GPU
 	gfx::dev->map_copy(m_cb_per_frame, SubresourceData(&m_cb_dat, sizeof(m_cb_dat)));
 
@@ -254,72 +274,46 @@ void Renderer::render()
 	// Geometry Pass
 	{
 		auto _ = FrameProfiler::Scoped("Geometry Pass");
+
+		std::sort(m_submitted_draw_items.begin(), m_submitted_draw_items.end(), [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
+
+
 		gfx::dev->begin_pass(r_fb);
 		gfx::dev->bind_viewports({ viewports[1] });
 
-		if (m_proto)
-		{	
-			for (const auto& draw_item : m_draw_items)
-			{
-				// Upload per draw data to GPU
-				gfx::dev->map_copy(m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
-
-				gfx::dev->bind_pipeline(draw_item.pipeline);
-
-				for (const auto& sampler : draw_item.samplers)
-					gfx::dev->bind_sampler(std::get<UINT>(sampler), std::get<ShaderStage>(sampler), std::get<SamplerHandle>(sampler));
-
-				for (const auto& cb : draw_item.constant_buffers)
-					gfx::dev->bind_constant_buffer(std::get<UINT>(cb), std::get<ShaderStage>(cb), std::get<BufferHandle>(cb));
-
-				for (const auto& tex : draw_item.textures)
-					gfx::dev->bind_resource(std::get<UINT>(tex), std::get<ShaderStage>(tex), std::get<TextureHandle>(tex));
-
-				gfx::dev->bind_vertex_buffers(0, draw_item.vbs_strides_offsets);
-				gfx::dev->bind_index_buffer(draw_item.ib);
-				gfx::dev->draw_indexed(draw_item.index_count, draw_item.index_start, draw_item.vertex_start);
-			}
-		}
-		else
+		BufferHandle curr_geom;
+		static DirectX::SimpleMath::Matrix* curr_mat = nullptr;
+		for (const auto& draw_item : m_submitted_draw_items)
 		{
-			gfx::dev->bind_constant_buffer(1, ShaderStage::eVertex, m_big_cb, 0);
+			if (!curr_mat)
+				curr_mat = draw_item.second.second;
 
-			for (const auto& model : m_models)
+			// Upload per draw data to GPU
+			if (draw_item.second.first->ib.hdl != curr_geom.hdl || draw_item.second.second != curr_mat)
 			{
-				gfx::dev->bind_pipeline(p);
-				gfx::dev->bind_vertex_buffers(0, model->get_vb());
-				gfx::dev->bind_index_buffer(model->get_ib());
-
-				/*
-					
-				OPAQUE PASS:
-					sort submeshes by material (pipeline, then textures)
-					
-					copy instance data for this model into Instance Buffer
-
-					for each submesh:
-						bind_pipeline
-						draw_instanced()
-				
-				*/
-
-				// Draw each submesh
-				const auto& meshes = model->get_meshes();
-				const auto& materials = model->get_materials();
-				for (int i = 0; i < meshes.size(); ++i)
-				{
-					// Upload per draw data to GPU at once
-					gfx::dev->map_copy(m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
-
-					const auto& mesh = meshes[i];
-					const auto& mat = materials[i];
-					gfx::dev->bind_resource(0, ShaderStage::ePixel, mat->get_texture(Material::Texture::eAlbedo));
-					gfx::dev->draw_indexed(mesh.index_count, mesh.index_start, mesh.vertex_start);
-				}
+				curr_mat = draw_item.second.second;
+				m_cb_elements[0].world_mat = *(draw_item.second.second);
+				gfx::dev->map_copy(m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
 			}
+
+			gfx::dev->bind_pipeline(draw_item.second.first->pipeline);
+
+			for (const auto& sampler : draw_item.second.first->samplers)
+				gfx::dev->bind_sampler(std::get<UINT>(sampler), std::get<ShaderStage>(sampler), std::get<SamplerHandle>(sampler));
+
+			for (const auto& cb : draw_item.second.first->constant_buffers)
+				gfx::dev->bind_constant_buffer(std::get<UINT>(cb), std::get<ShaderStage>(cb), std::get<BufferHandle>(cb));
+
+			for (const auto& tex : draw_item.second.first->textures)
+				gfx::dev->bind_resource(std::get<UINT>(tex), std::get<ShaderStage>(tex), std::get<TextureHandle>(tex));
+
+			gfx::dev->bind_vertex_buffers(0, draw_item.second.first->vbs_strides_offsets);
+			gfx::dev->bind_index_buffer(draw_item.second.first->ib);
+			gfx::dev->draw_indexed(draw_item.second.first->index_count, draw_item.second.first->index_start, draw_item.second.first->vertex_start);
+
+			curr_geom = draw_item.second.first->ib;
+
 		}
-
-
 
 
 		gfx::dev->end_pass();
@@ -340,6 +334,26 @@ void Renderer::render()
 	}
 
 	end();
+}
+
+void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
+{
+
+	// Render to Texture
+	{
+		// viewport
+		viewports[1].Width = (FLOAT)width;
+		viewports[1].Height = (FLOAT)height;
+
+		// create depth tex
+		d_32 = gfx::dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, width, height, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
+
+		// create render to texture (HDR)
+		r_tex = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET));
+
+		r_fb = gfx::dev->create_renderpass(RenderPassDesc(
+			{ r_tex }, d_32));
+	}
 }
 
 void Renderer::on_resize(UINT width, UINT height)

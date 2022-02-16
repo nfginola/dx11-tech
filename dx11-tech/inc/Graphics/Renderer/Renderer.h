@@ -54,8 +54,12 @@ private:
 
 	//class Scene* m_curr_scene;
 
-	std::vector<DrawItem> m_draw_items;	// precompiled draw items
-	bool m_proto = false;
+	std::vector<std::pair<uint64_t, DrawItem>> m_draw_items;	// precompiled draw items
+	std::vector<std::pair<uint64_t, std::pair<DrawItem*, DirectX::SimpleMath::Matrix*>>> m_submitted_draw_items;
+	bool m_proto = true;
+
+	DirectX::SimpleMath::Matrix m_pos1 = DirectX::SimpleMath::Matrix::CreateTranslation({ 0.f, 0.f, 0.f}) * DirectX::SimpleMath::Matrix::CreateScale(0.07f);
+	DirectX::SimpleMath::Matrix m_pos2 = DirectX::SimpleMath::Matrix::CreateTranslation({ 0.f, 1000.f, 0.f}) * DirectX::SimpleMath::Matrix::CreateScale(0.07f);
 
 	// temp
 	std::vector<const class Model*> m_models;

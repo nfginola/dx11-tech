@@ -6,7 +6,7 @@
 #include <assert.h>
 
 // Comment this out to use 32-bit handle. 
-#define USE_64_BIT_RES_HANDLE
+//#define USE_64_BIT_RES_HANDLE
 
 // Do NOT change the value. You are free to change the name if any collision arises in your program.
 static constexpr uint8_t RES_INVALID_HANDLE = 0;
