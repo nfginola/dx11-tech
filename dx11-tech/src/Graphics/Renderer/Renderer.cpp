@@ -5,6 +5,8 @@
 #include "Graphics/API/ImGuiDevice.h"
 #include "Profiler/FrameProfiler.h"
 
+#include "Graphics/CommandBucket/GfxCommand.h"
+
 
 // Temp
 #include "Graphics/Model.h"
@@ -78,7 +80,8 @@ Renderer::Renderer()
 
 		// make cbuffer
 		m_cb_per_frame = gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)));
-		m_big_cb = gfx::dev->create_buffer(BufferDesc::constant(256 * 3));
+		//m_big_cb = gfx::dev->create_buffer(BufferDesc::constant(256 * 3));
+		m_big_cb = gfx::dev->create_buffer(BufferDesc::constant(sizeof(CBElement)));
 
 
 		// compile and create shaders
@@ -221,16 +224,28 @@ void Renderer::render()
 
 		// world matrix key and material key (mat is item.first) (world matrix takes higher priority)
 		m_submitted_draw_items.push_back({ wm1_key | (uint64_t)item.first & 0x000000FF, { &item.second, &m_pos1 }});
-		m_submitted_draw_items.push_back({ wm2_key | (uint64_t)item.first & 0x000000FF, { &item.second, &m_pos2 } });
+		//m_submitted_draw_items.push_back({ wm2_key | (uint64_t)item.first & 0x000000FF, { &item.second, &m_pos2 } });
 
 
 		// world matrix only
 		//m_submitted_draw_items.push_back({ ((uint64_t)&m_pos1), { &item.second, &m_pos1 } });
 		//m_submitted_draw_items.push_back({ ((uint64_t)&m_pos2), { &item.second, &m_pos2 } });
 
+		/*
+			HOW DO WE SOLVE UPDATING WORLD MATRIX FOR EACH DRAW CALL?
+
+			Each Model has a CBuffer! For the world matrix associated with the whole model (all submeshes)
+
+			When we iterate over models (we are about to submit a bunch of DrawItems..)
+
+		
+
+		
+		
+		
+		*/
+
 	}
-
-
 
 	/*
 		forget these for now	
@@ -258,8 +273,6 @@ void Renderer::render()
 	
 	
 	*/
-
-
 
 	// Update persistent per frame camera data
 	m_cb_dat.view_mat = m_main_cam->get_view_mat();
@@ -289,23 +302,41 @@ void Renderer::render()
 				curr_mat = draw_item.second.second;
 
 			// Upload per draw data to GPU
-			if (draw_item.second.first->ib.hdl != curr_geom.hdl || draw_item.second.second != curr_mat)
-			{
+			//if (draw_item.second.first->ib.hdl != curr_geom.hdl || draw_item.second.second != curr_mat)
+			//{
 				curr_mat = draw_item.second.second;
 				m_cb_elements[0].world_mat = *(draw_item.second.second);
 				gfx::dev->map_copy(m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
-			}
+			//}
+
+			/*
+				Implement RenderQueue and allocate a DrawItem every time 
+
+				Use a linear allocator --> Just reserve some space upfront and reuse that
+
+				Also, add CopyToConstantBuffer command and prepend it for every DrawItem 
+
+				https://developer.nvidia.com/content/constant-buffers-without-constant-pain-0
+				"Try to update only one constant buffer in between draw calls", which we can do here.
+				Also, add double buffering for cbuffers
+
+				--> Relevant commands
+					- DrawItem
+					- CopyToConstantBuffer		--> cbuffer, data, size
+
+			*/
+
 
 			gfx::dev->bind_pipeline(draw_item.second.first->pipeline);
 
 			for (const auto& sampler : draw_item.second.first->samplers)
-				gfx::dev->bind_sampler(std::get<UINT>(sampler), std::get<ShaderStage>(sampler), std::get<SamplerHandle>(sampler));
+				gfx::dev->bind_sampler(std::get<uint8_t>(sampler), std::get<ShaderStage>(sampler), std::get<SamplerHandle>(sampler));
 
 			for (const auto& cb : draw_item.second.first->constant_buffers)
-				gfx::dev->bind_constant_buffer(std::get<UINT>(cb), std::get<ShaderStage>(cb), std::get<BufferHandle>(cb));
+				gfx::dev->bind_constant_buffer(std::get<uint8_t>(cb), std::get<ShaderStage>(cb), std::get<BufferHandle>(cb));
 
 			for (const auto& tex : draw_item.second.first->textures)
-				gfx::dev->bind_resource(std::get<UINT>(tex), std::get<ShaderStage>(tex), std::get<TextureHandle>(tex));
+				gfx::dev->bind_resource(std::get<uint8_t>(tex), std::get<ShaderStage>(tex), std::get<TextureHandle>(tex));
 
 			gfx::dev->bind_vertex_buffers(0, draw_item.second.first->vbs_strides_offsets);
 			gfx::dev->bind_index_buffer(draw_item.second.first->ib);
@@ -314,6 +345,7 @@ void Renderer::render()
 			curr_geom = draw_item.second.first->ib;
 
 		}
+
 
 
 		gfx::dev->end_pass();
@@ -332,6 +364,16 @@ void Renderer::render()
 
 		gfx::dev->end_pass();
 	}
+
+	m_main_bucket.add_command<gfxcommand::Draw>(12, 32);
+	m_main_bucket.add_command<gfxcommand::Draw>(7, 32);
+	m_main_bucket.add_command<gfxcommand::Draw>(10, 32);
+	m_main_bucket.add_command<gfxcommand::Draw>(3, 32);
+
+	m_main_bucket.sort();
+
+	m_main_bucket.flush();
+
 
 	end();
 }

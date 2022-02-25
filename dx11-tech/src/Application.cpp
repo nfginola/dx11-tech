@@ -238,6 +238,7 @@ void Application::run()
 		update(dt);
 	
 		// Render GPU
+		gfx::rend->set_camera(m_camera_controller->get_active_camera());
 		gfx::rend->render();
 		
 		// End taking input

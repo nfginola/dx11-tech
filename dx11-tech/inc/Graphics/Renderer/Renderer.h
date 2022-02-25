@@ -1,7 +1,9 @@
 #pragma once
 #include "Graphics/API/GfxHandles.h"
 #include "Graphics/API/GfxHelperTypes.h"
-#include "Graphics/DrawItem.h"
+#include "Graphics/Renderer/DrawItem.h"
+
+#include "Graphics/CommandBucket/GfxCommandBucket.h"
 
 /*
 	
@@ -50,6 +52,8 @@ private:
 
 	// Misc
 private:
+	GfxCommandBucket<uint64_t> m_main_bucket;
+
 	//std::vector<ICustomDrawable*> m_custom_drawables;
 
 	//class Scene* m_curr_scene;
@@ -87,14 +91,17 @@ private:
 		DirectX::XMMATRIX view_mat, proj_mat;
 	} m_cb_dat;
 
-	struct alignas(256) CBElement
+	struct CBElement
 	{
 		DirectX::XMMATRIX world_mat;
 	};
 	std::array<CBElement, 1> m_cb_elements;
 
 	// cbuffer
-	BufferHandle m_cb_per_frame, m_big_cb;
+	BufferHandle m_cb_per_frame, m_big_cb, m_big_cb2;
+
+	BufferHandle m_curr_big_cb;
+	BufferHandle m_prev_big_cb;
 	
 	SamplerHandle def_samp, repeat_samp;
 	
