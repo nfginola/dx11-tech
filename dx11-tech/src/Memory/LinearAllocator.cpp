@@ -8,6 +8,7 @@ LinearAllocator::LinearAllocator(size_t size) :
 	m_internal_size(size)
 {
 	m_memory = (char*)std::malloc(size);
+    std::memset(m_memory, 0, size);
 	m_end = m_memory + m_internal_size;
 }
 

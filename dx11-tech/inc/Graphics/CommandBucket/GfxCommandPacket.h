@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include "Memory/Allocator.h"
 
 typedef void (*GfxCommandDispatch)(const void*);
 typedef void* GfxCommandPacket;
@@ -28,9 +29,10 @@ namespace gfxcommandpacket
     //}
 
     template <typename T>
-    GfxCommandPacket create(size_t aux_size)
+    GfxCommandPacket create(size_t aux_size, Allocator* allocator)
     {
-        return std::malloc(sizeof(GfxCommandPacket) + sizeof(GfxCommandDispatch) + sizeof(T) + aux_size);
+        //return std::malloc(sizeof(GfxCommandPacket) + sizeof(GfxCommandDispatch) + sizeof(T) + aux_size);
+        return allocator->allocate(sizeof(GfxCommandPacket) + sizeof(GfxCommandDispatch) + sizeof(T) + aux_size);
     }
 
     /*

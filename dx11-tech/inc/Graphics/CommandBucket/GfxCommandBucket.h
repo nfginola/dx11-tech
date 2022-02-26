@@ -42,7 +42,6 @@ private:
     //std::vector<key_packet_pair> m_key_packet_pairs;
 
     LinearAllocator m_packet_allocator;
-    void* m_packets;
 
     uint32_t m_current = 0;
 };
@@ -55,10 +54,6 @@ inline GfxCommandBucket<T>::GfxCommandBucket() :
     //m_key_packet_pairs = program_mem_pool::grab_memory(max_cmds * sizeof(key_packet_pair));
     m_key_packet_pairs = std::malloc(max_cmds * sizeof(key_packet_pair));
     std::memset(m_key_packet_pairs, 0, max_cmds * sizeof(m_key_packet_pairs));
-
-    // allocate 1mb for packets
-    m_packets = std::malloc(1000000);     
-    std::memset(m_packets, 0, 1000000);
 }
 
 template<typename T>
@@ -90,6 +85,7 @@ inline void GfxCommandBucket<T>::flush()
         } while (packet != nullptr);
     }
 
+    m_packet_allocator.reset();
     m_current = 0;
 }
 
@@ -100,7 +96,8 @@ inline U* GfxCommandBucket<T>::add_command(Key key, size_t aux_size)
 {
     assert(m_current <= max_cmds);
 
-    GfxCommandPacket packet = gfxcommandpacket::create<U>(aux_size);
+    GfxCommandPacket packet = gfxcommandpacket::create<U>(aux_size, &m_packet_allocator);
+    assert(packet != nullptr);
        
     const unsigned int current = m_current++;
     ((key_packet_pair*)m_key_packet_pairs)[current].key = key;

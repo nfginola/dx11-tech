@@ -22,7 +22,89 @@ namespace gfxcommand
 		/*
 			VBs, CBs, Samplers, Read Textures, ...
 		*/
+
 	};
 
+
+	namespace aux
+	{
+		namespace bindtable
+		{
+			struct Header
+			{
+				unsigned int vbs : 4;
+				unsigned int cbs : 4;
+				unsigned int textures : 7;
+				unsigned int validated : 1;
+				unsigned int samplers : 3;
+
+				Header() = delete;
+				Header(uint8_t vbs_in, uint8_t cbs_in, uint8_t samplers_in, uint8_t textures_in)
+				{
+					validated = 0;
+					vbs = vbs_in;
+					cbs = cbs_in;
+					samplers = samplers_in;
+					textures = textures_in;
+				}
+			};
+
+			struct Filler
+			{
+				Filler(void* start, uint8_t vbs_in, uint8_t cbs_in, uint8_t samplers_in, uint8_t textures_in);
+				Filler& add_vb(res_handle handle, uint32_t stride, uint32_t offset);
+				Filler& add_cb(res_handle handle, uint8_t stage, uint8_t slot);
+				Filler& add_texture(res_handle handle, uint8_t stage, uint8_t slot);
+				Filler& add_sampler(res_handle handle, uint8_t stage, uint8_t slot);
+				void validate();
+
+				Header* hdr;
+				char* payload_start = nullptr;
+				size_t curr_payload_offset = 0;
+
+				int vb_count = 0;
+				int cb_count = 0;
+				int sampler_count = 0;
+				int texture_count = 0;
+
+				bool vb_off = false;
+				bool cb_off = false;
+				bool sampler_off = false;
+				bool textures_off = false;
+			};
+
+			struct PayloadVB
+			{
+				res_handle hdl;
+				uint32_t stride;
+				uint32_t offset;
+			};
+
+			struct PayloadCB
+			{
+				res_handle hdl;
+				uint8_t stage;
+				uint8_t slot;
+			};
+
+			struct PayloadSampler
+			{
+				res_handle hdl;
+				uint8_t stage;
+				uint8_t slot;
+			};
+
+			struct PayloadTexture
+			{
+				res_handle hdl;
+				uint8_t stage;
+				uint8_t slot;
+			};
+		}
+
+
+
+
+	}
 
 }
