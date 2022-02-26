@@ -30,6 +30,8 @@ namespace gfxcommand
 	{
 		namespace bindtable
 		{
+			size_t get_size(uint8_t vb_count, uint8_t cb_count, uint8_t sampler_count, uint8_t texture_count);
+
 			struct Header
 			{
 				unsigned int vbs : 4;

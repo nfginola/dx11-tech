@@ -547,6 +547,52 @@ void GfxDevice::bind_vertex_buffers(UINT start_slot, const std::vector<std::tupl
 
 }
 
+void GfxDevice::bind_vertex_buffers(UINT start_slot, void* buffers_strides_offsets, uint8_t count)
+{
+	struct BSO
+	{
+		BufferHandle hdl;
+		UINT stride;
+		UINT offset;
+	};
+
+	BSO* bso = (BSO*)buffers_strides_offsets;
+
+	UINT identical = 0;
+	for (int i = 0; i < count; ++i)
+	{
+		const auto& buffer_handle = bso[i].hdl;
+		if (buffer_handle.hdl == m_bound_vbs[start_slot + i].hdl)
+			++identical;
+	}
+	if (identical == count)
+		return;
+
+
+	// Refactor this later. We want to remove the redundant Handle -> GPUBuffer -> D3D11Resource
+	assert(count <= 12);
+	ID3D11Buffer* vbs[gfxconstants::MAX_INPUT_SLOTS] = {};
+	UINT strides[gfxconstants::MAX_INPUT_SLOTS] = {};
+	UINT offsets[gfxconstants::MAX_INPUT_SLOTS] = {};
+	for (int i = 0; i < count; ++i)
+	{
+		const auto& buffer_handle = bso[i].hdl;
+		vbs[i] = (ID3D11Buffer*)(m_buffers.look_up(buffer_handle.hdl)->m_internal_resource.Get());
+		strides[i] = bso[i].stride;
+		offsets[i] = bso[i].offset;
+
+		m_bound_vbs[start_slot + i] = buffer_handle;
+	}
+
+	m_dev->get_context()->IASetVertexBuffers(
+		start_slot, (UINT)count,
+		vbs,
+		strides ? strides : (UINT*)gfxconstants::NULL_RESOURCE,
+		offsets ? offsets : (UINT*)gfxconstants::NULL_RESOURCE);
+}
+
+
+
 void GfxDevice::bind_index_buffer(BufferHandle buffer, DXGI_FORMAT format, UINT offset)
 {
 	if (buffer.hdl == m_bound_ib.hdl)

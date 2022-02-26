@@ -13,6 +13,15 @@ const GfxCommandDispatch gfxcommand::Draw::DISPATCH = gfxcommand_dispatch::draw;
 
 namespace gfxcommand::aux::bindtable
 {
+    size_t get_size(uint8_t vb_count, uint8_t cb_count, uint8_t sampler_count, uint8_t texture_count)
+    {
+        return sizeof(gfxcommand::aux::bindtable::Header) +
+            sizeof(gfxcommand::aux::bindtable::PayloadVB) * vb_count +
+            sizeof(gfxcommand::aux::bindtable::PayloadCB) * cb_count +
+            sizeof(gfxcommand::aux::bindtable::PayloadSampler) * sampler_count +
+            sizeof(gfxcommand::aux::bindtable::PayloadTexture) * texture_count;
+    }
+
     gfxcommand::aux::bindtable::Filler::Filler(void* start, uint8_t vbs_in, uint8_t cbs_in, uint8_t samplers_in, uint8_t textures_in)
     {
         hdr = ((Header*)start);

@@ -94,6 +94,7 @@ public:
 	// We have 256 bytes per draw (16 floats!) 
 	void bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset56s = 0, UINT range56s = 1);
 	void bind_vertex_buffers(UINT start_slot, const std::vector<std::tuple<BufferHandle, UINT, UINT>>& buffers_strides_offsets);
+	void bind_vertex_buffers(UINT start_slot, void* buffers_strides_offsets, uint8_t count);
 	void bind_index_buffer(BufferHandle buffer, DXGI_FORMAT format = DXGI_FORMAT_R32_UINT, UINT offset = 0);
 
 	void bind_resource(UINT slot, ShaderStage stage, BufferHandle resource);

@@ -35,15 +35,16 @@ void gfxcommand_dispatch::draw(const void* data)
         Read payload
     */
     auto* vbs = reinterpret_cast<bindtable::PayloadVB*>(payload_now);
-    static std::vector<std::tuple<BufferHandle, UINT, UINT>> vb_binds;
-    vb_binds.resize(md->vbs);
-    for (int i = 0; i < md->vbs; ++i)
-    {
-        //const auto& vb_dat = vbs[i];
-        vb_binds[i] = { BufferHandle{vbs[i].hdl}, vbs[i].stride, vbs[i].offset };
-        //std::cout << "vb: " << vb_dat.hdl << " (hdl) " << vb_dat.stride << " (stride) " << vb_dat.offset << " (offset) \n";
-    }
-    gfx::dev->bind_vertex_buffers(0, vb_binds);
+    //static std::vector<std::tuple<BufferHandle, UINT, UINT>> vb_binds;
+    //vb_binds.resize(md->vbs);
+    //for (int i = 0; i < md->vbs; ++i)
+    //{
+    //    //const auto& vb_dat = vbs[i];
+    //    vb_binds[i] = { BufferHandle{vbs[i].hdl}, vbs[i].stride, vbs[i].offset };
+    //    //std::cout << "vb: " << vb_dat.hdl << " (hdl) " << vb_dat.stride << " (stride) " << vb_dat.offset << " (offset) \n";
+    //}
+    //gfx::dev->bind_vertex_buffers(0, vb_binds);
+    gfx::dev->bind_vertex_buffers(0, vbs, md->vbs);
     payload_now += md->vbs * sizeof(bindtable::PayloadVB);  // go to next type
 
 

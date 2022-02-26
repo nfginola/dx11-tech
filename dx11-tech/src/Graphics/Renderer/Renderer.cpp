@@ -370,16 +370,10 @@ void Renderer::render()
 				uint8_t textures_in = 1;
 				uint8_t samplers_in = 0;
 
-				// used for auxiliary memory
-				size_t aux_size = sizeof(gfxcommand::aux::bindtable::Header) +
-					sizeof(gfxcommand::aux::bindtable::PayloadVB) * vbs_in +
-					sizeof(gfxcommand::aux::bindtable::PayloadCB) * cbs_in +
-					sizeof(gfxcommand::aux::bindtable::PayloadSampler) * samplers_in +
-					sizeof(gfxcommand::aux::bindtable::PayloadTexture) * textures_in;
-				
 				// temporary key
 				uint64_t key = mat->get_texture(Material::Texture::eAlbedo).hdl;
 
+				size_t aux_size = gfxcommand::aux::bindtable::get_size(vbs_in, cbs_in, textures_in, samplers_in);
 				auto cmd = m_main_bucket.add_command<gfxcommand::Draw>(key, aux_size);
 				cmd->ib = model->get_ib();
 				cmd->index_count = mesh.index_count;
