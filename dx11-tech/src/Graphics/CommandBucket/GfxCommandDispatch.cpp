@@ -53,7 +53,7 @@ void gfxcommand_dispatch::draw(const void* data)
     {
         const auto& cb_dat = cbs[i];
         //std::cout << "cb: " << cb_dat.hdl << " (hdl) " << (uint64_t)cb_dat.stage << " (stage) " << (uint64_t)cb_dat.slot << " (slot) \n";
-        gfx::dev->bind_constant_buffer(cb_dat.slot, (ShaderStage)cb_dat.stage, BufferHandle{ cb_dat.hdl });
+        gfx::dev->bind_constant_buffer(cb_dat.slot, (ShaderStage)cb_dat.stage, BufferHandle{ cb_dat.hdl }, cb_dat.offset56s, cb_dat.range56s);
     }
     payload_now += md->cbs * sizeof(bindtable::PayloadCB);  // go to next type
 
@@ -81,9 +81,8 @@ void gfxcommand_dispatch::draw(const void* data)
     //std::cout << "\n\n\n";
 }
 
-void gfxcommand_dispatch::copy_to_cbuffer(const void* data)
+void gfxcommand_dispatch::copy_to_buffer(const void* data)
 {
-
-
-
+    const gfxcommand::CopyToBuffer* cmd = reinterpret_cast<const gfxcommand::CopyToBuffer*>(data);
+    gfx::dev->map_copy(cmd->buffer, SubresourceData(cmd->data, cmd->data_size));
 }

@@ -10,19 +10,20 @@
     Draw command
 */
 const GfxCommandDispatch gfxcommand::Draw::DISPATCH = gfxcommand_dispatch::draw;
+const GfxCommandDispatch gfxcommand::CopyToBuffer::DISPATCH = gfxcommand_dispatch::copy_to_buffer;
 
 namespace gfxcommand::aux::bindtable
 {
     size_t get_size(uint8_t vb_count, uint8_t cb_count, uint8_t sampler_count, uint8_t texture_count)
     {
-        return sizeof(gfxcommand::aux::bindtable::Header) +
-            sizeof(gfxcommand::aux::bindtable::PayloadVB) * vb_count +
-            sizeof(gfxcommand::aux::bindtable::PayloadCB) * cb_count +
-            sizeof(gfxcommand::aux::bindtable::PayloadSampler) * sampler_count +
-            sizeof(gfxcommand::aux::bindtable::PayloadTexture) * texture_count;
+        return sizeof(Header) +
+            sizeof(PayloadVB) * vb_count +
+            sizeof(PayloadCB) * cb_count +
+            sizeof(PayloadSampler) * sampler_count +
+            sizeof(PayloadTexture) * texture_count;
     }
 
-    gfxcommand::aux::bindtable::Filler::Filler(void* start, uint8_t vbs_in, uint8_t cbs_in, uint8_t samplers_in, uint8_t textures_in)
+    Filler::Filler(void* start, uint8_t vbs_in, uint8_t cbs_in, uint8_t samplers_in, uint8_t textures_in)
     {
         hdr = ((Header*)start);
         *hdr = Header(vbs_in, cbs_in, samplers_in, textures_in);
@@ -30,7 +31,7 @@ namespace gfxcommand::aux::bindtable
         payload_start = (char*)start + sizeof(Header);
     }
 
-    gfxcommand::aux::bindtable::Filler& gfxcommand::aux::bindtable::Filler::add_vb(res_handle handle, uint32_t stride, uint32_t offset)
+    Filler& Filler::add_vb(res_handle handle, uint32_t stride, uint32_t offset)
     {
         if (vb_off || vb_count >= hdr->vbs)
             assert(false);
@@ -46,7 +47,7 @@ namespace gfxcommand::aux::bindtable
         return *this;
     }
 
-    gfxcommand::aux::bindtable::Filler& gfxcommand::aux::bindtable::Filler::add_cb(res_handle handle, uint8_t stage, uint8_t slot)
+    Filler& Filler::add_cb(res_handle handle, uint8_t stage, uint8_t slot, uint32_t offset56s, uint32_t range56s)
     {
         if (cb_off || cb_count >= hdr->cbs)
             assert(false);
@@ -57,6 +58,8 @@ namespace gfxcommand::aux::bindtable
         ((PayloadCB*)curr_pos)->hdl = handle;
         ((PayloadCB*)curr_pos)->stage = stage;
         ((PayloadCB*)curr_pos)->slot = slot;
+        ((PayloadCB*)curr_pos)->offset56s = offset56s;
+        ((PayloadCB*)curr_pos)->range56s = range56s;
 
         curr_payload_offset += sizeof(PayloadCB);
         ++cb_count;
@@ -64,7 +67,7 @@ namespace gfxcommand::aux::bindtable
 
     }
 
-    gfxcommand::aux::bindtable::Filler& gfxcommand::aux::bindtable::Filler::add_texture(res_handle handle, uint8_t stage, uint8_t slot)
+    Filler& Filler::add_texture(res_handle handle, uint8_t stage, uint8_t slot)
     {
         if (textures_off || texture_count >= hdr->textures)
             assert(false);
@@ -82,7 +85,7 @@ namespace gfxcommand::aux::bindtable
         return *this;
     }
 
-    gfxcommand::aux::bindtable::Filler& gfxcommand::aux::bindtable::Filler::add_sampler(res_handle handle, uint8_t stage, uint8_t slot)
+    Filler& Filler::add_sampler(res_handle handle, uint8_t stage, uint8_t slot)
     {
         if (sampler_count >= hdr->samplers)
             assert(false);
@@ -115,8 +118,10 @@ namespace gfxcommand::aux::bindtable
 
 
 /*
-    Other commands..
+    Copy to buffer     
 */
+
+
 
 
 

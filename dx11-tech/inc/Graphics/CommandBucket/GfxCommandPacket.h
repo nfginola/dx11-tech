@@ -62,6 +62,15 @@ namespace gfxcommandpacket
     */
 
     void append_packet(GfxCommandPacket base, GfxCommandPacket next);
+
+    // append a next packet to an existing command in another packet
+    template <typename T>
+    void append_packet(T* command, GfxCommandPacket next)
+    {
+        // Go to beginning of Packet from command.
+        *(reinterpret_cast<GfxCommandPacket*>((char*)command - OFFSET_COMMAND + OFFSET_NEXT_PACKET)) = next;
+    }
+
     void store_dispatch(GfxCommandPacket packet, GfxCommandDispatch dispatchFunction);
 
     //const CommandPacket LoadNextCommandPacket(const CommandPacket packet)

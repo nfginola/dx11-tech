@@ -624,10 +624,17 @@ void GfxDevice::update_subresource(TextureHandle dst, const SubresourceData& dat
 
 void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset56s, UINT range56s)
 {
-	if (m_bound_cbuffers[(UINT)stage - 1][slot].hdl == buffer.hdl)
+	auto curr_bound = m_bound_cbuffers[(UINT)stage - 1][slot];
+
+	if (std::get<BufferHandle>(curr_bound).hdl == buffer.hdl &&
+		std::get<1>(curr_bound) == offset56s &&
+		std::get<2>(curr_bound) == range56s)
 		return;
+
 	bind_constant_buffer(slot, stage, m_buffers.look_up(buffer.hdl), offset56s, range56s);
-	m_bound_cbuffers[(UINT)stage - 1][slot] = buffer;
+	std::get<BufferHandle>(curr_bound) = buffer;
+	std::get<1>(curr_bound) = offset56s;
+	std::get<2>(curr_bound) = range56s;
 }
 
 void GfxDevice::bind_resource(UINT slot, ShaderStage stage, BufferHandle resource)

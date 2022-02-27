@@ -25,7 +25,18 @@ namespace gfxcommand
 
 	};
 
+	struct CopyToBuffer
+	{
+		static const GfxCommandDispatch DISPATCH;
 
+		// Will use map/unmap and can be extended to support update subresource later (through e.g simple flag)
+		void* data = nullptr;
+		size_t data_size = 0;
+		BufferHandle buffer;
+	};
+
+
+	// Auxiliary memory helpers
 	namespace aux
 	{
 		namespace bindtable
@@ -55,7 +66,7 @@ namespace gfxcommand
 			{
 				Filler(void* start, uint8_t vbs_in, uint8_t cbs_in, uint8_t samplers_in, uint8_t textures_in);
 				Filler& add_vb(res_handle handle, uint32_t stride, uint32_t offset);
-				Filler& add_cb(res_handle handle, uint8_t stage, uint8_t slot);
+				Filler& add_cb(res_handle handle, uint8_t stage, uint8_t slot, uint32_t offset56s = 0, uint32_t range56s = 1);
 				Filler& add_texture(res_handle handle, uint8_t stage, uint8_t slot);
 				Filler& add_sampler(res_handle handle, uint8_t stage, uint8_t slot);
 				void validate();
@@ -87,6 +98,8 @@ namespace gfxcommand
 				res_handle hdl;
 				uint8_t stage;
 				uint8_t slot;
+				uint32_t offset56s;
+				uint32_t range56s;
 			};
 
 			struct PayloadSampler

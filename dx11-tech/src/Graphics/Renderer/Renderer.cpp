@@ -80,8 +80,8 @@ Renderer::Renderer()
 
 		// make cbuffer
 		m_cb_per_frame = gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)));
-		//m_big_cb = gfx::dev->create_buffer(BufferDesc::constant(256 * 3));
-		m_big_cb = gfx::dev->create_buffer(BufferDesc::constant(sizeof(CBElement)));
+		m_big_cb = gfx::dev->create_buffer(BufferDesc::constant(256 * m_cb_elements.size()));
+		//m_big_cb = gfx::dev->create_buffer(BufferDesc::constant(sizeof(CBElement)));
 
 
 		// compile and create shaders
@@ -138,57 +138,6 @@ Renderer::Renderer()
 	repeat_samp = gfx::dev->create_sampler(repeat);
 	gfx::dev->bind_sampler(1, ShaderStage::ePixel, repeat_samp);
 
-
-	// create draw items
-	const auto& model = m_models[0];
-	const auto& meshes = model->get_meshes();
-	const auto& materials = model->get_materials();
-
-
-	m_draw_items.reserve(1000);
-	for (int i = 0; i < meshes.size(); ++i)
-	{
-		const auto& mesh = meshes[i];
-		const auto& mat = materials[i];
-
-		DrawItem item;
-		item.pipeline = p;		// should come from material
-		item.vbs_strides_offsets = model->get_vb();
-		item.ib = model->get_ib();
-
-		item.index_count = mesh.index_count;
-		item.index_start = mesh.index_start;
-		item.vertex_start = mesh.vertex_start;
-
-		item.textures.push_back({ 0, ShaderStage::ePixel, mat->get_texture(Material::Texture::eAlbedo) });
-		item.constant_buffers.push_back({ 1, ShaderStage::eVertex, m_big_cb });
-		item.samplers.push_back({ 1, ShaderStage::ePixel, repeat_samp });
-
-		m_draw_items.push_back({ mat->get_texture(Material::Texture::eAlbedo).hdl, item });	// use texture as key
-	}
-
-	/*
-		Loading models should be done in 2 steps:
-
-			1) Loading the model and defining parameters (phong? pbr?). Essentially handling the data
-			2) Assign mapping to GPU --> Build DrawItems (e.g cbuf mapping, texture slot mapping, etc.)
-	 
-		
-		RenderableModel
-		{
-			std::vector<DrawItem> draw_items;
-		}
-
-		DrawItemBuilder builder(model);
-
-		builder.set_pipeline
-	
-	*/
-
-
-	
-	fmt::print("woo\n");
-
 }
 
 void Renderer::begin()
@@ -213,39 +162,6 @@ void Renderer::end()
 void Renderer::render()
 {
 	begin();
-	m_submitted_draw_items.clear();
-
-	// emulate grabbing from model
-	for (auto& item : m_draw_items)
-	{
-
-		auto wm1_key = (((uint64_t)&m_pos1) & 0x000000FF) << 48; // explicitly place as MSBs
-		auto wm2_key = (((uint64_t)&m_pos2) & 0x000000FF) << 48;
-
-		// world matrix key and material key (mat is item.first) (world matrix takes higher priority)
-		m_submitted_draw_items.push_back({ wm1_key | (uint64_t)item.first & 0x000000FF, { &item.second, &m_pos1 }});
-		//m_submitted_draw_items.push_back({ wm2_key | (uint64_t)item.first & 0x000000FF, { &item.second, &m_pos2 } });
-
-
-		// world matrix only
-		//m_submitted_draw_items.push_back({ ((uint64_t)&m_pos1), { &item.second, &m_pos1 } });
-		//m_submitted_draw_items.push_back({ ((uint64_t)&m_pos2), { &item.second, &m_pos2 } });
-
-		/*
-			HOW DO WE SOLVE UPDATING WORLD MATRIX FOR EACH DRAW CALL?
-
-			Each Model has a CBuffer! For the world matrix associated with the whole model (all submeshes)
-
-			When we iterate over models (we are about to submit a bunch of DrawItems..)
-
-		
-
-		
-		
-		
-		*/
-
-	}
 
 	/*
 		forget these for now	
@@ -288,117 +204,76 @@ void Renderer::render()
 	{
 		auto _ = FrameProfiler::Scoped("Geometry Pass");
 
-
 		gfx::dev->begin_pass(r_fb);
 		gfx::dev->bind_viewports({ viewports[1] });
 		
-		if (!m_proto)
+		/*
+			A model renderer should be responsible for this
+		*/
+		const auto& model = m_models[0];
+		const auto& meshes = model->get_meshes();
+		const auto& materials = model->get_materials();
+
+		// Update world matrix
+		m_cb_elements[0].world_mat = DirectX::SimpleMath::Matrix::CreateScale(0.07);
+		m_cb_elements[1].world_mat = DirectX::SimpleMath::Matrix::CreateScale(0.07) * DirectX::SimpleMath::Matrix::CreateTranslation(0.f, 0.f, 300.f);
+
+		/*
+			Copy scene matrices to giant buffer
+		*/
+		
+		auto big_copy = m_copy_bucket.add_command<gfxcommand::CopyToBuffer>(0, 0);
+		big_copy->buffer = m_big_cb;
+		big_copy->data = m_cb_elements.data();
+		big_copy->data_size = m_cb_elements.size() * sizeof(m_cb_elements[0]);
+
+		for (int inst = 0; inst < 2; ++inst)
 		{
-			BufferHandle curr_geom;
-			std::sort(m_submitted_draw_items.begin(), m_submitted_draw_items.end(), [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
-			static DirectX::SimpleMath::Matrix* curr_mat = nullptr;
-			for (const auto& draw_item : m_submitted_draw_items)
-			{
-				if (!curr_mat)
-					curr_mat = draw_item.second.second;
-
-				// Upload per draw data to GPU
-				//if (draw_item.second.first->ib.hdl != curr_geom.hdl || draw_item.second.second != curr_mat)
-				//{
-					//curr_mat = draw_item.second.second;
-					//m_cb_elements[0].world_mat = *(draw_item.second.second);
-				m_cb_elements[0].world_mat = DirectX::SimpleMath::Matrix::CreateScale(0.07);
-
-				gfx::dev->map_copy(m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
-				//}
-
-				/*
-					Implement RenderQueue and allocate a DrawItem every time
-
-					Use a linear allocator --> Just reserve some space upfront and reuse that
-
-					Also, add CopyToConstantBuffer command and prepend it for every DrawItem
-
-					https://developer.nvidia.com/content/constant-buffers-without-constant-pain-0
-					"Try to update only one constant buffer in between draw calls", which we can do here.
-					Also, add double buffering for cbuffers
-
-					--> Relevant commands
-						- DrawItem
-						- CopyToConstantBuffer		--> cbuffer, data, size
-
-				*/
-				gfx::dev->bind_pipeline(draw_item.second.first->pipeline);
-
-				for (const auto& sampler : draw_item.second.first->samplers)
-					gfx::dev->bind_sampler(std::get<uint8_t>(sampler), std::get<ShaderStage>(sampler), std::get<SamplerHandle>(sampler));
-
-				for (const auto& cb : draw_item.second.first->constant_buffers)
-					gfx::dev->bind_constant_buffer(std::get<uint8_t>(cb), std::get<ShaderStage>(cb), std::get<BufferHandle>(cb));
-
-				for (const auto& tex : draw_item.second.first->textures)
-					gfx::dev->bind_resource(std::get<uint8_t>(tex), std::get<ShaderStage>(tex), std::get<TextureHandle>(tex));
-
-				gfx::dev->bind_vertex_buffers(0, draw_item.second.first->vbs_strides_offsets);
-				gfx::dev->bind_index_buffer(draw_item.second.first->ib);
-				gfx::dev->draw_indexed(draw_item.second.first->index_count, draw_item.second.first->index_start, draw_item.second.first->vertex_start);
-
-				curr_geom = draw_item.second.first->ib;
-			}
-		}
-
-
-		// Bucket version
-		if (m_proto)
-		{
-			const auto& model = m_models[0];
-			const auto& meshes = model->get_meshes();
-			const auto& materials = model->get_materials();
-
 			for (int i = 0; i < meshes.size(); ++i)
 			{
-				// Update mesh
-				m_cb_elements[0].world_mat = DirectX::SimpleMath::Matrix::CreateScale(0.07);
-				gfx::dev->map_copy(m_big_cb, SubresourceData(m_cb_elements.data(), (UINT)m_cb_elements.size() * sizeof(m_cb_elements[0])));
-
-
 				const auto& mesh = meshes[i];
 				const auto& mat = materials[i];
 
 				uint8_t vbs_in = model->get_vb().size();
-				uint8_t cbs_in = 1;	// Per Object
+				uint8_t cbs_in = 1;	// Per Object CBuffer
 				uint8_t textures_in = 1;
 				uint8_t samplers_in = 0;
 
-				// temporary key
+				// Key based on texture
 				uint64_t key = mat->get_texture(Material::Texture::eAlbedo).hdl;
 
+				// Create pre-copy command
+				//auto copy_cmd = m_main_bucket.add_command<gfxcommand::CopyToBuffer>(key, 0);
+				//copy_cmd->buffer = m_big_cb;
+				//copy_cmd->data = m_cb_elements.data();
+				//copy_cmd->data_size = 1 * sizeof(m_cb_elements[0]);
+
+				// Append draw call
 				size_t aux_size = gfxcommand::aux::bindtable::get_size(vbs_in, cbs_in, textures_in, samplers_in);
 				auto cmd = m_main_bucket.add_command<gfxcommand::Draw>(key, aux_size);
+				//auto cmd = m_main_bucket.append_command<gfxcommand::Draw>(copy_cmd, aux_size);
 				cmd->ib = model->get_ib();
 				cmd->index_count = mesh.index_count;
 				cmd->index_start = mesh.index_start;
 				cmd->vertex_start = mesh.vertex_start;
 				cmd->pipeline = p;			// Should come from material
 
+				// Fill draw call payload (bind table)
 				auto payload = gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(cmd), vbs_in, cbs_in, samplers_in, textures_in);
 				for (int i = 0; i < vbs_in; ++i)
 					payload.add_vb(std::get<0>(model->get_vb()[i]).hdl, std::get<1>(model->get_vb()[i]), std::get<2>(model->get_vb()[i]));
-				
-				payload.add_cb(m_big_cb.hdl, (uint8_t)ShaderStage::eVertex, 1);
 
+				payload.add_cb(m_big_cb.hdl, (uint8_t)ShaderStage::eVertex, 1, inst);
 				payload.add_texture(mat->get_texture(Material::Texture::eAlbedo).hdl, (uint8_t)ShaderStage::ePixel, 0);
-				
-				
 				payload.validate();
 			}
-
-			m_main_bucket.sort();
-			m_main_bucket.flush();
 		}
+
+		m_copy_bucket.flush();
+
+		m_main_bucket.sort();
+		m_main_bucket.flush();
 	
-
-
 		gfx::dev->end_pass();
 	}
 
@@ -425,7 +300,6 @@ void Renderer::render()
 
 void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
 {
-
 	// Render to Texture
 	{
 		// viewport

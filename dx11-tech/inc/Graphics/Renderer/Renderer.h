@@ -52,18 +52,13 @@ private:
 
 	// Misc
 private:
+	GfxCommandBucket<uint8_t> m_copy_bucket;
 	GfxCommandBucket<uint64_t> m_main_bucket;
 
 	//std::vector<ICustomDrawable*> m_custom_drawables;
 
 	//class Scene* m_curr_scene;
-
-	std::vector<std::pair<uint64_t, DrawItem>> m_draw_items;	// precompiled draw items
-	std::vector<std::pair<uint64_t, std::pair<DrawItem*, DirectX::SimpleMath::Matrix*>>> m_submitted_draw_items;
 	bool m_proto = true;
-
-	DirectX::SimpleMath::Matrix m_pos1 = DirectX::SimpleMath::Matrix::CreateTranslation({ 0.f, 0.f, 0.f}) * DirectX::SimpleMath::Matrix::CreateScale(0.07f);
-	DirectX::SimpleMath::Matrix m_pos2 = DirectX::SimpleMath::Matrix::CreateTranslation({ 0.f, 1000.f, 0.f}) * DirectX::SimpleMath::Matrix::CreateScale(0.07f);
 
 	// temp
 	std::vector<const class Model*> m_models;
@@ -91,11 +86,11 @@ private:
 		DirectX::XMMATRIX view_mat, proj_mat;
 	} m_cb_dat;
 
-	struct CBElement
+	struct alignas(256) CBElement
 	{
 		DirectX::XMMATRIX world_mat;
 	};
-	std::array<CBElement, 1> m_cb_elements;
+	std::array<CBElement, 5> m_cb_elements;		// Assumes max 500 unique matrices per frame (model meshes)
 
 	// cbuffer
 	BufferHandle m_cb_per_frame, m_big_cb, m_big_cb2;

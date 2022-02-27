@@ -117,14 +117,14 @@ inline U* GfxCommandBucket<T>::append_command(V* base_command, size_t aux_size)
         Appends a command such that:
             base_command --> U 
     */
-    GfxCommandPacket packet = gfxcommandpacket::create<U>(aux_size);
+    GfxCommandPacket packet = gfxcommandpacket::create<U>(aux_size, &m_packet_allocator);
     
+    // Append this command to the given one
+    gfxcommandpacket::append_packet<V>(base_command, packet);
+
     // Assign defaults to new packet
     gfxcommandpacket::append_packet(packet, nullptr);
     gfxcommandpacket::store_dispatch(packet, U::DISPATCH);
-
-    // Append this command to the given one
-    gfxcommandpacket::append_packet<V>(base_command, packet);
 
     return gfxcommandpacket::get_command<U>(packet);
 }

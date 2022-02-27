@@ -93,8 +93,10 @@ public:
 	// Use the giant constant buffer thingy for per draw data! (not instancing, thats a different buffer which is passed through VB)
 	// We have 256 bytes per draw (16 floats!) 
 	void bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset56s = 0, UINT range56s = 1);
+
 	void bind_vertex_buffers(UINT start_slot, const std::vector<std::tuple<BufferHandle, UINT, UINT>>& buffers_strides_offsets);
 	void bind_vertex_buffers(UINT start_slot, void* buffers_strides_offsets, uint8_t count);
+	
 	void bind_index_buffer(BufferHandle buffer, DXGI_FORMAT format = DXGI_FORMAT_R32_UINT, UINT offset = 0);
 
 	void bind_resource(UINT slot, ShaderStage stage, BufferHandle resource);
@@ -214,10 +216,11 @@ private:
 		Hence by doing filtering here, higher level code can freely submit
 		all required resources for every draw without having to worry about
 		rebinding of the same resources 
-		(given that draws have been sorted by material)
+		(given that draws have been sorted in some order to 'chunk' state variations)
 	*/
+	// 6 is the shader stage count
 	std::array<std::array<SamplerHandle, gfxconstants::MAX_SAMPLERS>, 6> m_bound_samplers;
-	std::array<std::array<BufferHandle, gfxconstants::MAX_CB_SLOTS>, 6>  m_bound_cbuffers;
+	std::array<std::array<std::tuple<BufferHandle, UINT, UINT>, gfxconstants::MAX_CB_SLOTS>, 6>  m_bound_cbuffers;
 	std::array<std::array<TextureHandle, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS>, 6>  m_bound_read_textures;
 	std::array<std::array<BufferHandle, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS>, 6>  m_bound_read_bufs;
 
@@ -248,9 +251,6 @@ private:
 	// Pipeline reloading by shader name (should be refactored into some PipelineManager)
 	std::map<std::string, std::vector<PipelineHandle>> m_loaded_pipelines;
 	bool m_reloading_on = true;
-
-
-
 };
 
 

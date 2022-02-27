@@ -3,6 +3,6 @@
 namespace gfxcommand_dispatch
 {
 	void draw(const void* data);
-	void copy_to_cbuffer(const void* data);
+	void copy_to_buffer(const void* data);
 
 }
