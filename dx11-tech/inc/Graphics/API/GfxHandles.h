@@ -1,8 +1,7 @@
 #pragma once
+#include "ResourceHandleKey.h"
 #include "NamedType.h"
 #include <stdint.h>
-
-#define USE_64_BIT_RES_HANDLE
 
 #ifdef USE_64_BIT_RES_HANDLE
 using res_handle = uint64_t;

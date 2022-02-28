@@ -171,6 +171,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Graphics\Renderer\ModelRenderer.cpp" />
     <ClCompile Include="src\Graphics\CommandBucket\GfxCommand.cpp" />
     <ClCompile Include="src\Graphics\CommandBucket\GfxCommandDispatch.cpp" />
     <ClCompile Include="src\Graphics\API\GfxHandles.cpp" />
@@ -259,10 +260,10 @@
     <ClInclude Include="inc\Graphics\CommandBucket\GfxCommandDispatch.h" />
     <ClInclude Include="inc\Graphics\CommandBucket\GfxCommand.h" />
     <ClInclude Include="inc\Graphics\CommandBucket\GfxCommandPacket.h" />
-    <ClInclude Include="inc\Graphics\Renderer\DrawItem.h" />
     <ClInclude Include="inc\Memory\Allocator.h" />
     <ClInclude Include="inc\Memory\LinearAllocator.h" />
     <ClInclude Include="inc\NamedType.h" />
+    <ClInclude Include="inc\ResourceHandleKey.h" />
     <ClInclude Include="inc\ResourceHandlePool.h" />
     <ClInclude Include="inc\AssimpLoader.h" />
     <ClInclude Include="inc\AssimpTypes.h" />
@@ -294,6 +295,7 @@
     <ClInclude Include="inc\Graphics\Model.h" />
     <ClInclude Include="inc\Graphics\MaterialManager.h" />
     <ClInclude Include="inc\Graphics\ModelManager.h" />
+    <ClInclude Include="inc\Graphics\Renderer\ModelRenderer.h" />
     <ClInclude Include="vendor\imgui-docking\backends\imgui_impl_dx11.h" />
     <ClInclude Include="vendor\imgui-docking\backends\imgui_impl_win32.h" />
     <ClInclude Include="vendor\imgui-docking\imconfig.h" />

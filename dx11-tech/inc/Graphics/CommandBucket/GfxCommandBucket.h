@@ -22,6 +22,8 @@ class GfxCommandBucket
 
 public:
     GfxCommandBucket();
+    ~GfxCommandBucket();
+    //GfxCommandBucket(size_t max_packets_bytes);
 
     template <typename U>
     U* add_command(Key key, size_t auxMemorySize);
@@ -36,13 +38,10 @@ private:
 
 
 private:
-    static constexpr int max_cmds = 10000;
+    static constexpr int max_cmds = 10000;  // Max 10k cmds to ever sort (upper limit, we should never exceed this per bucket)
 
-    void* m_key_packet_pairs;               // using vector adds some overhead on submission!
-    //std::vector<key_packet_pair> m_key_packet_pairs;
-
+    void* m_key_packet_pairs; 
     LinearAllocator m_packet_allocator;
-
     uint32_t m_current = 0;
 };
 
@@ -53,7 +52,14 @@ inline GfxCommandBucket<T>::GfxCommandBucket() :
 {
     //m_key_packet_pairs = program_mem_pool::grab_memory(max_cmds * sizeof(key_packet_pair));
     m_key_packet_pairs = std::malloc(max_cmds * sizeof(key_packet_pair));
+    assert(m_key_packet_pairs != nullptr);
     std::memset(m_key_packet_pairs, 0, max_cmds * sizeof(m_key_packet_pairs));
+}
+
+template<typename T>
+inline GfxCommandBucket<T>::~GfxCommandBucket()
+{
+    std::free(m_key_packet_pairs);
 }
 
 template<typename T>

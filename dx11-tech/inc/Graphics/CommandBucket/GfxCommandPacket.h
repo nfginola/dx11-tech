@@ -17,22 +17,17 @@ Memory layout:
 */
 namespace gfxcommandpacket
 {
-    // Offsets
+    // Offsets defined by above memory layout
     static const size_t OFFSET_NEXT_PACKET = 0u;
     static const size_t OFFSET_DISPATCH = OFFSET_NEXT_PACKET + sizeof(GfxCommandPacket);
     static const size_t OFFSET_COMMAND = OFFSET_DISPATCH + sizeof(GfxCommandDispatch);
-
-    //template <typename T, typename Allocator>
-    //GfxCommandPacket create(size_t aux_size)
-    //{
-    //    return Allocator::allocate(sizeof(GfxCommandPacket) + sizeof(GfxCommandDispatch) + sizeof(T) + aux_size);
-    //}
 
     template <typename T>
     GfxCommandPacket create(size_t aux_size, Allocator* allocator)
     {
         //return std::malloc(sizeof(GfxCommandPacket) + sizeof(GfxCommandDispatch) + sizeof(T) + aux_size);
-        return allocator->allocate(sizeof(GfxCommandPacket) + sizeof(GfxCommandDispatch) + sizeof(T) + aux_size);
+        auto packet_size = sizeof(GfxCommandPacket) + sizeof(GfxCommandDispatch) + sizeof(T) + aux_size;
+        return allocator->allocate(packet_size);
     }
 
     /*
@@ -61,9 +56,10 @@ namespace gfxcommandpacket
         Helpers for storing data
     */
 
+    // append a packet to an existing [[packet]]
     void append_packet(GfxCommandPacket base, GfxCommandPacket next);
 
-    // append a next packet to an existing command in another packet
+    // append a packet to an existing [[command]]
     template <typename T>
     void append_packet(T* command, GfxCommandPacket next)
     {
@@ -72,20 +68,5 @@ namespace gfxcommandpacket
     }
 
     void store_dispatch(GfxCommandPacket packet, GfxCommandDispatch dispatchFunction);
-
-    //const CommandPacket LoadNextCommandPacket(const CommandPacket packet)
-    //{
-    //    return *GetNextCommandPacket(packet);
-    //}
-
-    //const BackendDispatchFunction LoadBackendDispatchFunction(const  CommandPacket packet)
-    //{
-    //    return *GetBackendDispatchFunction(packet);
-    //}
-
-    //const void* LoadCommand(const CommandPacket packet)
-    //{
-    //    return reinterpret_cast<char*>(packet) + OFFSET_COMMAND;
-    //}
 
 }

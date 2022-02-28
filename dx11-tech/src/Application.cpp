@@ -204,10 +204,17 @@ Application::Application()
 	/*
 		Declare UI for changing Scenes (Combo box)
 	*/
+	
+	// Renderer
+	m_model_renderer = new ModelRenderer(gfx::rend);
+	m_sponza = m_model_renderer->load_model("models/sponza/sponza.obj");
+
 }
 
 Application::~Application()
 {
+	delete m_model_renderer;
+
 	Renderer::shutdown();
 	ModelManager::shutdown();
 	MaterialManager::shutdown();
@@ -228,18 +235,25 @@ void Application::run()
 
 		// Block if paused
 		while (m_paused);
-		
+
 		m_win->pump_messages();
 
 		// Begin taking input
 		m_input->begin();
-			
+
 		// Update CPU states
 		update(dt);
-	
+
 		// Render GPU
+		gfx::rend->begin();
 		gfx::rend->set_camera(m_camera_controller->get_active_camera());
+
+		m_model_renderer->begin();
+		m_model_renderer->submit(m_sponza, DirectX::SimpleMath::Matrix::CreateScale(0.07), ModelRenderSpec());
+		m_model_renderer->end();
+			
 		gfx::rend->render();
+		gfx::rend->end();
 		
 		// End taking input
 		m_input->end();

@@ -1463,6 +1463,9 @@ void GfxDevice::update_subresource(const GPUResource* dst, const SubresourceData
 
 void GfxDevice::map_copy(const GPUResource* dst, const SubresourceData& data, D3D11_MAP map_type, UINT dst_subres_idx)
 {
+	if (data.m_subres.pSysMem == nullptr || data.m_subres.SysMemPitch == 0)
+		return;
+
 	assert(data.m_subres.pSysMem != nullptr && data.m_subres.SysMemPitch != 0);
 	auto& ctx = m_dev->get_context();
 	D3D11_MAPPED_SUBRESOURCE mapped_subres{};

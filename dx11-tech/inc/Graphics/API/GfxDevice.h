@@ -65,10 +65,10 @@ public:
 	void recompile_pipeline_shaders_by_name(const std::string& name);
 
 	// Resource creation
-	//void create_compute_pipeline(ComputePipeline* pipeline);
 	BufferHandle create_buffer(const BufferDesc& desc, std::optional<SubresourceData> subres = {});
 	TextureHandle create_texture(const TextureDesc& desc, std::optional<SubresourceData> subres = {});
 	PipelineHandle create_pipeline(const PipelineDesc& desc);
+	//ComputeHandle create_compute_pipeline(const ComputeDesc& desc);
 	RenderPassHandle create_renderpass(const RenderPassDesc& desc);
 
 	ShaderHandle compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname);
@@ -93,10 +93,8 @@ public:
 	// Use the giant constant buffer thingy for per draw data! (not instancing, thats a different buffer which is passed through VB)
 	// We have 256 bytes per draw (16 floats!) 
 	void bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset56s = 0, UINT range56s = 1);
-
 	void bind_vertex_buffers(UINT start_slot, const std::vector<std::tuple<BufferHandle, UINT, UINT>>& buffers_strides_offsets);
 	void bind_vertex_buffers(UINT start_slot, void* buffers_strides_offsets, uint8_t count);
-	
 	void bind_index_buffer(BufferHandle buffer, DXGI_FORMAT format = DXGI_FORMAT_R32_UINT, UINT offset = 0);
 
 	void bind_resource(UINT slot, ShaderStage stage, BufferHandle resource);
@@ -126,9 +124,6 @@ public:
 
 	Priority implement:
 		DrawIndexedInstanced
-		Map
-		Unmap
-		UpdateSubresource
 
 	Second prio:
 		Begin

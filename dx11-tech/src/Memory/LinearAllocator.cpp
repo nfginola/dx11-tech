@@ -15,6 +15,7 @@ LinearAllocator::LinearAllocator(size_t size) :
 LinearAllocator::~LinearAllocator()
 {
 	std::free(m_memory);
+    m_memory = nullptr;
 }
 
 void* LinearAllocator::allocate(size_t size)

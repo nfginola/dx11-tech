@@ -6,6 +6,8 @@
 #include "Graphics/Model.h"
 #include "AssimpLoader.h"
 
+#include "Graphics/Renderer/ModelRenderer.h"
+
 
 class Application
 {
@@ -35,6 +37,9 @@ private:
 
 	unique_ptr<class FPCController> m_camera_controller;
 	unique_ptr<class FPPCamera> m_cam, m_cam_zoom;
+
+	ModelRenderer* m_model_renderer;
+	ModelHandle m_sponza;
 
 
 	bool m_resize_allowed = false;

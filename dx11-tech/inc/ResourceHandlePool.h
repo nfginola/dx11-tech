@@ -1,5 +1,5 @@
 #pragma once
-
+#include "ResourceHandleKey.h"
 #include <stdint.h>
 #include <limits>
 #include <vector>
@@ -103,6 +103,8 @@ public:
 
 		// calculate handle (higher bits reserved for generational counter, lower bits for index)
 		full_key hdl = (((full_key)ctr) << INDEX_SHIFT) | (((full_key)idx) & SLOT_MASK);
+
+		resources[idx].handle = hdl;
 
 		return { hdl, &resources[idx] };
 	}

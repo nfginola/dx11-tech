@@ -71,7 +71,9 @@ Renderer::Renderer()
 	};
 
 	// temp	// Load models
-	m_models.push_back(gfx::model_mgr->load_model("models/sponza/sponza.fbx", "Sponza"));
+	//m_models.push_back(gfx::model_mgr->load_model("models/sponza/sponza.obj", "Sponza"));
+	//m_models.push_back(gfx::model_mgr->load_model("models/rungholt/rungholt.obj", "Rungholt"));
+	//m_models.push_back(gfx::model_mgr->load_model("models/lost_empire/lost_empire.obj", "LostEmpire"));
 
 	// setup geometry pass 
 	{
@@ -161,7 +163,7 @@ void Renderer::end()
 
 void Renderer::render()
 {
-	begin();
+	//begin();
 
 	/*
 		forget these for now	
@@ -207,72 +209,71 @@ void Renderer::render()
 		gfx::dev->begin_pass(r_fb);
 		gfx::dev->bind_viewports({ viewports[1] });
 		
-		/*
-			A model renderer should be responsible for this
-		*/
-		const auto& model = m_models[0];
-		const auto& meshes = model->get_meshes();
-		const auto& materials = model->get_materials();
+		///*
+		//	A model renderer should be responsible for this
+		//*/
+		//const auto& model = m_models[0];
+		//const auto& meshes = model->get_meshes();
+		//const auto& materials = model->get_materials();
 
-		// Update world matrix
-		m_cb_elements[0].world_mat = DirectX::SimpleMath::Matrix::CreateScale(0.07);
-		m_cb_elements[1].world_mat = DirectX::SimpleMath::Matrix::CreateScale(0.07) * DirectX::SimpleMath::Matrix::CreateTranslation(0.f, 0.f, 300.f);
+		//// Update world matrix
+		//m_cb_elements[0].world_mat = DirectX::SimpleMath::Matrix::CreateScale(0.07);
+		//m_cb_elements[1].world_mat = DirectX::SimpleMath::Matrix::CreateScale(0.07) * DirectX::SimpleMath::Matrix::CreateTranslation(0.f, 0.f, 300.f);
+		//m_cb_elements[2].world_mat = DirectX::SimpleMath::Matrix::CreateScale(0.07) * DirectX::SimpleMath::Matrix::CreateTranslation(0.f, 0.f, -300.f);
 
-		/*
-			Copy scene matrices to giant buffer
-		*/
-		
-		auto big_copy = m_copy_bucket.add_command<gfxcommand::CopyToBuffer>(0, 0);
-		big_copy->buffer = m_big_cb;
-		big_copy->data = m_cb_elements.data();
-		big_copy->data_size = m_cb_elements.size() * sizeof(m_cb_elements[0]);
+		///*
+		//	Copy scene matrices to giant GPU cbuffer
+		//	This is per mesh, as all submeshes to that mesh should have the same matrix.
+		//	We simply bind the correct range for each draw call (each submesh has the range of its parent mesh)
+		//*/
+		//auto big_copy = m_copy_bucket.add_command<gfxcommand::CopyToBuffer>(0, 0);
+		//big_copy->buffer = m_big_cb;
+		//big_copy->data = m_cb_elements.data();
+		//big_copy->data_size = m_cb_elements.size() * sizeof(m_cb_elements[0]);
 
-		for (int inst = 0; inst < 2; ++inst)
-		{
-			for (int i = 0; i < meshes.size(); ++i)
-			{
-				const auto& mesh = meshes[i];
-				const auto& mat = materials[i];
+		//for (int inst = 0; inst < 1; ++inst)
+		//{
+		//	for (int i = 0; i < meshes.size(); ++i)
+		//	{
+		//		const auto& mesh = meshes[i];
+		//		const auto& mat = materials[i];
 
-				uint8_t vbs_in = model->get_vb().size();
-				uint8_t cbs_in = 1;	// Per Object CBuffer
-				uint8_t textures_in = 1;
-				uint8_t samplers_in = 0;
+		//		uint8_t vbs_in = model->get_vb().size();
+		//		uint8_t cbs_in = 1;	// Per Object CBuffer
+		//		uint8_t textures_in = 1;
+		//		uint8_t samplers_in = 0;
 
-				// Key based on texture
-				uint64_t key = mat->get_texture(Material::Texture::eAlbedo).hdl;
+		//		// Key based on texture
+		//		uint64_t key = mat->get_texture(Material::Texture::eAlbedo).hdl;
 
-				// Create pre-copy command
-				//auto copy_cmd = m_main_bucket.add_command<gfxcommand::CopyToBuffer>(key, 0);
-				//copy_cmd->buffer = m_big_cb;
-				//copy_cmd->data = m_cb_elements.data();
-				//copy_cmd->data_size = 1 * sizeof(m_cb_elements[0]);
+		//		// Create draw call
+		//		size_t aux_size = gfxcommand::aux::bindtable::get_size(vbs_in, cbs_in, textures_in, samplers_in);
+		//		auto cmd = m_main_bucket.add_command<gfxcommand::Draw>(key, aux_size);
+		//		cmd->ib = model->get_ib();
+		//		cmd->index_count = mesh.index_count;
+		//		cmd->index_start = mesh.index_start;
+		//		cmd->vertex_start = mesh.vertex_start;
+		//		cmd->pipeline = p;			// Should come from material
 
-				// Append draw call
-				size_t aux_size = gfxcommand::aux::bindtable::get_size(vbs_in, cbs_in, textures_in, samplers_in);
-				auto cmd = m_main_bucket.add_command<gfxcommand::Draw>(key, aux_size);
-				//auto cmd = m_main_bucket.append_command<gfxcommand::Draw>(copy_cmd, aux_size);
-				cmd->ib = model->get_ib();
-				cmd->index_count = mesh.index_count;
-				cmd->index_start = mesh.index_start;
-				cmd->vertex_start = mesh.vertex_start;
-				cmd->pipeline = p;			// Should come from material
+		//		// Fill draw call payload (bind table)
+		//		auto payload = gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(cmd), vbs_in, cbs_in, samplers_in, textures_in);
+		//		for (int i = 0; i < vbs_in; ++i)
+		//			payload.add_vb(std::get<0>(model->get_vb()[i]).hdl, std::get<1>(model->get_vb()[i]), std::get<2>(model->get_vb()[i]));
 
-				// Fill draw call payload (bind table)
-				auto payload = gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(cmd), vbs_in, cbs_in, samplers_in, textures_in);
-				for (int i = 0; i < vbs_in; ++i)
-					payload.add_vb(std::get<0>(model->get_vb()[i]).hdl, std::get<1>(model->get_vb()[i]), std::get<2>(model->get_vb()[i]));
+		//		payload.add_cb(m_big_cb.hdl, (uint8_t)ShaderStage::eVertex, 1, inst);
+		//		payload.add_texture(mat->get_texture(Material::Texture::eAlbedo).hdl, (uint8_t)ShaderStage::ePixel, 0);
+		//		payload.validate();
+		//	}
+		//}
 
-				payload.add_cb(m_big_cb.hdl, (uint8_t)ShaderStage::eVertex, 1, inst);
-				payload.add_texture(mat->get_texture(Material::Texture::eAlbedo).hdl, (uint8_t)ShaderStage::ePixel, 0);
-				payload.validate();
-			}
-		}
-
+		// No need to sort copy bucket
 		m_copy_bucket.flush();
 
-		m_main_bucket.sort();
-		m_main_bucket.flush();
+		m_opaque_bucket.sort();
+		m_opaque_bucket.flush();
+
+		//m_main_bucket.sort();
+		//m_main_bucket.flush();
 	
 		gfx::dev->end_pass();
 	}
@@ -295,7 +296,7 @@ void Renderer::render()
 
 
 
-	end();
+	//end();
 }
 
 void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
@@ -345,7 +346,7 @@ void Renderer::declare_ui()
 	ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
 	ImGui::Checkbox("Another Window", &show_demo_window);
 
-	ImGui::Checkbox("Proto", &m_proto);
+	//ImGui::Checkbox("Proto", &m_proto);
 
 
 	ImGui::SameLine();
