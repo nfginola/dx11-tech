@@ -89,6 +89,7 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& m
 
 	auto opaque_bucket = m_master_renderer->get_opaque_bucket();
 	auto transp_bucket = m_master_renderer->get_transparent_bucket();
+	auto shadow_bucket = m_master_renderer->get_shadow_bucket();
 
 	for (int i = 0; i < meshes.size(); ++i)
 	{

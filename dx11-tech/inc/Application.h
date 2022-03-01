@@ -40,6 +40,7 @@ private:
 
 	ModelRenderer* m_model_renderer;
 	ModelHandle m_sponza;
+	ModelHandle m_nanosuit;
 
 
 	bool m_resize_allowed = false;

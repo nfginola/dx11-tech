@@ -929,6 +929,7 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 	{
 		// Find dimension
 		D3D11_RTV_DIMENSION view_dim = D3D11_RTV_DIMENSION_UNKNOWN;
+		D3D11_RENDER_TARGET_VIEW_DESC v_desc{};
 		switch (desc.m_type)
 		{
 		case TextureType::e1D:
@@ -943,7 +944,16 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 				if (ms_on)
 					view_dim = D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY;
 				else
+				{
 					view_dim = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+					v_desc = CD3D11_RENDER_TARGET_VIEW_DESC(
+						(ID3D11Texture2D*)texture->m_internal_resource.Get(),
+						view_dim,
+						DXGI_FORMAT_UNKNOWN,
+						0,
+						0,						// start at subres idx 0
+						d3d_desc.ArraySize);	// array size
+				}
 			}
 			else
 			{
@@ -964,20 +974,23 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 			assert(false);
 
 		// Create desc
-		D3D11_RENDER_TARGET_VIEW_DESC v_desc{};
 		switch (desc.m_type)
 		{
 		case TextureType::e1D:
 			assert(false && "RTV for Texture 1D is currently not supported");
 			break;
 		case TextureType::e2D:
-			v_desc = CD3D11_RENDER_TARGET_VIEW_DESC(
-				(ID3D11Texture2D*)texture->m_internal_resource.Get(),
-				view_dim,
-				DXGI_FORMAT_UNKNOWN,
-				0,
-				0,
-				-1);	// array size (auto calc from tex)
+
+			if (view_dim == D3D11_RTV_DIMENSION_TEXTURE2D)
+			{
+				v_desc = CD3D11_RENDER_TARGET_VIEW_DESC(
+					(ID3D11Texture2D*)texture->m_internal_resource.Get(),
+					view_dim,
+					DXGI_FORMAT_UNKNOWN,
+					0,
+					0,
+					-1);	// array size (auto calc from tex)
+			}
 			break;
 		case TextureType::e3D:
 			assert(false && "RTV for Texture 3D is currently not supported");

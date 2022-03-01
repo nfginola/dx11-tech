@@ -1,16 +1,12 @@
 #include "pch.h"
 #include "Graphics/Renderer/Renderer.h"
-#include "Camera/Camera.h"
 #include "Graphics/API/GfxDevice.h"
 #include "Graphics/API/ImGuiDevice.h"
-#include "Profiler/FrameProfiler.h"
-
 #include "Graphics/CommandBucket/GfxCommand.h"
+#include "Profiler/FrameProfiler.h"
+#include "Camera/Camera.h"
 
 
-// Temp
-#include "Graphics/Model.h"
-#include "Graphics/ModelManager.h"
 
 // Global dependencies
 namespace gfx
@@ -19,8 +15,6 @@ namespace gfx
 	extern GfxDevice* dev;
 	extern ImGuiDevice* imgui;
 	extern GPUAnnotator* annotator;
-
-	extern ModelManager* model_mgr;	// Temp
 }
 
 namespace perf
@@ -48,10 +42,6 @@ void Renderer::set_camera(Camera* cam)
 	m_main_cam = cam;
 }
 
-Renderer::~Renderer()
-{
-}
-
 Renderer::Renderer()
 {
 	assert(gfx::dev != nullptr);
@@ -62,6 +52,8 @@ Renderer::Renderer()
 	ImGuiDevice::add_ui("profiler", [&]() { declare_profiler_ui();  });
 	ImGuiDevice::add_ui("shader reloading", [&]() { declare_shader_reloader_ui();  });
 
+	m_cb_per_frame = gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)));
+
 
 	auto sc_dim = gfx::dev->get_sc_dim();
 	viewports =
@@ -70,59 +62,35 @@ Renderer::Renderer()
 		CD3D11_VIEWPORT(0.f, 0.f, (FLOAT)sc_dim.first, (FLOAT)sc_dim.second)	// Render to texture (stays the same for Geometry Pass)
 	};
 
-	// temp	// Load models
-	//m_models.push_back(gfx::model_mgr->load_model("models/sponza/sponza.obj", "Sponza"));
-	//m_models.push_back(gfx::model_mgr->load_model("models/rungholt/rungholt.obj", "Rungholt"));
-	//m_models.push_back(gfx::model_mgr->load_model("models/lost_empire/lost_empire.obj", "LostEmpire"));
-
 	// setup geometry pass 
+	// Should take in some RendererInitDesc to initialize settings (e.g vsync and other misc.)
+	create_resolution_dependent_resources(sc_dim.first, sc_dim.second);
+
+	// create and bind persistent sampler
+	def_samp = gfx::dev->create_sampler(SamplerDesc());
+	gfx::dev->bind_sampler(0, ShaderStage::ePixel, def_samp);
+	
+	// setup light pass
 	{
-		// Should take in some RendererInitDesc to initialize settings (e.g vsync and other misc.)
-		create_resolution_dependent_resources(sc_dim.first, sc_dim.second);
-
-		// make cbuffer
-		m_cb_per_frame = gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)));
-		m_big_cb = gfx::dev->create_buffer(BufferDesc::constant(256 * m_cb_elements.size()));
-		//m_big_cb = gfx::dev->create_buffer(BufferDesc::constant(sizeof(CBElement)));
-
-
-		// compile and create shaders
-		ShaderHandle vs, ps;
-		vs = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "VertexShader.hlsl");
-		ps = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "PixelShader.hlsl");
-
-		// Interleaved layout
-		auto layout = InputLayoutDesc()
-			.append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0)
-			.append("UV", DXGI_FORMAT_R32G32_FLOAT, 1)
-			.append("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, 2);
-
-		// create pipeline
-		auto p_d = PipelineDesc()
-			.set_shaders(VertexShader(vs), PixelShader(ps))
-			.set_input_layout(layout);
-		//gfx::dev->create_pipeline(p_d, &p);
-		p = gfx::dev->create_pipeline(p_d);
-	}
-
-	// fullscreen quad pass to backbuffer
-	{
-		// create RenderPass for render to tex
-		fb = gfx::dev->create_renderpass(RenderPassDesc({ gfx::dev->get_backbuffer(), }));
-
-		// create fullscreen quad shaders
 		ShaderHandle fs_vs, fs_ps;
 		fs_vs = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "fullscreenQuadVS.hlsl");
 		fs_ps = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "fullscreenQuadPS.hlsl");
+		
+		m_lightpass_pipe = gfx::dev->create_pipeline(PipelineDesc()
+			.set_shaders(VertexShader(fs_vs), PixelShader(fs_ps)));
+	}
 
-		// fullscreen quad pipeline
-		auto rp_d = PipelineDesc()
-			.set_shaders(VertexShader(fs_vs), PixelShader(fs_ps));
-		r_p = gfx::dev->create_pipeline(rp_d);
+	// setup final post-proc pass
+	// directly to backbuffer (may change in the future, e.g use Compute to fill the backbuffer via RTV)
+	{
+		m_backbuffer_out_rp = gfx::dev->create_renderpass(RenderPassDesc({ gfx::dev->get_backbuffer() }));
 
-		// create and bind persistent sampler
-		def_samp = gfx::dev->create_sampler(SamplerDesc());
-		gfx::dev->bind_sampler(0, ShaderStage::ePixel, def_samp);
+		ShaderHandle vs, ps;
+		vs = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "finalQuadVS.hlsl");
+		ps = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "finalQuadPS.hlsl");
+
+		m_final_pipeline = gfx::dev->create_pipeline(PipelineDesc()
+			.set_shaders(VertexShader(vs), PixelShader(ps)));
 	}
 
 	// sponza requires wrapping texture, we will also use anisotropic filtering here (16) 
@@ -139,6 +107,11 @@ Renderer::Renderer()
 
 	repeat_samp = gfx::dev->create_sampler(repeat);
 	gfx::dev->bind_sampler(1, ShaderStage::ePixel, repeat_samp);
+
+
+
+
+
 
 }
 
@@ -163,35 +136,6 @@ void Renderer::end()
 
 void Renderer::render()
 {
-	//begin();
-
-	/*
-		forget these for now	
-		ParticleRenderer(Renderer core_renderer)
-		TerrainRenderer(Renderer core_renderer)
-
-		=========================
-
-		ModelRenderer(Renderer core_renderer)
-		ModelRenderer
-			void submit_model(Model* model, KeyProperties props, world_mat)		--> KeyProperties defined in core_renderer
-			{
-				// create DrawItem(s) (e.model --> grab geom, materials) ??????
-				// or DrawItem(s) have already been prepared and we simply grab them
-
-				// create Key(s) from properties from Entity ??????
-
-				
-				for each (key, draw_item) in draw_items:
-					if (model->transparent)
-						core_renderer->submit_transparent(key, draw_item)
-					else
-						core_renderer->submit_opaque(key, draw_item)
-			}	
-	
-	
-	*/
-
 	// Update persistent per frame camera data
 	m_cb_dat.view_mat = m_main_cam->get_view_mat();
 	m_cb_dat.proj_mat = m_main_cam->get_proj_mat();
@@ -202,101 +146,50 @@ void Renderer::render()
 	// Bind per frame data (should be bound to like slot 14 as reserved space)
 	gfx::dev->bind_constant_buffer(0, ShaderStage::eVertex, m_cb_per_frame, 0);
 
+	// No need to sort copy bucket
+	m_copy_bucket.flush();
+
 	// Geometry Pass
 	{
 		auto _ = FrameProfiler::Scoped("Geometry Pass");
 
-		gfx::dev->begin_pass(r_fb);
-		gfx::dev->bind_viewports({ viewports[1] });
-		
-		///*
-		//	A model renderer should be responsible for this
-		//*/
-		//const auto& model = m_models[0];
-		//const auto& meshes = model->get_meshes();
-		//const auto& materials = model->get_materials();
-
-		//// Update world matrix
-		//m_cb_elements[0].world_mat = DirectX::SimpleMath::Matrix::CreateScale(0.07);
-		//m_cb_elements[1].world_mat = DirectX::SimpleMath::Matrix::CreateScale(0.07) * DirectX::SimpleMath::Matrix::CreateTranslation(0.f, 0.f, 300.f);
-		//m_cb_elements[2].world_mat = DirectX::SimpleMath::Matrix::CreateScale(0.07) * DirectX::SimpleMath::Matrix::CreateTranslation(0.f, 0.f, -300.f);
-
-		///*
-		//	Copy scene matrices to giant GPU cbuffer
-		//	This is per mesh, as all submeshes to that mesh should have the same matrix.
-		//	We simply bind the correct range for each draw call (each submesh has the range of its parent mesh)
-		//*/
-		//auto big_copy = m_copy_bucket.add_command<gfxcommand::CopyToBuffer>(0, 0);
-		//big_copy->buffer = m_big_cb;
-		//big_copy->data = m_cb_elements.data();
-		//big_copy->data_size = m_cb_elements.size() * sizeof(m_cb_elements[0]);
-
-		//for (int inst = 0; inst < 1; ++inst)
-		//{
-		//	for (int i = 0; i < meshes.size(); ++i)
-		//	{
-		//		const auto& mesh = meshes[i];
-		//		const auto& mat = materials[i];
-
-		//		uint8_t vbs_in = model->get_vb().size();
-		//		uint8_t cbs_in = 1;	// Per Object CBuffer
-		//		uint8_t textures_in = 1;
-		//		uint8_t samplers_in = 0;
-
-		//		// Key based on texture
-		//		uint64_t key = mat->get_texture(Material::Texture::eAlbedo).hdl;
-
-		//		// Create draw call
-		//		size_t aux_size = gfxcommand::aux::bindtable::get_size(vbs_in, cbs_in, textures_in, samplers_in);
-		//		auto cmd = m_main_bucket.add_command<gfxcommand::Draw>(key, aux_size);
-		//		cmd->ib = model->get_ib();
-		//		cmd->index_count = mesh.index_count;
-		//		cmd->index_start = mesh.index_start;
-		//		cmd->vertex_start = mesh.vertex_start;
-		//		cmd->pipeline = p;			// Should come from material
-
-		//		// Fill draw call payload (bind table)
-		//		auto payload = gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(cmd), vbs_in, cbs_in, samplers_in, textures_in);
-		//		for (int i = 0; i < vbs_in; ++i)
-		//			payload.add_vb(std::get<0>(model->get_vb()[i]).hdl, std::get<1>(model->get_vb()[i]), std::get<2>(model->get_vb()[i]));
-
-		//		payload.add_cb(m_big_cb.hdl, (uint8_t)ShaderStage::eVertex, 1, inst);
-		//		payload.add_texture(mat->get_texture(Material::Texture::eAlbedo).hdl, (uint8_t)ShaderStage::ePixel, 0);
-		//		payload.validate();
-		//	}
-		//}
-
-		// No need to sort copy bucket
-		m_copy_bucket.flush();
+		gfx::dev->begin_pass(m_gbuffer_res.rp);
+		gfx::dev->bind_viewports({ viewports[1], viewports[1], viewports[1] });
 
 		m_opaque_bucket.sort();
 		m_opaque_bucket.flush();
 
-		//m_main_bucket.sort();
-		//m_main_bucket.flush();
-	
 		gfx::dev->end_pass();
 	}
 
-	// Fullscreen Pass
+	// Lightpass (Fullscreen)
 	{
-		auto _ = FrameProfiler::Scoped("Fullscreen Pass");
-		gfx::dev->begin_pass(fb);
-		gfx::dev->bind_resource(0, ShaderStage::ePixel, r_tex);
+		auto _ = FrameProfiler::Scoped("Light Pass");
+
+		gfx::dev->begin_pass(m_lightpass_rp);
 		gfx::dev->bind_viewports(viewports);
-		gfx::dev->bind_pipeline(r_p);
+		gfx::dev->bind_pipeline(m_lightpass_pipe);
+	
+		m_gbuffer_res.read_bind(gfx::dev);
+		
 		gfx::dev->draw(6);
 
-		gfx::imgui->draw();		// Draw ImGUI overlay 
-
 		gfx::dev->end_pass();
 	}
 
+	// Write to backbuffer for final post-proc (tone mapping and gamma correction)
+	{
+		auto _ = FrameProfiler::Scoped("Final Fullscreen Pass");
+		gfx::dev->begin_pass(m_backbuffer_out_rp);
+		gfx::dev->bind_pipeline(m_final_pipeline);
+		gfx::dev->bind_resource(0, ShaderStage::ePixel, m_lightpass_output);
+		gfx::dev->draw(6);
 
+		// Draw ImGUI overlay on top of everything
+		gfx::imgui->draw();
 
-
-
-	//end();
+		gfx::dev->end_pass();
+	}
 }
 
 void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
@@ -307,14 +200,16 @@ void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
 		viewports[1].Width = (FLOAT)width;
 		viewports[1].Height = (FLOAT)height;
 
-		// create depth tex
+		// create 32-bit depth tex
 		d_32 = gfx::dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, width, height, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
 
-		// create render to texture (HDR)
-		r_tex = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET));
+		// create gbuffer textures and pass
+		m_gbuffer_res.create_gbuffers(gfx::dev, width, height);
+		m_gbuffer_res.create_rp(gfx::dev, d_32);
 
-		r_fb = gfx::dev->create_renderpass(RenderPassDesc(
-			{ r_tex }, d_32));
+		// create light pass output (16-bit per channel HDR)
+		m_lightpass_output = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET));
+		m_lightpass_rp = gfx::dev->create_renderpass(RenderPassDesc({ m_lightpass_output }));	// no depth
 	}
 }
 
@@ -503,3 +398,33 @@ void Renderer::declare_shader_reloader_ui()
 	ImGui::End();
 }
 
+void Renderer::GBuffer::create_gbuffers(GfxDevice* dev, UINT width, UINT height)
+{
+	// create GBuffers
+	albedo = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R8G8B8A8_UNORM, width, height,
+		D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
+		1, 1));
+	normal = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R8G8B8A8_UNORM, width, height,
+		D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
+		1, 1));
+	world = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R8G8B8A8_UNORM, width, height,
+		D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
+		1, 1));
+}
+
+void Renderer::GBuffer::create_rp(GfxDevice* dev, TextureHandle depth)
+{
+	rp = gfx::dev->create_renderpass(RenderPassDesc(
+		{
+			albedo,
+			normal,
+			world
+		}, depth));
+}
+
+void Renderer::GBuffer::read_bind(GfxDevice* dev)
+{
+	dev->bind_resource(0, ShaderStage::ePixel, albedo);
+	dev->bind_resource(1, ShaderStage::ePixel, normal);
+	dev->bind_resource(2, ShaderStage::ePixel, world);
+}

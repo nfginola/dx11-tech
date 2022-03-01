@@ -208,6 +208,7 @@ Application::Application()
 	// Renderer
 	m_model_renderer = new ModelRenderer(gfx::rend);
 	m_sponza = m_model_renderer->load_model("models/sponza/sponza.obj");
+	m_nanosuit = m_model_renderer->load_model("models/nanosuit/nanosuit.obj");
 
 }
 
@@ -248,8 +249,14 @@ void Application::run()
 		gfx::rend->begin();
 		gfx::rend->set_camera(m_camera_controller->get_active_camera());
 
+		// Submit models
 		m_model_renderer->begin();
-		m_model_renderer->submit(m_sponza, DirectX::SimpleMath::Matrix::CreateScale(0.07), ModelRenderSpec());
+		m_model_renderer->submit(m_sponza, DirectX::SimpleMath::Matrix::CreateScale(0.07));
+
+		for (int i = 0; i < 10; ++i)
+			m_model_renderer->submit(m_nanosuit, DirectX::SimpleMath::Matrix::CreateScale(1.0) *
+				DirectX::SimpleMath::Matrix::CreateTranslation(-35.f + i * 5.f, 0.f, 0.f));
+
 		m_model_renderer->end();
 			
 		gfx::rend->render();

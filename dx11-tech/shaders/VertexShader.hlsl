@@ -8,22 +8,9 @@ struct VertexInput
 struct VertexOutput
 {
     float4 position : SV_POSITION;
+    float3 world : WORLD;
     float2 uv : UV;
     float3 normal : NORMAL;
-};
-
-static const float3 VERTS[] = 
-{
-    float3(-0.5f, -0.5f, 0.f),
-    float3(0.f, 0.5f, 0.f),
-    float3(0.5f, -0.5f, 0.f)
-};
-
-static const float3 COLORS[] =
-{
-    float3(1.0f, 0.0f, 0.0f),
-    float3(0.f, 1.0f, 0.f),
-    float3(0.f, 0.f, 1.f)
 };
 
 cbuffer PerFrameCB : register(b0)
@@ -42,7 +29,9 @@ VertexOutput main(VertexInput input)
 {
     VertexOutput output = (VertexOutput) 0;
     
-    output.position = mul(g_proj_mat, mul(g_view_mat, mul(g_world_mat, float4(input.position, 1.f))));
+    float4 world = mul(g_world_mat, float4(input.position, 1.f));
+    output.world = world.xxx;
+    output.position = mul(g_proj_mat, mul(g_view_mat, world));
     output.uv = input.uv;
     output.normal = input.normal;
     

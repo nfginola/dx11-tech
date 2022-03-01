@@ -17,6 +17,8 @@
 
 
 */
+class GfxDevice;
+
 class Renderer
 {
 public:
@@ -26,6 +28,10 @@ public:
 	Renderer& operator=(const Renderer&) = delete;
 	Renderer(const Renderer&) = delete;
 
+	/*
+		If possible, the buckets exposed should be independent of the underlying primary technique (Deferred/Forward+)
+		This way, we can have a Renderer interface and swap between different techniques! (and extend in a flexible manner)
+	*/
 	GfxCommandBucket<uint8_t>* get_copy_bucket() { return &m_copy_bucket; };
 	GfxCommandBucket<uint64_t>* get_opaque_bucket() { return &m_opaque_bucket; };
 	GfxCommandBucket<uint32_t>* get_transparent_bucket() { return &m_transparent_bucket; };
@@ -44,7 +50,7 @@ public:
 
 private:
 	Renderer();
-	~Renderer();
+	~Renderer() = default;
 
 	void declare_ui();
 	void declare_profiler_ui();
@@ -53,71 +59,79 @@ private:
 private:
 	void create_resolution_dependent_resources(UINT width, UINT height);
 
-
-private:
-	GfxCommandBucket<uint64_t> m_main_bucket;
-
-	Camera* m_main_cam;
-
-	GfxCommandBucket<uint8_t> m_copy_bucket;			// For per-frame copies and other miscellaneous copies pre-draw
-	GfxCommandBucket<uint16_t> m_shadow_bucket;			// Drawing geometry for shadows
-	GfxCommandBucket<uint64_t> m_opaque_bucket;			// Opaque geometry
-	GfxCommandBucket<uint32_t> m_transparent_bucket;	// Transparent geometry
-	GfxCommandBucket<uint64_t> m_postprocess_bucket;	// Gamma correction/tone-mapping/bloom/etc.
-
-
-
-
-
-	// temp
-	std::vector<const class Model*> m_models;
-
-
-	/*
-		Shader reloader ImGUI variables
-	*/
-	std::set<std::string> shader_filenames;
-	bool do_once = true;
-	const char* selected_item = "";
-
-
-
-
-	// Main render technique
 private:
 	struct PerFrameData
 	{
 		DirectX::XMMATRIX view_mat, proj_mat;
 	} m_cb_dat;
 
-	// Per Object data
-	struct alignas(256) CBElement
+	// Phong GBuffer
+	struct GBuffer
 	{
-		DirectX::XMMATRIX world_mat;
+		TextureHandle albedo;
+		TextureHandle normal;
+		TextureHandle world;
+
+		RenderPassHandle rp;
+		
+		// utilities
+		void create_gbuffers(GfxDevice* dev, UINT width, UINT height);
+		void create_rp(GfxDevice* dev, TextureHandle depth);
+		void read_bind(GfxDevice* dev);
 	};
-	std::array<CBElement, 5> m_cb_elements;
 
-
+private:
 	bool m_vsync = true;
+
+
+	// Main render technique
+private:
+	Camera* m_main_cam;
+
+	// Command buckets for dispatches
+	GfxCommandBucket<uint8_t> m_copy_bucket;			// For per-frame copies and other miscellaneous copies pre-draw
+	GfxCommandBucket<uint16_t> m_shadow_bucket;			// Drawing geometry for shadows
+	GfxCommandBucket<uint64_t> m_opaque_bucket;			// Opaque geometry
+	GfxCommandBucket<uint32_t> m_transparent_bucket;	// Transparent geometry
+	GfxCommandBucket<uint64_t> m_postprocess_bucket;	// Gamma correction/tone-mapping/bloom/etc.
+
+	/*
+		Deferred rendering
+	*/
+
+	// Geometry pass
+	TextureHandle d_32;			// 32-bit depth
+	GBuffer m_gbuffer_res;
+
+	// Light-pass
+	TextureHandle m_lightpass_output;
+	PipelineHandle m_lightpass_pipe;
+	RenderPassHandle m_lightpass_rp;
+
+	// Final post-processs (e.g gamma correction / tonemapping)
+	PipelineHandle m_final_pipeline;
+	RenderPassHandle m_backbuffer_out_rp;
+
+	/*
+		Other
+	*/
+	
+	// CBuffer for per-frame update frequency
+	BufferHandle m_cb_per_frame;
+	
+	// Persistent samplers (we should make a struct for that)
+	SamplerHandle def_samp, repeat_samp;
 
 	// viewports
 	std::vector<D3D11_VIEWPORT> viewports;
 
-	// cbuffer
-	BufferHandle m_cb_per_frame, m_big_cb;
+	// Miscellaneous 
+private:
 
-	SamplerHandle def_samp, repeat_samp;
-	
-	// render to texture 
-	TextureHandle d_32;
-	TextureHandle r_tex;
-
-	RenderPassHandle r_fb;
-	PipelineHandle p;
-
-	// render to backbuffer
-	RenderPassHandle fb;
-	PipelineHandle r_p;
+	// Shader reloader ImGUI variables
+	std::set<std::string> shader_filenames;
+	bool do_once = true;
+	const char* selected_item = "";
 
 
 

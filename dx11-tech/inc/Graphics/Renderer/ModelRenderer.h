@@ -9,7 +9,6 @@ struct ModelHandle { res_handle hdl; };
 
 struct ModelRenderSpec
 {
-	bool is_transparent = false;
 	bool casts_shadow = true;
 };
 
@@ -26,7 +25,7 @@ public:
 	ModelHandle load_model(const std::filesystem::path& rel_path);
 	void free_model(ModelHandle hdl);
 	
-	void submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& mat, ModelRenderSpec spec);
+	void submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& mat, ModelRenderSpec spec = {});
 
 
 private:
@@ -49,7 +48,7 @@ private:
 	{
 		DirectX::XMMATRIX world_mat;
 	};
-	std::array<CBPerObject, 5> m_per_object_data;
+	std::array<CBPerObject, 500> m_per_object_data;		// Supports 500 model submission per frame
 	BufferHandle m_per_object_cb;
 
 	uint32_t m_submission_count = 0;
