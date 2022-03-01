@@ -167,7 +167,7 @@ void Renderer::render()
 		auto _ = FrameProfiler::Scoped("Light Pass");
 
 		gfx::dev->begin_pass(m_lightpass_rp);
-		gfx::dev->bind_viewports(viewports);
+		gfx::dev->bind_viewports({ viewports[1] });
 		gfx::dev->bind_pipeline(m_lightpass_pipe);
 	
 		m_gbuffer_res.read_bind(gfx::dev);
@@ -181,6 +181,7 @@ void Renderer::render()
 	{
 		auto _ = FrameProfiler::Scoped("Final Fullscreen Pass");
 		gfx::dev->begin_pass(m_backbuffer_out_rp);
+		gfx::dev->bind_viewports(viewports);
 		gfx::dev->bind_pipeline(m_final_pipeline);
 		gfx::dev->bind_resource(0, ShaderStage::ePixel, m_lightpass_output);
 		gfx::dev->draw(6);
@@ -194,6 +195,14 @@ void Renderer::render()
 
 void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
 {
+	if (m_allocated)
+	{
+		gfx::dev->free_texture(d_32);
+		gfx::dev->free_texture(m_lightpass_output);
+		m_gbuffer_res.free(gfx::dev);
+		m_allocated = false;
+	}
+
 	// Render to Texture
 	{
 		// viewport
@@ -211,6 +220,8 @@ void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
 		m_lightpass_output = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET));
 		m_lightpass_rp = gfx::dev->create_renderpass(RenderPassDesc({ m_lightpass_output }));	// no depth
 	}
+
+	m_allocated = true;
 }
 
 void Renderer::on_resize(UINT width, UINT height)
@@ -427,4 +438,11 @@ void Renderer::GBuffer::read_bind(GfxDevice* dev)
 	dev->bind_resource(0, ShaderStage::ePixel, albedo);
 	dev->bind_resource(1, ShaderStage::ePixel, normal);
 	dev->bind_resource(2, ShaderStage::ePixel, world);
+}
+
+void Renderer::GBuffer::free(GfxDevice* dev)
+{
+	gfx::dev->free_texture(albedo);
+	gfx::dev->free_texture(normal);
+	gfx::dev->free_texture(world);
 }

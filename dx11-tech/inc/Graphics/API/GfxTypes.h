@@ -26,6 +26,8 @@ struct GPUResource : public GPUType
 	SrvPtr m_srv;
 	UavPtr m_uav;
 	RtvPtr m_rtv;
+
+	void free() { m_srv.Reset(); m_uav.Reset(); m_rtv.Reset(); GPUType::free(); }
 };
 
 struct GPUTexture : public GPUResource
@@ -35,11 +37,13 @@ struct GPUTexture : public GPUResource
 
 	TextureType m_type = TextureType::eNone;
 	DsvPtr m_dsv;
+
+	void free() { GPUResource::free(); m_dsv.Reset(); }
 };
 
 struct GPUBuffer : public GPUResource
 {
-
+	void free() { GPUResource::free(); }
 };
 
 struct Shader : public GPUType

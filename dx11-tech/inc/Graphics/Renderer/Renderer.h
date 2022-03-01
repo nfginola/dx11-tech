@@ -78,6 +78,7 @@ private:
 		void create_gbuffers(GfxDevice* dev, UINT width, UINT height);
 		void create_rp(GfxDevice* dev, TextureHandle depth);
 		void read_bind(GfxDevice* dev);
+		void free(GfxDevice* dev);
 	};
 
 private:
@@ -100,6 +101,7 @@ private:
 	*/
 
 	// Geometry pass
+	bool m_allocated = false;	// Resolution-dependent resources check
 	TextureHandle d_32;			// 32-bit depth
 	GBuffer m_gbuffer_res;
 
