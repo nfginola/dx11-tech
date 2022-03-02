@@ -23,6 +23,10 @@ public:
 
 public:
 	// Scoped helpers
+
+	/*
+		These can only be called once per frame
+	*/
 	class Scoped
 	{
 	public:
@@ -61,6 +65,23 @@ public:
 
 		ScopedGPU(const std::string& name, uint64_t flags = PROFILER_GPU_ANNOTATE | PROFILER_GPU_GET_PIPELINE_STATS);
 		~ScopedGPU();
+
+	private:
+		std::string m_name;
+	};
+
+	/*
+		Can be called multiple times per frame
+	*/
+	struct ScopedCPUAccum
+	{
+		ScopedCPUAccum() = delete;
+		ScopedCPUAccum& operator=(const ScopedCPUAccum&) = delete;
+		ScopedCPUAccum(const ScopedCPUAccum&) = delete;
+
+		// Accumulates the time for a scope over a frame
+		ScopedCPUAccum(const std::string& name);
+		~ScopedCPUAccum();
 
 	private:
 		std::string m_name;
@@ -106,6 +127,12 @@ public:
 	void end_cpu_scope(const std::string& name);
 	void begin_gpu_scope(const std::string& name, uint64_t flags = PROFILER_GPU_ANNOTATE | PROFILER_GPU_GET_PIPELINE_STATS);
 	void end_gpu_scope(const std::string& name);
+
+	/*
+		Independent CPU scope for accumulation over a frame
+	*/
+	void begin_cpu_scope_accum(const std::string& name);
+	void end_cpu_scope_accum(const std::string& name);
 
 	const FrameData& get_frame_statistics();
 

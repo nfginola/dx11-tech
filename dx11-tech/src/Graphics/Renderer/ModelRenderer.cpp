@@ -76,7 +76,7 @@ void ModelRenderer::end()
 
 void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& wm, ModelRenderSpec spec)
 {
-	auto _ = CPUProfiler::ScopedAccum("Model Submission");
+	auto _ = FrameProfiler::ScopedCPUAccum("Model Submission");
 
 	const auto& model = m_loaded_models.look_up(hdl.hdl)->data;
 	const auto& meshes = model->get_meshes();

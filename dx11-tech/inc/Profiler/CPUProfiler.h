@@ -7,18 +7,7 @@ public:
 	static void initialize();
 	static void shutdown();
 
-	struct ScopedAccum
-	{
-		ScopedAccum() = delete;
-		ScopedAccum& operator=(const ScopedAccum&) = delete;
-		ScopedAccum(const ScopedAccum&) = delete;
 
-		ScopedAccum(const std::string& name);
-		~ScopedAccum();
-
-	private:
-		std::string m_name;
-	};
 
 	struct FrameData
 	{

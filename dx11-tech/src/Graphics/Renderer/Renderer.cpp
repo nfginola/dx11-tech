@@ -290,7 +290,11 @@ void Renderer::render()
 		gfx::dev->bind_pipeline(m_lightpass_pipe);
 	
 		m_gbuffer_res.read_bind(gfx::dev);
+
+		// Directional light can be CB
+		// Pointlight and Spotlight should be structured buffers (we'll save for later, implement SDSM first for directional)
 		gfx::dev->bind_constant_buffer(1, ShaderStage::ePixel, m_per_light_cb);
+		
 		gfx::dev->bind_resource(7, ShaderStage::ePixel, m_dir_d32);
 
 		gfx::dev->draw(6);

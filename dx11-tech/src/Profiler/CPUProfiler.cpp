@@ -81,13 +81,4 @@ void CPUProfiler::frame_end()
 	}
 }
 
-CPUProfiler::ScopedAccum::ScopedAccum(const std::string& name)
-{
-	perf::cpu_profiler->begin_accum(name);
-	m_name = name;
-}
 
-CPUProfiler::ScopedAccum::~ScopedAccum()
-{
-	perf::cpu_profiler->end_accum(m_name);
-}

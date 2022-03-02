@@ -58,6 +58,16 @@ void FrameProfiler::end_gpu_scope(const std::string& name)
 	m_gpu->end(name);
 }
 
+void FrameProfiler::begin_cpu_scope_accum(const std::string& name)
+{
+	m_cpu->begin_accum(name);
+}
+
+void FrameProfiler::end_cpu_scope_accum(const std::string& name)
+{
+	m_cpu->end_accum(name);
+}
+
 const FrameProfiler::FrameData& FrameProfiler::get_frame_statistics()
 {
 	// We are okay giving zeroed data for some time until they are filled
@@ -215,3 +225,16 @@ FrameProfiler::ScopedGPU::~ScopedGPU()
 	assert(perf::profiler != nullptr);
 	perf::profiler->end_gpu_scope(m_name);
 }
+
+FrameProfiler::ScopedCPUAccum::ScopedCPUAccum(const std::string& name)
+{
+	perf::profiler->begin_cpu_scope_accum(name);
+	m_name = name;
+}
+
+FrameProfiler::ScopedCPUAccum::~ScopedCPUAccum()
+{
+	perf::profiler->end_cpu_scope_accum(m_name);
+
+}
+

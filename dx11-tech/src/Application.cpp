@@ -268,6 +268,7 @@ void Application::run()
 
 		for (int i = 0; i < 10; ++i)
 		{
+			// Try turning off shadows for certain submissions
 			if (i % 2 == 0)
 			{
 				ModelRenderSpec spec;
