@@ -116,8 +116,8 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 		for (int i = 0; i < vbs_in; ++i)
 			payload.add_vb(std::get<0>(model->get_vb()[i]).hdl, std::get<1>(model->get_vb()[i]), std::get<2>(model->get_vb()[i]));
 
-		payload.add_cb(m_per_object_cb.hdl, (uint8_t)ShaderStage::eVertex, 1, m_submission_count);
-		payload.add_texture(mat->get_texture(Material::Texture::eAlbedo).hdl, (uint8_t)ShaderStage::ePixel, 0);
+		payload.add_cb(m_per_object_cb.hdl, ShaderStage::eVertex, 1, m_submission_count);
+		payload.add_texture(mat->get_texture(Material::Texture::eAlbedo).hdl, ShaderStage::ePixel, 0);
 		payload.validate();
 			
 		// Replicate draw for shadow, but only using positions
@@ -145,7 +145,7 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 			for (int i = 0; i < vbs_in; ++i)
 				payload.add_vb(std::get<0>(model->get_vb()[i]).hdl, std::get<1>(model->get_vb()[i]), std::get<2>(model->get_vb()[i]));
 
-			payload.add_cb(m_per_object_cb.hdl, (uint8_t)ShaderStage::eVertex, 1, m_submission_count);
+			payload.add_cb(m_per_object_cb.hdl, ShaderStage::eVertex, 1, m_submission_count);
 			payload.validate();
 		}
 	}

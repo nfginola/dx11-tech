@@ -171,6 +171,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="inc\Graphics\API\GfxCommon.cpp" />
     <ClCompile Include="src\Graphics\Renderer\ModelRenderer.cpp" />
     <ClCompile Include="src\Graphics\CommandBucket\GfxCommand.cpp" />
     <ClCompile Include="src\Graphics\CommandBucket\GfxCommandDispatch.cpp" />

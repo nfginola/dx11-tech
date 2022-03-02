@@ -138,6 +138,9 @@
     <ClCompile Include="src\Graphics\Renderer\ModelRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="inc\Graphics\API\GfxCommon.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="inc\Window.h">

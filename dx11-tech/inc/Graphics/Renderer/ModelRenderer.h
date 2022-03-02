@@ -39,8 +39,6 @@ private:
 	const RendererSharedResources* m_shared_resources;
 
 
-
-
 	struct ModelInternal
 	{
 		res_handle handle;

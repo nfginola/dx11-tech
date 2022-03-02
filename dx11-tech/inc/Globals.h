@@ -13,6 +13,6 @@ namespace gfx
 
 namespace perf
 {
-	extern class CPUProfiler* cpu_profiler;		// All purpose CPU profiler
+	extern class CPUProfiler* cpu_profiler;		// All purpose CPU profiler (not actively used anywhere for now, everything goes through FrameProfiler)
 	extern class FrameProfiler* profiler;		// Frame profiler
 }
