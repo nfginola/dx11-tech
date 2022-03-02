@@ -36,6 +36,16 @@ namespace gfxcommand
 		BufferHandle buffer;
 	};
 
+	struct ComputeDispatch
+	{
+		static const GfxCommandDispatch DISPATCH;
+		uint32_t x_blocks = 1;
+		uint32_t y_blocks = 1;
+		uint32_t z_blocks = 1;
+
+
+	};
+
 
 	// Auxiliary memory helpers
 	namespace aux
@@ -118,7 +128,73 @@ namespace gfxcommand
 			};
 		}
 
+		namespace computebindtable
+		{
+			struct Header
+			{
+				unsigned int cbs : 4;
+				unsigned int validated : 1;
+				unsigned int samplers : 3;
+				unsigned int textures : 7;
 
+				Header() = delete;
+				Header(uint8_t cbs_in, uint8_t samplers_in, uint8_t textures_in)
+				{
+					validated = 0;
+					cbs = cbs_in;
+					samplers = samplers_in;
+					textures = textures_in;
+				}
+			};
+
+			struct Filler
+			{
+				// To fill..
+				Filler(void* start, uint8_t vbs_in, uint8_t cbs_in, uint8_t samplers_in, uint8_t textures_in);
+				Filler& add_cb(res_handle handle, uint8_t stage, uint8_t slot, uint32_t offset56s = 0, uint32_t range56s = 1);
+				Filler& add_texture(TextureHandle handle, uint8_t stage, uint8_t slot, bool read_write);
+				Filler& add_buffer(BufferHandle handle, uint8_t stage, uint8_t slot, bool read_write);
+				Filler& add_sampler(res_handle handle, uint8_t stage, uint8_t slot);
+				void validate();
+
+				Header* hdr;
+				char* payload_start = nullptr;
+				size_t curr_payload_offset = 0;
+
+			};
+
+			struct PayloadCB
+			{
+				BufferHandle hdl;
+				uint8_t stage;
+				uint8_t slot;
+				uint32_t offset56s;
+				uint32_t range56s;
+			};
+
+			struct PayloadSampler
+			{
+				SamplerHandle hdl;
+				uint8_t stage;
+				uint8_t slot;
+			};
+
+			struct PayloadTexture
+			{
+				TextureHandle hdl;
+				uint8_t stage;
+				uint8_t slot;
+				uint8_t rw;		// SRV/RTV
+			};
+
+			struct PayloadBuffer
+			{
+				BufferHandle hdl;
+				uint8_t stage;
+				uint8_t slot;
+				uint8_t rw;		// SRV/RTV
+			};
+		}
 
 
 	}

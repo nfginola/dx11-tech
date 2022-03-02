@@ -18,6 +18,7 @@ struct GPUTexture;
 struct GPUBuffer;
 struct RenderPass;
 struct GraphicsPipeline;
+struct ComputePipeline;
 struct Shader;
 struct Sampler;
 
@@ -68,7 +69,7 @@ public:
 	BufferHandle create_buffer(const BufferDesc& desc, std::optional<SubresourceData> subres = {});
 	TextureHandle create_texture(const TextureDesc& desc, std::optional<SubresourceData> subres = {});
 	PipelineHandle create_pipeline(const PipelineDesc& desc);
-	//ComputeHandle create_compute_pipeline(const ComputeDesc& desc);
+	ComputePipelineHandle create_compute_pipeline(const ComputePipelineDesc& desc);
 	RenderPassHandle create_renderpass(const RenderPassDesc& desc);
 
 	ShaderHandle compile_and_create_shader(ShaderStage stage, const std::filesystem::path& fname);
@@ -234,6 +235,7 @@ private:
 	static constexpr uint64_t MAX_SAMPLER_STORAGE = 64;
 	static constexpr uint64_t MAX_RENDERPASS_STORAGE = 256;
 	static constexpr uint64_t MAX_PIPELINE_STORAGE = 1024;
+	static constexpr uint64_t MAX_COMPUTE_PIPELINES = 64;
 	static constexpr uint64_t MAX_SHADER_STORAGE = 256;
 
 	ResourceHandlePool<GPUBuffer> m_buffers;
@@ -241,6 +243,7 @@ private:
 	ResourceHandlePool<Sampler, MAX_SAMPLER_STORAGE> m_samplers;
 	ResourceHandlePool<RenderPass, MAX_RENDERPASS_STORAGE> m_renderpasses;
 	ResourceHandlePool<GraphicsPipeline, MAX_PIPELINE_STORAGE> m_pipelines;
+	ResourceHandlePool<ComputePipeline, MAX_COMPUTE_PIPELINES> m_compute_pipelines;
 	ResourceHandlePool<Shader, MAX_SHADER_STORAGE> m_shaders;
 
 	// Pipeline reloading by shader name (should be refactored into some PipelineManager)

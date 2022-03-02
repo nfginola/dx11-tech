@@ -421,6 +421,17 @@ PipelineHandle GfxDevice::create_pipeline(const PipelineDesc& desc)
 	return ret_hdl;
 }
 
+ComputePipelineHandle GfxDevice::create_compute_pipeline(const ComputePipelineDesc& desc)
+{
+	auto [hdl, pipeline] = m_compute_pipelines.get_next_free_handle();
+	pipeline->handle = hdl;
+	
+	pipeline->cs = desc.m_cs;
+	pipeline->is_registered = true;
+
+	return ComputePipelineHandle{ hdl };
+}
+
 RenderPassHandle GfxDevice::create_renderpass(const RenderPassDesc& desc)
 {
 	auto [hdl, rp] = m_renderpasses.get_next_free_handle();
@@ -707,7 +718,7 @@ void GfxDevice::dispatch(UINT blocks_x, UINT blocks_y, UINT blocks_z)
 	ctx->Dispatch(blocks_x, blocks_y, blocks_z);
 
 	// https://on-demand.gputechconf.com/gtc/2010/presentations/S12312-DirectCompute-Pre-Conference-Tutorial.pdf
-	// How the hell do you know when it is safe to Unbind UAVs from Compute Shader???
+	// How do you know when it is safe to Unbind UAVs from Compute Shader???
 	// Ans: Check GP Discord, DirectX section, answer from jwki
 	// No need to sync with Fence
 	// https://stackoverflow.com/questions/55005420/how-to-do-a-blocking-wait-for-a-compute-shader-with-direct3d11

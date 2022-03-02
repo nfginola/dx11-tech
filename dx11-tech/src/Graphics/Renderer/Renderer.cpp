@@ -54,7 +54,7 @@ Renderer::Renderer()
 
 	m_cb_per_frame = gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)));
 
-	UINT shadow_res = 4096;
+	UINT shadow_res = 2048;
 
 	auto sc_dim = gfx::dev->get_sc_dim();
 	viewports =
@@ -237,7 +237,7 @@ void Renderer::render()
 	// Upload per frame data to GPU
 	gfx::dev->map_copy(m_cb_per_frame, SubresourceData(&m_cb_dat, sizeof(m_cb_dat)));
 
-	// Flush miscellaneous per-frame GPU copies (no sorting needed)
+	// Flush miscellaneous per-frame GPU copies
 	m_copy_bucket.flush();
 
 	// Bind per frame data (should be bound to like slot 14 as reserved space)
@@ -532,9 +532,6 @@ void Renderer::declare_shader_reloader_ui()
 
 	ImGui::End();
 }
-
-
-
 
 void Renderer::GBuffer::create_gbuffers(GfxDevice* dev, UINT width, UINT height)
 {

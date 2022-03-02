@@ -16,6 +16,7 @@ struct TextureHandle { res_handle hdl = 0; };
 struct SamplerHandle { res_handle hdl = 0; };
 struct ShaderHandle { res_handle hdl = 0; };
 struct RenderPassHandle { res_handle hdl = 0; };
+struct ComputePipelineHandle { res_handle hdl = 0; };
 
 // Strongly typed shaders for safer public interface
 // https://www.fluentcpp.com/2016/12/08/strong-types-for-strong-interfaces/

@@ -39,7 +39,7 @@ public:
 
 	Renderer& operator=(const Renderer&) = delete;
 	Renderer(const Renderer&) = delete;
-
+	
 	/*
 		If possible, the buckets exposed should be independent of the underlying primary technique (Deferred/Forward+)
 		This way, we can have a Renderer interface and swap between different techniques! (and extend in a flexible manner)
@@ -133,6 +133,11 @@ private:
 
 
 	// temporary (should be moved to a shadow mapper)
+	/*
+		MasterRenderer owns a ShadowMapper
+			--> ShadowMapper owns resources related to shadow mapping, but the master renderer can look into it and use exposed resources
+		
+	*/
 	struct PerLightData
 	{
 		DirectX::XMMATRIX view_proj;

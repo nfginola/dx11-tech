@@ -129,11 +129,11 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 			samplers_in = 0;
 
 			// Key based on distance (should be in viewspace ..)
-			key = 1.f - (wm.Translation().z / std::numeric_limits<float>::max());
+			uint16_t new_key = (uint16_t)(1.f - (wm.Translation().z / std::numeric_limits<float>::max()));
 
 			// Create draw call
 			aux_size = gfxcommand::aux::bindtable::get_size(vbs_in, cbs_in, textures_in, samplers_in);
-			cmd = shadow_bucket->add_command<gfxcommand::Draw>(key, aux_size);
+			cmd = shadow_bucket->add_command<gfxcommand::Draw>(new_key, aux_size);
 			cmd->ib = model->get_ib();
 			cmd->index_count = mesh.index_count;
 			cmd->index_start = mesh.index_start;

@@ -60,3 +60,7 @@ PipelineDesc& PipelineDesc::set_depth_stencil(const DepthStencilDesc& desc)
 	return *this;
 }
 
+ComputePipelineDesc& ComputePipelineDesc::set_shader(ComputeShader cs)
+{
+	m_cs = cs.get();
+}

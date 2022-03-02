@@ -6,7 +6,7 @@
 #include "Memory/Allocator.h"
 
 class Renderer;
-class RendererSharedResources;
+struct RendererSharedResources;
 
 struct ModelHandle { res_handle hdl; };
 

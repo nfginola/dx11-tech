@@ -150,7 +150,16 @@ struct GraphicsPipeline
 	void free() { m_is_registered = false; }
 };
 
-class ComputePipeline {};
+struct ComputePipeline 
+{
+	ShaderHandle cs;
+
+	bool is_registered = false;
+
+	// Resource handle
+	res_handle handle = RES_INVALID_HANDLE;
+	void free() { is_registered = false; }
+};
 
 
 
