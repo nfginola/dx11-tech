@@ -1,7 +1,9 @@
 #pragma once
 #include "ResourceHandlePool.h"
 #include "Graphics/API/GfxHandles.h"
+#include "Graphics/API/GfxCommon.h"
 #include "Graphics/Model.h"
+#include "Memory/Allocator.h"
 
 class Renderer;
 
@@ -44,17 +46,25 @@ private:
 
 private:
 	// Per Object data
-	struct alignas(256) CBPerObject
+	struct alignas(gfxconstants::MIN_CB_SIZE_FOR_RANGES) PerObjectData
 	{
 		DirectX::XMMATRIX world_mat;
 	};
-	std::array<CBPerObject, 500> m_per_object_data;		// Supports 500 model submission per frame
 	BufferHandle m_per_object_cb;
 
+	// Max model submissions per frame
+	static constexpr UINT MAX_SUBMISSION_PER_FRAME = 1000;
+
+	unique_ptr<Allocator> m_per_object_data_allocator;
+	PerObjectData* m_per_object_data = nullptr;
 	uint32_t m_submission_count = 0;
 
+	// Temporary (should be removed later)
 	PipelineHandle m_def_pipeline;
-	
+
+	// should be moved 
+	PipelineHandle m_depth_only_pipe;
+
 
 };
 

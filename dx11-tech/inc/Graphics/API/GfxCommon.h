@@ -22,7 +22,9 @@ namespace gfxconstants
 	static constexpr UINT MAX_INPUT_SLOTS = 16; // D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; arbitrary, otherwise D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT  https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-iasetvertexbuffers
 	static constexpr UINT MAX_CB_SLOTS = D3D11_COMMONSHADER_CONSTANT_BUFFER_HW_SLOT_COUNT - 1;
 	static constexpr UINT MAX_SAMPLERS = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
-
+	
+	// Each constant is 16 bytes and each range is at a minimum 16 shader constants == 256 bytes
+	static constexpr UINT MIN_CB_SIZE_FOR_RANGES = 256;
 }
 
 enum class ShaderStage { eNone, eVertex, eHull, eDomain, eGeometry, ePixel, eCompute};

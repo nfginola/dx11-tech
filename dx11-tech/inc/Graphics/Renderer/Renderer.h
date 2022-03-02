@@ -102,8 +102,24 @@ private:
 
 	// Geometry pass
 	bool m_allocated = false;	// Resolution-dependent resources check
-	TextureHandle d_32;			// 32-bit depth
+	TextureHandle m_d_32;			// 32-bit depth
 	GBuffer m_gbuffer_res;
+
+	// Shadow Pass
+	TextureHandle m_dir_d32;
+	RenderPassHandle m_dir_rp;
+	SamplerHandle m_shadow_sampler;
+
+	// temporary (should be moved to a shadow mapper)
+	struct PerLightData
+	{
+		DirectX::XMMATRIX view_proj;
+		DirectX::XMMATRIX view_proj_inv;
+		DirectX::XMFLOAT4 light_direction;
+	};
+	PerLightData m_light_data;
+	BufferHandle m_per_light_cb;
+
 
 	// Light-pass
 	TextureHandle m_lightpass_output;
@@ -111,7 +127,7 @@ private:
 	RenderPassHandle m_lightpass_rp;
 
 	// Final post-processs (e.g gamma correction / tonemapping)
-	PipelineHandle m_final_pipeline;
+	PipelineHandle m_final_pipe;
 	RenderPassHandle m_backbuffer_out_rp;
 
 	/*

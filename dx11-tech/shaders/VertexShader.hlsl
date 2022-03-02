@@ -21,7 +21,7 @@ cbuffer PerFrameCB : register(b0)
 
 cbuffer PerDraw : register(b1)
 {
-    matrix g_world_mat;
+    matrix g_world_mat; 
 }
 
 VertexOutput main(VertexInput input)
@@ -30,7 +30,7 @@ VertexOutput main(VertexInput input)
     VertexOutput output = (VertexOutput) 0;
     
     float4 world = mul(g_world_mat, float4(input.position, 1.f));
-    output.world = world.xxx;
+    output.world = world.rgb;
     output.position = mul(g_proj_mat, mul(g_view_mat, world));
     output.uv = input.uv;
     output.normal = input.normal;

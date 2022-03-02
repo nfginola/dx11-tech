@@ -65,6 +65,9 @@ inline GfxCommandBucket<T>::~GfxCommandBucket()
 template<typename T>
 inline void GfxCommandBucket<T>::sort()
 {
+    if (m_current == 0)
+        return;
+
     key_packet_pair* begin = (key_packet_pair*)m_key_packet_pairs;
     key_packet_pair* end = ((key_packet_pair*)m_key_packet_pairs) + m_current;
     //auto lookinto1 = (key_packet_pair(*)[250])m_key_packet_pairs;

@@ -250,12 +250,23 @@ void Application::run()
 		gfx::rend->set_camera(m_camera_controller->get_active_camera());
 
 		// Submit models
+		/*
+			Renderers->Begin();
+
+			Scene->Traverse()
+				for each node:
+					mod_rend->submit(..)
+					part_rend->submit(..)
+					etc..
+
+			Renderers->End();
+		*/
 		m_model_renderer->begin();
 		m_model_renderer->submit(m_sponza, DirectX::SimpleMath::Matrix::CreateScale(0.07));
 
 		for (int i = 0; i < 10; ++i)
 			m_model_renderer->submit(m_nanosuit, DirectX::SimpleMath::Matrix::CreateScale(1.0) *
-				DirectX::SimpleMath::Matrix::CreateTranslation(-35.f + i * 5.f, 0.f, 0.f));
+				DirectX::SimpleMath::Matrix::CreateTranslation(-35.f + i * 5.f, 0.f, 5.f));
 
 		m_model_renderer->end();
 			

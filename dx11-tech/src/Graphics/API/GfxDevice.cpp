@@ -1,13 +1,18 @@
 #include "pch.h"
 #include "Graphics/API/GfxDevice.h"
 #include "Graphics/API/GfxTypes.h"
-
+#include "Profiler/FrameProfiler.h"
 
 // Globals
 namespace gfx
 { 
 	GfxDevice* dev = nullptr;  
 	GPUAnnotator* annotator = nullptr;
+}
+
+namespace perf
+{
+	extern FrameProfiler* profiler;
 }
 
 namespace gfxconstants
@@ -105,7 +110,16 @@ void GfxDevice::frame_start()
 }
 
 void GfxDevice::frame_end()
-{
+{	
+	{
+		auto _ = FrameProfiler::ScopedCPU("Resetting Binds");
+		//std::memset(m_bound_samplers.data(), 0, sizeof(SamplerHandle) * gfxconstants::MAX_SAMPLERS * 6);
+		//std::memset(m_bound_cbuffers.data(), 0, sizeof(std::tuple<BufferHandle, UINT, UINT>) * gfxconstants::MAX_CB_SLOTS * 6);
+		std::memset(m_bound_read_textures.data(), 0, sizeof(TextureHandle) * gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS * 6);
+		std::memset(m_bound_read_bufs.data(), 0, sizeof(BufferHandle) * gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS * 6);
+	}
+
+	// End GPU profiler
 	if (m_profiler)
 		m_profiler->frame_end();
 }

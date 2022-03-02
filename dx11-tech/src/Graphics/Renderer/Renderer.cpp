@@ -54,12 +54,14 @@ Renderer::Renderer()
 
 	m_cb_per_frame = gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)));
 
+	UINT shadow_res = 4096;
 
 	auto sc_dim = gfx::dev->get_sc_dim();
 	viewports =
 	{
 		CD3D11_VIEWPORT(0.f, 0.f, (FLOAT)sc_dim.first, (FLOAT)sc_dim.second),	// To Swapchain (changes when swapchain is resized)
-		CD3D11_VIEWPORT(0.f, 0.f, (FLOAT)sc_dim.first, (FLOAT)sc_dim.second)	// Render to texture (stays the same for Geometry Pass)
+		CD3D11_VIEWPORT(0.f, 0.f, (FLOAT)sc_dim.first, (FLOAT)sc_dim.second),	// Render to texture (stays the same for Geometry Pass)
+		CD3D11_VIEWPORT(0.f, 0.f, shadow_res, shadow_res)								// Shadow (temp hardcoded)
 	};
 
 	// setup geometry pass 
@@ -69,12 +71,18 @@ Renderer::Renderer()
 	// create and bind persistent sampler
 	def_samp = gfx::dev->create_sampler(SamplerDesc());
 	gfx::dev->bind_sampler(0, ShaderStage::ePixel, def_samp);
-	
+
+	// setup shadow pass
+	m_dir_d32 = gfx::dev->create_texture(TextureDesc::depth_stencil(
+		DepthFormat::eD32, shadow_res, shadow_res,
+		D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
+	m_dir_rp = gfx::dev->create_renderpass(RenderPassDesc({}, m_dir_d32));
+
 	// setup light pass
 	{
 		ShaderHandle fs_vs, fs_ps;
-		fs_vs = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "fullscreenQuadVS.hlsl");
-		fs_ps = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "fullscreenQuadPS.hlsl");
+		fs_vs = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "lightPassVS.hlsl");
+		fs_ps = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "lightPassPS.hlsl");
 		
 		m_lightpass_pipe = gfx::dev->create_pipeline(PipelineDesc()
 			.set_shaders(VertexShader(fs_vs), PixelShader(fs_ps)));
@@ -89,7 +97,7 @@ Renderer::Renderer()
 		vs = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "finalQuadVS.hlsl");
 		ps = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "finalQuadPS.hlsl");
 
-		m_final_pipeline = gfx::dev->create_pipeline(PipelineDesc()
+		m_final_pipe = gfx::dev->create_pipeline(PipelineDesc()
 			.set_shaders(VertexShader(vs), PixelShader(ps)));
 	}
 
@@ -108,11 +116,38 @@ Renderer::Renderer()
 	repeat_samp = gfx::dev->create_sampler(repeat);
 	gfx::dev->bind_sampler(1, ShaderStage::ePixel, repeat_samp);
 
+	// create shadow sampler
+	D3D11_SAMPLER_DESC ss_desc{};
+	ss_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+	ss_desc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+	ss_desc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+	ss_desc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+	ss_desc.BorderColor[0] = 1.f;
+	ss_desc.BorderColor[1] = 1.f;
+	ss_desc.BorderColor[2] = 1.f;
+	ss_desc.BorderColor[3] = 1.f;
+	ss_desc.MinLOD = -FLT_MAX;
+	ss_desc.MaxLOD = FLT_MAX;
+	ss_desc.MipLODBias = 0.0f;
+	ss_desc.MaxAnisotropy = 1;
+	ss_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	m_shadow_sampler = gfx::dev->create_sampler(ss_desc);
+	
+	gfx::dev->bind_sampler(3, ShaderStage::ePixel, m_shadow_sampler);
 
 
+	m_per_light_cb = gfx::dev->create_buffer(BufferDesc::constant(1 * sizeof(PerLightData)));
 
+	auto light_direction = DirectX::SimpleMath::Vector3{ 0.2f, -0.8f, 0.2f };
+	light_direction.Normalize();
+	m_light_data.light_direction = DirectX::SimpleMath::Vector4(light_direction.x, light_direction.y, light_direction.z, 0.f);
+	auto focus_pos = DirectX::SimpleMath::Vector3(0.f, 0.f, 0.f);
+	auto eye_pos = -light_direction * 200.f;	// place 100 units away from origin
 
-
+	DirectX::SimpleMath::Matrix viewproj = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f }) *
+		DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, 10.f, 450.f);
+	m_light_data.view_proj = viewproj;
+	m_light_data.view_proj_inv = viewproj.Invert();
 }
 
 void Renderer::begin()
@@ -140,24 +175,62 @@ void Renderer::render()
 	m_cb_dat.view_mat = m_main_cam->get_view_mat();
 	m_cb_dat.proj_mat = m_main_cam->get_proj_mat();
 
+	// Update light data
+	auto single_light_copy = m_copy_bucket.add_command<gfxcommand::CopyToBuffer>(0, 0);
+	single_light_copy->buffer = m_per_light_cb;
+	single_light_copy->data = &m_light_data;
+	single_light_copy->data_size = sizeof(PerLightData);
+
+	// Sort buckets
+	{
+		auto _ = FrameProfiler::ScopedCPU("Command Bucket Sorting");
+		m_opaque_bucket.sort();
+		m_shadow_bucket.sort();
+	}
+
 	// Upload per frame data to GPU
 	gfx::dev->map_copy(m_cb_per_frame, SubresourceData(&m_cb_dat, sizeof(m_cb_dat)));
+
+	// Flush miscellaneous per-frame GPU copies (no sorting needed)
+	m_copy_bucket.flush();
 
 	// Bind per frame data (should be bound to like slot 14 as reserved space)
 	gfx::dev->bind_constant_buffer(0, ShaderStage::eVertex, m_cb_per_frame, 0);
 
-	// No need to sort copy bucket
-	m_copy_bucket.flush();
+
+	/*
+		If we have external techniques that want to hook onto technique specific underlying resource:
+			e.g use GBuffer data for some technique (maybe use the world space normals),
+			then, the technique CANNOT be external, it inherently becomes a part of the underlying technique.
+
+		If we have external techniques that wan to hook onto NON-technique specific underlying resources:
+			- Safe to create a Getter for it (e.g depth texture)
+				--> We will always have a depth texture for the geometries regardless of underlying tech (Forward/Def/Forward+)
+
+	*/
+
 
 	// Geometry Pass
 	{
 		auto _ = FrameProfiler::Scoped("Geometry Pass");
 
 		gfx::dev->begin_pass(m_gbuffer_res.rp);
-		gfx::dev->bind_viewports({ viewports[1], viewports[1], viewports[1] });
+		gfx::dev->bind_viewports({ viewports[1] });
 
-		m_opaque_bucket.sort();
 		m_opaque_bucket.flush();
+
+		gfx::dev->end_pass();
+	}
+
+	// Shadow Pass
+	{
+		auto _ = FrameProfiler::Scoped("Shadow Pass");
+
+		gfx::dev->begin_pass(m_dir_rp);
+		gfx::dev->bind_viewports({ viewports[2] });
+		gfx::dev->bind_constant_buffer(2, ShaderStage::eVertex, m_per_light_cb);
+
+		m_shadow_bucket.flush();
 
 		gfx::dev->end_pass();
 	}
@@ -171,9 +244,12 @@ void Renderer::render()
 		gfx::dev->bind_pipeline(m_lightpass_pipe);
 	
 		m_gbuffer_res.read_bind(gfx::dev);
+		gfx::dev->bind_constant_buffer(1, ShaderStage::ePixel, m_per_light_cb);
+		gfx::dev->bind_resource(7, ShaderStage::ePixel, m_dir_d32);
+
+
 		
 		gfx::dev->draw(6);
-
 		gfx::dev->end_pass();
 	}
 
@@ -182,7 +258,7 @@ void Renderer::render()
 		auto _ = FrameProfiler::Scoped("Final Fullscreen Pass");
 		gfx::dev->begin_pass(m_backbuffer_out_rp);
 		gfx::dev->bind_viewports(viewports);
-		gfx::dev->bind_pipeline(m_final_pipeline);
+		gfx::dev->bind_pipeline(m_final_pipe);
 		gfx::dev->bind_resource(0, ShaderStage::ePixel, m_lightpass_output);
 		gfx::dev->draw(6);
 
@@ -197,7 +273,7 @@ void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
 {
 	if (m_allocated)
 	{
-		gfx::dev->free_texture(d_32);
+		gfx::dev->free_texture(m_d_32);
 		gfx::dev->free_texture(m_lightpass_output);
 		m_gbuffer_res.free(gfx::dev);
 		m_allocated = false;
@@ -210,11 +286,11 @@ void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
 		viewports[1].Height = (FLOAT)height;
 
 		// create 32-bit depth tex
-		d_32 = gfx::dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, width, height, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
+		m_d_32 = gfx::dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, width, height, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
 
 		// create gbuffer textures and pass
 		m_gbuffer_res.create_gbuffers(gfx::dev, width, height);
-		m_gbuffer_res.create_rp(gfx::dev, d_32);
+		m_gbuffer_res.create_rp(gfx::dev, m_d_32);
 
 		// create light pass output (16-bit per channel HDR)
 		m_lightpass_output = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET));
@@ -409,6 +485,9 @@ void Renderer::declare_shader_reloader_ui()
 	ImGui::End();
 }
 
+
+
+
 void Renderer::GBuffer::create_gbuffers(GfxDevice* dev, UINT width, UINT height)
 {
 	// create GBuffers
@@ -418,7 +497,7 @@ void Renderer::GBuffer::create_gbuffers(GfxDevice* dev, UINT width, UINT height)
 	normal = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R8G8B8A8_UNORM, width, height,
 		D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
 		1, 1));
-	world = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R8G8B8A8_UNORM, width, height,
+	world = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R32G32B32A32_FLOAT, width, height,
 		D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
 		1, 1));
 }
