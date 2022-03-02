@@ -68,22 +68,20 @@ Renderer::Renderer()
 	// Should take in some RendererInitDesc to initialize settings (e.g vsync and other misc.)
 	create_resolution_dependent_resources(sc_dim.first, sc_dim.second);
 
-	// create and bind persistent sampler
-	def_samp = gfx::dev->create_sampler(SamplerDesc());
-	gfx::dev->bind_sampler(0, ShaderStage::ePixel, def_samp);
-
-	// setup shadow pass
-	m_dir_d32 = gfx::dev->create_texture(TextureDesc::depth_stencil(
-		DepthFormat::eD32, shadow_res, shadow_res,
-		D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
-	m_dir_rp = gfx::dev->create_renderpass(RenderPassDesc({}, m_dir_d32));
+	// setup depth only pass
+	{
+		m_dir_d32 = gfx::dev->create_texture(TextureDesc::depth_stencil(
+			DepthFormat::eD32, shadow_res, shadow_res,
+			D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
+		m_dir_rp = gfx::dev->create_renderpass(RenderPassDesc({}, m_dir_d32));
+	}
 
 	// setup light pass
 	{
 		ShaderHandle fs_vs, fs_ps;
 		fs_vs = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "lightPassVS.hlsl");
 		fs_ps = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "lightPassPS.hlsl");
-		
+
 		m_lightpass_pipe = gfx::dev->create_pipeline(PipelineDesc()
 			.set_shaders(VertexShader(fs_vs), PixelShader(fs_ps)));
 	}
@@ -100,54 +98,102 @@ Renderer::Renderer()
 		m_final_pipe = gfx::dev->create_pipeline(PipelineDesc()
 			.set_shaders(VertexShader(vs), PixelShader(ps)));
 	}
-
-	// sponza requires wrapping texture, we will also use anisotropic filtering here (16) 
-	D3D11_SAMPLER_DESC repeat{};
-	repeat.Filter = D3D11_FILTER_ANISOTROPIC;
-	repeat.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-	repeat.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-	repeat.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-	repeat.MinLOD = -FLT_MAX;
-	repeat.MaxLOD = FLT_MAX;
-	repeat.MipLODBias = 0.0f;
-	repeat.MaxAnisotropy = 16;
-	repeat.ComparisonFunc = D3D11_COMPARISON_NEVER;
-
-	repeat_samp = gfx::dev->create_sampler(repeat);
-	gfx::dev->bind_sampler(1, ShaderStage::ePixel, repeat_samp);
-
-	// create shadow sampler
-	D3D11_SAMPLER_DESC ss_desc{};
-	ss_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
-	ss_desc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
-	ss_desc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
-	ss_desc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
-	ss_desc.BorderColor[0] = 1.f;
-	ss_desc.BorderColor[1] = 1.f;
-	ss_desc.BorderColor[2] = 1.f;
-	ss_desc.BorderColor[3] = 1.f;
-	ss_desc.MinLOD = -FLT_MAX;
-	ss_desc.MaxLOD = FLT_MAX;
-	ss_desc.MipLODBias = 0.0f;
-	ss_desc.MaxAnisotropy = 1;
-	ss_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-	m_shadow_sampler = gfx::dev->create_sampler(ss_desc);
 	
-	gfx::dev->bind_sampler(3, ShaderStage::ePixel, m_shadow_sampler);
+	// commonly used samplers
+	{
+		// point
+		def_samp = gfx::dev->create_sampler(SamplerDesc());
+		gfx::dev->bind_sampler(0, ShaderStage::ePixel, def_samp);
+
+		// sponza requires wrapping texture, we will also use anisotropic filtering here (16) 
+		D3D11_SAMPLER_DESC repeat{};
+		repeat.Filter = D3D11_FILTER_ANISOTROPIC;
+		repeat.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+		repeat.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+		repeat.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+		repeat.MinLOD = -FLT_MAX;
+		repeat.MaxLOD = FLT_MAX;
+		repeat.MipLODBias = 0.0f;
+		repeat.MaxAnisotropy = 16;
+		repeat.ComparisonFunc = D3D11_COMPARISON_NEVER;
+
+		repeat_samp = gfx::dev->create_sampler(repeat);
+		gfx::dev->bind_sampler(1, ShaderStage::ePixel, repeat_samp);
+	}
+
+	
+	// shadow related data
+	{
+		// create shadow sampler
+		D3D11_SAMPLER_DESC ss_desc{};
+		ss_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+		ss_desc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+		ss_desc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+		ss_desc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+		ss_desc.BorderColor[0] = 1.f;
+		ss_desc.BorderColor[1] = 1.f;
+		ss_desc.BorderColor[2] = 1.f;
+		ss_desc.BorderColor[3] = 1.f;
+		ss_desc.MinLOD = -FLT_MAX;
+		ss_desc.MaxLOD = FLT_MAX;
+		ss_desc.MipLODBias = 0.0f;
+		ss_desc.MaxAnisotropy = 1;
+		ss_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+		m_shadow_sampler = gfx::dev->create_sampler(ss_desc);
+
+		gfx::dev->bind_sampler(3, ShaderStage::ePixel, m_shadow_sampler);
 
 
-	m_per_light_cb = gfx::dev->create_buffer(BufferDesc::constant(1 * sizeof(PerLightData)));
+		m_per_light_cb = gfx::dev->create_buffer(BufferDesc::constant(1 * sizeof(PerLightData)));
 
-	auto light_direction = DirectX::SimpleMath::Vector3{ 0.2f, -0.8f, 0.2f };
-	light_direction.Normalize();
-	m_light_data.light_direction = DirectX::SimpleMath::Vector4(light_direction.x, light_direction.y, light_direction.z, 0.f);
-	auto focus_pos = DirectX::SimpleMath::Vector3(0.f, 0.f, 0.f);
-	auto eye_pos = -light_direction * 200.f;	// place 100 units away from origin
+		auto light_direction = DirectX::SimpleMath::Vector3{ 0.2f, -0.8f, 0.2f };
+		light_direction.Normalize();
+		m_light_data.light_direction = DirectX::SimpleMath::Vector4(light_direction.x, light_direction.y, light_direction.z, 0.f);
+		auto focus_pos = DirectX::SimpleMath::Vector3(0.f, 0.f, 0.f);
+		auto eye_pos = -light_direction * 200.f;	// place 100 units away from origin
 
-	DirectX::SimpleMath::Matrix viewproj = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f }) *
-		DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, 10.f, 450.f);
-	m_light_data.view_proj = viewproj;
-	m_light_data.view_proj_inv = viewproj.Invert();
+		DirectX::SimpleMath::Matrix viewproj = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f }) *
+			DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, 10.f, 450.f);
+		m_light_data.view_proj = viewproj;
+		m_light_data.view_proj_inv = viewproj.Invert();
+	}
+
+
+
+
+
+
+	// depth only pipe
+	{
+		auto vs_depth = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "depthOnlyVS.hlsl");
+		auto ps_depth = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "depthOnlyPS.hlsl");
+		auto do_layout = InputLayoutDesc().append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0);
+
+		m_shared_resources.depth_only_pipe = gfx::dev->create_pipeline(PipelineDesc()
+			.set_shaders(VertexShader(vs_depth), PixelShader(ps_depth))
+			.set_input_layout(do_layout));
+	}
+
+	// deferred gpass pipe
+	{
+		ShaderHandle vs, ps;
+		vs = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "VertexShader.hlsl");
+		ps = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "PixelShader.hlsl");
+
+		// interleaved layout
+		auto layout = InputLayoutDesc()
+			.append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0)
+			.append("UV", DXGI_FORMAT_R32G32_FLOAT, 1)
+			.append("NORMAL", DXGI_FORMAT_R32G32B32_FLOAT, 2);
+
+		// create pipeline
+		auto p_d = PipelineDesc()
+			.set_shaders(VertexShader(vs), PixelShader(ps))
+			.set_input_layout(layout);
+
+		m_shared_resources.deferred_gpass_pipe = gfx::dev->create_pipeline(p_d);
+	}
+
 }
 
 void Renderer::begin()
@@ -247,8 +293,6 @@ void Renderer::render()
 		gfx::dev->bind_constant_buffer(1, ShaderStage::ePixel, m_per_light_cb);
 		gfx::dev->bind_resource(7, ShaderStage::ePixel, m_dir_d32);
 
-
-		
 		gfx::dev->draw(6);
 		gfx::dev->end_pass();
 	}

@@ -21,6 +21,7 @@ namespace gfxcommand
 		// Other resources which are dynamic uses the auxiliary memory (payload + header)
 		/*
 			VBs, CBs, Samplers, Read Textures, ...
+			Look at aux::bindtable
 		*/
 
 	};

@@ -8,10 +8,10 @@ namespace perf
 	FrameProfiler* profiler = nullptr;
 }
 
-void FrameProfiler::initialize(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu)
+void FrameProfiler::initialize(CPUProfiler* cpu, GPUProfiler* gpu)
 {
 	if (!perf::profiler)
-		perf::profiler = new FrameProfiler(std::move(cpu), gpu);
+		perf::profiler = new FrameProfiler(cpu, gpu);
 }
 
 void FrameProfiler::shutdown()
@@ -20,7 +20,7 @@ void FrameProfiler::shutdown()
 		delete perf::profiler;
 }
 
-FrameProfiler::FrameProfiler(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu) : m_cpu(std::move(cpu)), m_gpu(gpu)
+FrameProfiler::FrameProfiler(CPUProfiler* cpu, GPUProfiler* gpu) : m_cpu(cpu), m_gpu(gpu)
 {
 }
 

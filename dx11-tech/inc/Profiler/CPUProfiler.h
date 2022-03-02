@@ -4,9 +4,21 @@
 class CPUProfiler
 {
 public:
-	CPUProfiler() = default;
-	CPUProfiler& operator=(const CPUProfiler&) = delete;
-	CPUProfiler(const CPUProfiler&) = default;
+	static void initialize();
+	static void shutdown();
+
+	struct ScopedAccum
+	{
+		ScopedAccum() = delete;
+		ScopedAccum& operator=(const ScopedAccum&) = delete;
+		ScopedAccum(const ScopedAccum&) = delete;
+
+		ScopedAccum(const std::string& name);
+		~ScopedAccum();
+
+	private:
+		std::string m_name;
+	};
 
 	struct FrameData
 	{
@@ -16,10 +28,18 @@ public:
 	void begin(const std::string& name);
 	void end(const std::string& name);
 
+	void begin_accum(const std::string& name);
+	void end_accum(const std::string& name);
+
 	const FrameData& get_frame_statistics();
 
 	void frame_start();
 	void frame_end();
+
+private:
+	CPUProfiler() = default;
+	CPUProfiler& operator=(const CPUProfiler&) = delete;
+	CPUProfiler(const CPUProfiler&) = default;
 
 private:
 	bool m_frame_started = false;

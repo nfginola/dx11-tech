@@ -47,22 +47,19 @@ float4 main(PixelInput input) : SV_TARGET0
     // ndc has 0,0 mid and 1,1 top right --> need to convert to texture space: 0,0 top left, 1,1 bottom left
     float2 lspace_uv = float2(lspace_ndc.x * 0.5f + 0.5f, 1.f - (lspace_ndc.y * 0.5f + 0.5f));
 
-    float ldepth = g_directional_sm.Sample(sm_samp, lspace_uv).r;
-    float real_depth = lspace_ndc.z;
+    float ldepth = g_directional_sm.Sample(sm_samp, lspace_uv).r;       // Depth of this pixel from shadow persp.
+    float real_depth = lspace_ndc.z;                                    // Depth of curr frag 
 
     float bias = max(0.005 * (1.0 - normalize(dot(nor, g_light_direction.xyz))), 0.0012);
 
-    float shadow = 1.f;
+    float shadow_factor = 1.f;      // Lit
 
     if (real_depth - bias > ldepth)
-        shadow = 0.f;
+        shadow_factor = 0.f;        // Not lit
  
-    float dir_light_contrib = max(dot(nor, -g_light_direction.xyz), 0.f);
-    float3 diffuse = col * dir_light_contrib;
+    float dir_light_contrib = max(dot(nor, -g_light_direction.xyz), 0.f) * 1.f; // intensity
+    float3 diffuse = col * dir_light_contrib;       // if you want to add tint, multiplicative blend is the way (represent light factor absorbed per channel)
 
 
-    return float4(ambient + diffuse * shadow, 1.f);
-    //return float4(dir_light_contrib.xxx, 1.f);
-    //return float4(nor, 1.f);
-    //return float4(lspace_uv, 0.f, 1.f);
+    return float4(ambient + diffuse * shadow_factor, 1.f);
 }

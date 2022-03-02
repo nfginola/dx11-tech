@@ -10,10 +10,10 @@ namespace gfx
 	GPUAnnotator* annotator = nullptr;
 }
 
-namespace perf
-{
-	extern FrameProfiler* profiler;
-}
+//namespace perf
+//{
+//	extern FrameProfiler* profiler;
+//}
 
 namespace gfxconstants
 {
@@ -112,7 +112,6 @@ void GfxDevice::frame_start()
 void GfxDevice::frame_end()
 {	
 	{
-		auto _ = FrameProfiler::ScopedCPU("Resetting Binds");
 		//std::memset(m_bound_samplers.data(), 0, sizeof(SamplerHandle) * gfxconstants::MAX_SAMPLERS * 6);
 		//std::memset(m_bound_cbuffers.data(), 0, sizeof(std::tuple<BufferHandle, UINT, UINT>) * gfxconstants::MAX_CB_SLOTS * 6);
 		std::memset(m_bound_read_textures.data(), 0, sizeof(TextureHandle) * gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS * 6);
@@ -638,7 +637,7 @@ void GfxDevice::update_subresource(TextureHandle dst, const SubresourceData& dat
 
 void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset56s, UINT range56s)
 {
-	auto curr_bound = m_bound_cbuffers[(UINT)stage - 1][slot];
+	auto& curr_bound = m_bound_cbuffers[(UINT)stage - 1][slot];
 
 	if (std::get<BufferHandle>(curr_bound).hdl == buffer.hdl &&
 		std::get<1>(curr_bound) == offset56s &&

@@ -6,6 +6,7 @@
 #include "Memory/Allocator.h"
 
 class Renderer;
+class RendererSharedResources;
 
 struct ModelHandle { res_handle hdl; };
 
@@ -14,6 +15,9 @@ struct ModelRenderSpec
 	bool casts_shadow = true;
 };
 
+/*
+	System responsible for models which owns models and renders them.
+*/
 class ModelRenderer
 {
 public:
@@ -32,6 +36,10 @@ public:
 
 private:
 	Renderer* m_master_renderer;
+	const RendererSharedResources* m_shared_resources;
+
+
+
 
 	struct ModelInternal
 	{
@@ -60,10 +68,10 @@ private:
 	uint32_t m_submission_count = 0;
 
 	// Temporary (should be removed later)
-	PipelineHandle m_def_pipeline;
+	//PipelineHandle m_def_pipeline;
 
 	// should be moved 
-	PipelineHandle m_depth_only_pipe;
+	//PipelineHandle m_depth_only_pipe;
 
 
 };

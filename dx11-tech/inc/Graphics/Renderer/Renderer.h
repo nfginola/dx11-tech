@@ -19,6 +19,18 @@
 */
 class GfxDevice;
 
+/*
+	Resources that may be needed for the renderers which submit draw data.
+*/
+struct RendererSharedResources
+{
+	// Common
+	PipelineHandle depth_only_pipe;
+
+	// Deferred specific
+	PipelineHandle deferred_gpass_pipe;
+};
+
 class Renderer
 {
 public:
@@ -38,6 +50,10 @@ public:
 	GfxCommandBucket<uint16_t>* get_shadow_bucket() { return &m_shadow_bucket; };
 	GfxCommandBucket<uint64_t>* get_postprocess_bucket() { return &m_postprocess_bucket; };
 
+	// Non-owning pointer to shared resources
+	// Should these resources be updated internally, all other modules using it will have the changes reflected appropriately
+	const RendererSharedResources* get_shared_resources() { return &m_shared_resources; };
+
 	void begin();
 	void end();
 
@@ -47,6 +63,8 @@ public:
 
 	void on_resize(UINT width, UINT height);
 	void on_change_resolution(UINT width, UINT height);
+
+
 
 private:
 	Renderer();
@@ -96,6 +114,8 @@ private:
 	GfxCommandBucket<uint32_t> m_transparent_bucket;	// Transparent geometry
 	GfxCommandBucket<uint64_t> m_postprocess_bucket;	// Gamma correction/tone-mapping/bloom/etc.
 
+	RendererSharedResources m_shared_resources;
+
 	/*
 		Deferred rendering
 	*/
@@ -109,6 +129,8 @@ private:
 	TextureHandle m_dir_d32;
 	RenderPassHandle m_dir_rp;
 	SamplerHandle m_shadow_sampler;
+	//PipelineHandle m_depth_only_pipe;
+
 
 	// temporary (should be moved to a shadow mapper)
 	struct PerLightData

@@ -67,11 +67,11 @@ public:
 	};
 
 public:
-	static void initialize(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu);
+	static void initialize(CPUProfiler* cpu, GPUProfiler* gpu);
 	static void shutdown();
 
 	FrameProfiler() = delete;
-	FrameProfiler(unique_ptr<CPUProfiler> cpu, GPUProfiler* gpu);
+	FrameProfiler(CPUProfiler* cpu, GPUProfiler* gpu);
 
 
 	FrameProfiler& operator=(const FrameProfiler&) = delete;

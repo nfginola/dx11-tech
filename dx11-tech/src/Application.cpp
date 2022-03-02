@@ -178,9 +178,11 @@ Application::Application()
 	m_win = make_unique<Window>(GetModuleHandle(NULL), win_proc, WIN_WIDTH, WIN_HEIGHT);
 	m_input = make_unique<Input>(m_win->get_hwnd());
 
+
 	// Initialize systems
+	CPUProfiler::initialize();
 	GfxDevice::initialize(make_unique<DXDevice>(m_win->get_hwnd(), WIDTH, HEIGHT));
-	FrameProfiler::initialize(make_unique<CPUProfiler>(), gfx::dev->get_profiler());
+	FrameProfiler::initialize(perf::cpu_profiler, gfx::dev->get_profiler());
 	ImGuiDevice::initialize(gfx::dev);
 
 	DiskTextureManager::initialize(gfx::dev);
@@ -265,8 +267,21 @@ void Application::run()
 		m_model_renderer->submit(m_sponza, DirectX::SimpleMath::Matrix::CreateScale(0.07));
 
 		for (int i = 0; i < 10; ++i)
+		{
+			if (i % 2 == 0)
+			{
+				ModelRenderSpec spec;
+				spec.casts_shadow = false;
+
+				m_model_renderer->submit(m_nanosuit, DirectX::SimpleMath::Matrix::CreateScale(1.0) *
+					DirectX::SimpleMath::Matrix::CreateTranslation(-45.f + i * 8.f, 0.f, 10.f), spec);
+				continue;
+			}
+
 			m_model_renderer->submit(m_nanosuit, DirectX::SimpleMath::Matrix::CreateScale(1.0) *
-				DirectX::SimpleMath::Matrix::CreateTranslation(-35.f + i * 5.f, 0.f, 5.f));
+				DirectX::SimpleMath::Matrix::CreateTranslation(-45.f + i * 8.f, 0.f, 10.f));
+		}
+
 
 		m_model_renderer->end();
 			
