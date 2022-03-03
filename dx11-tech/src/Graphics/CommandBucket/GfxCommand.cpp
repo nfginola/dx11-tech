@@ -9,7 +9,7 @@
 /*
     Draw command
 */
-const GfxCommandDispatch gfxcommand::Draw::DISPATCH = gfxcommand_dispatch::draw;
+const GfxCommandDispatch gfxcommand::Draw::DISPATCH = gfxcommand_dispatch::draw2;
 const GfxCommandDispatch gfxcommand::CopyToBuffer::DISPATCH = gfxcommand_dispatch::copy_to_buffer;
 
 namespace gfxcommand::aux::bindtable
@@ -145,7 +145,7 @@ namespace gfxcommand::aux::computebindtable
         ++active_counts.vbs;
         return *this;
     }
-    ComputeFiller& ComputeFiller::add_cb(BufferHandle handle, ShaderStage stage, uint8_t slot, uint32_t offset56s, uint32_t range56s)
+    ComputeFiller& ComputeFiller::add_cb(ShaderStage stage, uint8_t slot, BufferHandle handle, uint32_t offset56s, uint32_t range56s)
     {
         assert(active_counts.cbs < hdr.counts.cbs);
 
@@ -160,7 +160,7 @@ namespace gfxcommand::aux::computebindtable
         ++active_counts.cbs;
         return *this;
     }
-    ComputeFiller& ComputeFiller::add_read_tex(TextureHandle handle, ShaderStage stage, uint8_t slot)
+    ComputeFiller& ComputeFiller::add_read_tex(ShaderStage stage, uint8_t slot, TextureHandle handle)
     {
         assert(active_counts.tex_reads < hdr.counts.tex_reads);
 
@@ -173,7 +173,7 @@ namespace gfxcommand::aux::computebindtable
         ++active_counts.tex_reads;
         return *this;
     }
-    ComputeFiller& ComputeFiller::add_read_buf(BufferHandle handle, ShaderStage stage, uint8_t slot)
+    ComputeFiller& ComputeFiller::add_read_buf(ShaderStage stage, uint8_t slot, BufferHandle handle)
     {
         assert(active_counts.buf_reads < hdr.counts.buf_reads);
 
@@ -186,7 +186,7 @@ namespace gfxcommand::aux::computebindtable
         ++active_counts.buf_reads;
         return *this;
     }
-    ComputeFiller& ComputeFiller::add_rw_tex(TextureHandle handle, ShaderStage stage, uint8_t slot)
+    ComputeFiller& ComputeFiller::add_rw_tex(ShaderStage stage, uint8_t slot, TextureHandle handle)
     {
         assert(active_counts.tex_rws < hdr.counts.tex_rws);
 
@@ -199,7 +199,7 @@ namespace gfxcommand::aux::computebindtable
         ++active_counts.tex_rws;
         return *this;
     }
-    ComputeFiller& ComputeFiller::add_rw_buf(BufferHandle handle, ShaderStage stage, uint8_t slot)
+    ComputeFiller& ComputeFiller::add_rw_buf(ShaderStage stage, uint8_t slot, BufferHandle handle)
     {
         assert(active_counts.buf_rws < hdr.counts.buf_rws);
 
@@ -213,7 +213,7 @@ namespace gfxcommand::aux::computebindtable
         return *this;
 
     }
-    ComputeFiller& ComputeFiller::add_sampler(SamplerHandle handle, ShaderStage stage, uint8_t slot)
+    ComputeFiller& ComputeFiller::add_sampler(ShaderStage stage, uint8_t slot, SamplerHandle handle)
     {
         assert(active_counts.samplers < hdr.counts.samplers);
 

@@ -243,12 +243,12 @@ namespace gfxcommand
 				// order determines binding slot [0, 15]
 				ComputeFiller& add_vb(BufferHandle handle, uint32_t stride, uint32_t offset);
 
-				ComputeFiller& add_cb(BufferHandle handle, ShaderStage stage, uint8_t slot, uint32_t offset56s = 0, uint32_t range56s = 1);
-				ComputeFiller& add_read_tex(TextureHandle handle, ShaderStage stage, uint8_t slot);
-				ComputeFiller& add_read_buf(BufferHandle handle, ShaderStage stage, uint8_t slot);
-				ComputeFiller& add_rw_tex(TextureHandle handle, ShaderStage stage, uint8_t slot);
-				ComputeFiller& add_rw_buf(BufferHandle handle, ShaderStage stage, uint8_t slot);
-				ComputeFiller& add_sampler(SamplerHandle handle, ShaderStage stage, uint8_t slot);
+				ComputeFiller& add_cb(ShaderStage stage, uint8_t slot, BufferHandle handle, uint32_t offset56s = 0, uint32_t range56s = 1);
+				ComputeFiller& add_read_tex(ShaderStage stage, uint8_t slot, TextureHandle handle);
+				ComputeFiller& add_read_buf(ShaderStage stage, uint8_t slot, BufferHandle handle);
+				ComputeFiller& add_rw_tex(ShaderStage stage, uint8_t slot, TextureHandle handle);
+				ComputeFiller& add_rw_buf(ShaderStage stage, uint8_t slot, BufferHandle handle);
+				ComputeFiller& add_sampler(ShaderStage stage, uint8_t slot, SamplerHandle handle);
 
 	
 				/*

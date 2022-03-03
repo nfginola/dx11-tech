@@ -95,34 +95,24 @@ void gfxcommand_dispatch::draw2(const void* data)
 	gfx::dev->bind_vertex_buffers(0, look_now, counts.vbs);
 	look_now += counts.vbs * sizeof(PayloadVB);
 
-
 	for (uint64_t i = 0; i < counts.cbs; ++i)
 	{
-		auto cb = (PayloadCB*)look_now;
-
+		auto cb = (const PayloadCB* const)look_now;
 		gfx::dev->bind_constant_buffer(cb->slot, (ShaderStage)cb->stage, cb->hdl, cb->offset56s, cb->range56s);
-		//fmt::print("Buffer: {}, {}, {}\n", cb->hdl.hdl, cb->slot, cb->stage);
-
 		look_now += sizeof(PayloadCB);
 	}
 
 	for (uint64_t i = 0; i < counts.tex_reads; ++i)
 	{
-		auto tex = (PayloadTexture*)look_now;
-
+		auto tex = (const PayloadTexture* const)look_now;
 		gfx::dev->bind_resource(tex->slot, (ShaderStage)tex->stage, tex->hdl);
-		//fmt::print("Texture: {}, {}, {}\n", tex->hdl.hdl, tex->slot, tex->stage);
-
 		look_now += sizeof(PayloadTexture);
 	}
 
 	for (uint64_t i = 0; i < counts.buf_reads; ++i)
 	{
-		auto buffer = (PayloadBuffer*)look_now;
-	
+		auto buffer = (const PayloadBuffer* const)look_now;
 		gfx::dev->bind_resource(buffer->slot, (ShaderStage)buffer->stage, buffer->hdl);
-		//fmt::print("Buffer: {}, {}, {}\n", buffer->hdl.hdl, buffer->slot, buffer->stage);
-
 		look_now += sizeof(PayloadBuffer);
 	}
 
@@ -130,31 +120,22 @@ void gfxcommand_dispatch::draw2(const void* data)
 	static constexpr UINT initial_count = 0;
 	for (uint64_t i = 0; i < counts.tex_rws; ++i)
 	{
-		auto tex = (PayloadTexture*)look_now;
-
+		auto tex = (const PayloadTexture* const)look_now;
 		gfx::dev->bind_resource_rw(tex->slot, (ShaderStage)tex->stage, tex->hdl, initial_count);
-		//fmt::print("Texture: {}, {}, {}\n", tex->hdl.hdl, tex->slot, tex->stage);
-
 		look_now += sizeof(PayloadTexture);
 	}
 
 	for (uint64_t i = 0; i < counts.buf_rws; ++i)
 	{
-		auto buffer = (PayloadBuffer*)look_now;
-
+		auto buffer = (const PayloadBuffer* const)look_now;
 		gfx::dev->bind_resource_rw(buffer->slot, (ShaderStage)buffer->stage, buffer->hdl, initial_count);
-		//fmt::print("Buffer: {}, {}, {}\n", buffer->hdl.hdl, buffer->slot, buffer->stage);
-
 		look_now += sizeof(PayloadBuffer);
 	}
 
 	for (uint64_t i = 0; i < counts.samplers; ++i)
 	{
-		auto sampler = (PayloadSampler*)look_now;
-
+		auto sampler = (const PayloadSampler* const)look_now;
 		gfx::dev->bind_sampler(sampler->slot, (ShaderStage)sampler->stage, sampler->hdl);
-		//fmt::print("Sampler: {}, {}, {}\n", sampler->hdl.hdl, sampler->slot, sampler->stage);
-
 		look_now += sizeof(PayloadCB);
 	}
 
