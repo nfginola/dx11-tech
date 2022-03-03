@@ -133,11 +133,24 @@ public:
 		SetPredication
 		GetPredication
 		Dispatch
-		GenerateMips? (maybe automatic?)
 
 	Back Burner:
 		void clear_readwrite_resource(const GPUResource* resource, ReadWriteClear clear);
-		void copy_resource(const GPUResource* dst, const GPUResource* src);
+	
+		
+		https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
+		Docs say that the type of resource of SRC and DST have to be the SAME, meaning it perfectly fits with our 
+		Buffer/Texture strongly typed interface.
+
+		void copy_resource_full(BufferHandle dst, BufferHandle src);
+		void copy_resource_full(TextureHandle dst, TextureHandle src);
+
+		// args from: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copysubresourceregion
+		void copy_resource_region(TextureCopyRegionDest dst, TextureCopyRegionSrc src);
+		void copy_resource_region(BufferCopyRegionDest dst, BufferCopyRegionSrc src);
+
+		
+		
 		ID3D11DeviceContext::CopySubresourceRegion
 
 		GetResourceMinLOD??
@@ -248,6 +261,7 @@ private:
 
 	// Pipeline reloading by shader name (should be refactored into some PipelineManager)
 	std::map<std::string, std::vector<PipelineHandle>> m_loaded_pipelines;
+	std::map<std::string, std::vector<ComputePipelineHandle>> m_loaded_compute_pipelines;
 	bool m_reloading_on = true;
 };
 

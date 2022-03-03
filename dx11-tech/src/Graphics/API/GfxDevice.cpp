@@ -205,75 +205,84 @@ void GfxDevice::recompile_pipeline_shaders_by_name(const std::string& name)
 
 	auto fname = name + std::string(".hlsl");		// append extension
 
-	// grab all the pipeline states associated with the shader name
-	auto it = m_loaded_pipelines.find(fname);
-	if (it == m_loaded_pipelines.end())
-		assert(false);
-	auto& pipelines = it->second;
+	bool graphics_pipe = false;
+	bool compute_pipe = false;
+	auto graphics_it = m_loaded_pipelines.find(fname);
+	auto compute_it = m_loaded_compute_pipelines.find(fname);
 
-	for (auto& p : pipelines)
+	// find pipelines associated with the shader name
+	if (graphics_it != m_loaded_pipelines.end())
 	{
-		/*
-			Recompile every pipeline
-		*/
+		graphics_pipe = true;
+	}
+	// try looking for compute if it didnt find in normal render pipelines list
+	else if (compute_it != m_loaded_compute_pipelines.end())
+	{
+		compute_pipe = true;
+	}
+	
+	assert(graphics_pipe || compute_pipe);	// if/else with this assertion serves as an XOR: we must find either exactly a gph pipe or compute pipe
 
-		auto existing_pipeline = m_pipelines.look_up(p.hdl);
+	/*
+		"Recompile every pipeline".
 
-		// get filenames to all shaders in the pipelines
-		auto existing_vs = m_shaders.look_up(existing_pipeline->m_vs.hdl);
-		auto existing_ps = m_shaders.look_up(existing_pipeline->m_ps.hdl);
-		const auto& vs_name = existing_vs->m_blob.fname;
-		const auto& ps_name = existing_ps->m_blob.fname;
-
-		// compile shaders
-		compile_and_create_shader(ShaderStage::eVertex, vs_name, existing_vs, true);
-		compile_and_create_shader(ShaderStage::ePixel, ps_name, existing_ps, true);
-
-		if (existing_pipeline->m_gs.hdl != 0)
+		It is currently redundantly recompiling shaders. It does it more than once (since its recompiling for every pipeline).
+		We don't need to do this, but as recompilation is a cold-feature (for rare debug or rapid experimentation), I'll just ignore this for now.
+	*/
+	if (graphics_pipe)
+	{
+		auto& pipelines = graphics_it->second;
+		for (auto& p : pipelines)
 		{
-			auto existing_gs = m_shaders.look_up(existing_pipeline->m_gs.hdl);
-			if (const auto& gs_name = existing_gs->m_blob.fname; !gs_name.empty())
-				compile_and_create_shader(ShaderStage::eGeometry, gs_name, existing_gs, true);
+			auto existing_pipeline = m_pipelines.look_up(p.hdl);
+
+			// get filenames to all shaders in the pipelines
+			auto existing_vs = m_shaders.look_up(existing_pipeline->m_vs.hdl);
+			auto existing_ps = m_shaders.look_up(existing_pipeline->m_ps.hdl);
+			const auto& vs_name = existing_vs->m_blob.fname;
+			const auto& ps_name = existing_ps->m_blob.fname;
+
+			// compile shaders
+			compile_and_create_shader(ShaderStage::eVertex, vs_name, existing_vs, true);
+			compile_and_create_shader(ShaderStage::ePixel, ps_name, existing_ps, true);
+
+			if (existing_pipeline->m_gs.hdl != 0)
+			{
+				auto existing_gs = m_shaders.look_up(existing_pipeline->m_gs.hdl);
+				if (const auto& gs_name = existing_gs->m_blob.fname; !gs_name.empty())
+					compile_and_create_shader(ShaderStage::eGeometry, gs_name, existing_gs, true);
+			}
+
+			if (existing_pipeline->m_hs.hdl != 0)
+			{
+				auto existing_hs = m_shaders.look_up(existing_pipeline->m_hs.hdl);
+				if (const auto& hs_name = existing_hs->m_blob.fname; !hs_name.empty())
+					compile_and_create_shader(ShaderStage::eHull, hs_name, existing_hs, true);
+			}
+
+			if (existing_pipeline->m_ds.hdl != 0)
+			{
+				auto existing_ds = m_shaders.look_up(existing_pipeline->m_ds.hdl);
+				if (const auto& ds_name = existing_ds->m_blob.fname; !ds_name.empty())
+					compile_and_create_shader(ShaderStage::eDomain, ds_name, existing_ds, true);
+			}
 		}
-
-		if (existing_pipeline->m_hs.hdl != 0)
+	}
+	else // compute
+	{
+		auto& pipelines = compute_it->second;
+		for (auto& p : pipelines)
 		{
-			auto existing_hs = m_shaders.look_up(existing_pipeline->m_hs.hdl);
-			if (const auto& hs_name = existing_hs->m_blob.fname; !hs_name.empty())
-				compile_and_create_shader(ShaderStage::eHull, hs_name, existing_hs, true);
-		}
+			auto existing_pipeline = m_compute_pipelines.look_up(p.hdl);
 
-		if (existing_pipeline->m_ds.hdl != 0)
-		{
-			auto existing_ds = m_shaders.look_up(existing_pipeline->m_ds.hdl);
-			if (const auto& ds_name = existing_ds->m_blob.fname; !ds_name.empty())
-				compile_and_create_shader(ShaderStage::eDomain, ds_name, existing_ds, true);
+			auto existing_cs = m_shaders.look_up(existing_pipeline->cs.hdl);
+			const auto& cs_name = existing_cs->m_blob.fname;
+			
+			// recompile cs
+			compile_and_create_shader(ShaderStage::eCompute, cs_name, existing_cs, true);
 		}
 	}
 
-	// Since we have recompiled the shaders, any pipeline which uses the shader handle associated with it has an updated version!
-	// No need to traverse pipelines (although we would need to do this in DX12 since we have to rebuild the PSO)
-	/*
-		Since this is a cold path, simply traversing 
-	*/
-
-	//for (auto& pipeline : m_pipelines)
-	//{
-	//	//if (pipeline.m_vs.hdl == sample_pipeline->m_vs.hdl)
-	//	//	pipeline.m_vs = sample_pipeline->m_vs;
-
-	//	//if (pipeline.m_ps.hdl == sample_pipeline->m_ps.hdl)
-	//	//	pipeline.m_ps = sample_pipeline->m_ps;
-
-	//	//if (pipeline.m_hs.hdl == sample_pipeline->m_hs.hdl)
-	//	//	pipeline.m_hs = sample_pipeline->m_hs;
-
-	//	//if (pipeline.m_gs.hdl == sample_pipeline->m_gs.hdl)
-	//	//	pipeline.m_gs = sample_pipeline->m_gs;
-
-	//	//if (pipeline.m_ds.hdl == sample_pipeline->m_ds.hdl)
-	//	//	pipeline.m_ds = sample_pipeline->m_ds;
-	//}
 }
 
 
@@ -431,7 +440,25 @@ ComputePipelineHandle GfxDevice::create_compute_pipeline(const ComputePipelineDe
 	pipeline->cs = desc.m_cs;
 	pipeline->is_registered = true;
 
-	return ComputePipelineHandle{ hdl };
+	auto ret_hdl = ComputePipelineHandle{ hdl };
+
+	// Add to lookup for reloading
+	if (m_reloading_on)
+	{
+		// add pipeline to lookup table
+		auto load_to_cache = [&](const std::string& fname)
+		{
+			auto it = m_loaded_compute_pipelines.find(fname);
+			if (it != m_loaded_compute_pipelines.end())
+				it->second.push_back(ret_hdl);
+			else
+				m_loaded_compute_pipelines.insert({ fname, { ret_hdl } });
+		};
+
+		load_to_cache(m_shaders.look_up(pipeline->cs.hdl)->m_blob.fname);
+	}
+
+	return ret_hdl;
 }
 
 RenderPassHandle GfxDevice::create_renderpass(const RenderPassDesc& desc)

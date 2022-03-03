@@ -159,7 +159,7 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 		compute_cmd->x_blocks = 3;
 		compute_cmd->y_blocks = 4;
 		compute_cmd->z_blocks = 5;
-		compute_cmd->set_profile_name("compute test");
+		compute_cmd->set_profile_name("Null Compute");
 		done = true;
 	}
 
