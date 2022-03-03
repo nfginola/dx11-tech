@@ -196,8 +196,8 @@ private:
 	unique_ptr<GPUAnnotator> m_annotator;
 
 	// Raster UAVs (bindable to VS, DS, HS, GS, PS)
-	std::array<ID3D11UnorderedAccessView*, gfxconstants::MAX_RASTER_UAVS> m_raster_uavs;
-	std::array<UINT, gfxconstants::MAX_RASTER_UAVS> m_raster_uav_initial_counts;
+	std::array<ID3D11UnorderedAccessView*, gfxconstants::MAX_BOUND_UAVS> m_raster_uavs;
+	std::array<UINT, gfxconstants::MAX_BOUND_UAVS> m_raster_uav_initial_counts;
 	UINT m_raster_rw_range_this_pass = 0;
 
 	// State

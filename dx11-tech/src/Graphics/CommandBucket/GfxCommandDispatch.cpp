@@ -62,6 +62,109 @@ void gfxcommand_dispatch::draw(const void* data)
 
 }
 
+void gfxcommand_dispatch::draw2(const void* data)
+{
+	const gfxcommand::Draw* cmd = reinterpret_cast<const gfxcommand::Draw*>(data);
+	using namespace gfxcommand::aux::computebindtable;
+
+	// Grab bind table
+	auto aux = gfxcommandpacket::get_aux_memory(cmd);
+	ComputeHeader* hdr = (ComputeHeader*)aux;
+	const auto& counts = hdr->get_counts();
+	char* payload = (char*)hdr + sizeof(ComputeHeader);
+	char* look_now = payload;
+
+	/*
+	Payload layout:
+		PayloadVB
+		..
+		PayloadCB
+		..
+		PayloadTexture (Read)
+		..
+		PayloadBuffer (Read)
+		..
+		PayloadTexture (RW)
+		..
+		PayloadBuffer (RW)
+		..
+		Sampler
+	*/
+	
+	// Bind VBs
+	gfx::dev->bind_vertex_buffers(0, look_now, counts.vbs);
+	look_now += counts.vbs * sizeof(PayloadVB);
+
+
+	for (uint64_t i = 0; i < counts.cbs; ++i)
+	{
+		auto cb = (PayloadCB*)look_now;
+
+		gfx::dev->bind_constant_buffer(cb->slot, (ShaderStage)cb->stage, cb->hdl, cb->offset56s, cb->range56s);
+		//fmt::print("Buffer: {}, {}, {}\n", cb->hdl.hdl, cb->slot, cb->stage);
+
+		look_now += sizeof(PayloadCB);
+	}
+
+	for (uint64_t i = 0; i < counts.tex_reads; ++i)
+	{
+		auto tex = (PayloadTexture*)look_now;
+
+		gfx::dev->bind_resource(tex->slot, (ShaderStage)tex->stage, tex->hdl);
+		//fmt::print("Texture: {}, {}, {}\n", tex->hdl.hdl, tex->slot, tex->stage);
+
+		look_now += sizeof(PayloadTexture);
+	}
+
+	for (uint64_t i = 0; i < counts.buf_reads; ++i)
+	{
+		auto buffer = (PayloadBuffer*)look_now;
+	
+		gfx::dev->bind_resource(buffer->slot, (ShaderStage)buffer->stage, buffer->hdl);
+		//fmt::print("Buffer: {}, {}, {}\n", buffer->hdl.hdl, buffer->slot, buffer->stage);
+
+		look_now += sizeof(PayloadBuffer);
+	}
+
+	// initial count hardcoded for submissions (fix later if needed)
+	static constexpr UINT initial_count = 0;
+	for (uint64_t i = 0; i < counts.tex_rws; ++i)
+	{
+		auto tex = (PayloadTexture*)look_now;
+
+		gfx::dev->bind_resource_rw(tex->slot, (ShaderStage)tex->stage, tex->hdl, initial_count);
+		//fmt::print("Texture: {}, {}, {}\n", tex->hdl.hdl, tex->slot, tex->stage);
+
+		look_now += sizeof(PayloadTexture);
+	}
+
+	for (uint64_t i = 0; i < counts.buf_rws; ++i)
+	{
+		auto buffer = (PayloadBuffer*)look_now;
+
+		gfx::dev->bind_resource_rw(buffer->slot, (ShaderStage)buffer->stage, buffer->hdl, initial_count);
+		//fmt::print("Buffer: {}, {}, {}\n", buffer->hdl.hdl, buffer->slot, buffer->stage);
+
+		look_now += sizeof(PayloadBuffer);
+	}
+
+	for (uint64_t i = 0; i < counts.samplers; ++i)
+	{
+		auto sampler = (PayloadSampler*)look_now;
+
+		gfx::dev->bind_sampler(sampler->slot, (ShaderStage)sampler->stage, sampler->hdl);
+		//fmt::print("Sampler: {}, {}, {}\n", sampler->hdl.hdl, sampler->slot, sampler->stage);
+
+		look_now += sizeof(PayloadCB);
+	}
+
+	// Draw
+	gfx::dev->bind_pipeline(cmd->pipeline);
+	gfx::dev->bind_index_buffer(cmd->ib);
+	gfx::dev->draw_indexed(cmd->index_count, cmd->index_start, cmd->vertex_start);
+}
+
+
 void gfxcommand_dispatch::copy_to_buffer(const void* data)
 {
     const gfxcommand::CopyToBuffer* cmd = reinterpret_cast<const gfxcommand::CopyToBuffer*>(data);

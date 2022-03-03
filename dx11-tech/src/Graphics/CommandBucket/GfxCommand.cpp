@@ -47,7 +47,7 @@ namespace gfxcommand::aux::bindtable
         return *this;
     }
 
-    Filler& Filler::add_cb(res_handle handle, uint8_t stage, uint8_t slot, uint32_t offset56s, uint32_t range56s)
+    Filler& Filler::add_cb(res_handle handle, ShaderStage stage, uint8_t slot, uint32_t offset56s, uint32_t range56s)
     {
         if (cb_off || cb_count >= hdr->cbs)
             assert(false);
@@ -56,7 +56,7 @@ namespace gfxcommand::aux::bindtable
         void* curr_pos = payload_start + curr_payload_offset;
 
         ((PayloadCB*)curr_pos)->hdl = handle;
-        ((PayloadCB*)curr_pos)->stage = stage;
+        ((PayloadCB*)curr_pos)->stage = (uint8_t)stage;
         ((PayloadCB*)curr_pos)->slot = slot;
         ((PayloadCB*)curr_pos)->offset56s = offset56s;
         ((PayloadCB*)curr_pos)->range56s = range56s;
@@ -67,7 +67,7 @@ namespace gfxcommand::aux::bindtable
 
     }
 
-    Filler& Filler::add_texture(res_handle handle, uint8_t stage, uint8_t slot)
+    Filler& Filler::add_texture(res_handle handle, ShaderStage stage, uint8_t slot)
     {
         if (textures_off || texture_count >= hdr->textures)
             assert(false);
@@ -77,7 +77,7 @@ namespace gfxcommand::aux::bindtable
         void* curr_pos = payload_start + curr_payload_offset;
 
         ((PayloadTexture*)curr_pos)->hdl = handle;
-        ((PayloadTexture*)curr_pos)->stage = stage;
+        ((PayloadTexture*)curr_pos)->stage = (uint8_t)stage;
         ((PayloadTexture*)curr_pos)->slot = slot;
 
         curr_payload_offset += sizeof(PayloadTexture);
@@ -85,7 +85,7 @@ namespace gfxcommand::aux::bindtable
         return *this;
     }
 
-    Filler& Filler::add_sampler(res_handle handle, uint8_t stage, uint8_t slot)
+    Filler& Filler::add_sampler(res_handle handle, ShaderStage stage, uint8_t slot)
     {
         if (sampler_count >= hdr->samplers)
             assert(false);
@@ -96,7 +96,7 @@ namespace gfxcommand::aux::bindtable
         void* curr_pos = payload_start + curr_payload_offset;
 
         ((PayloadSampler*)curr_pos)->hdl = handle;
-        ((PayloadSampler*)curr_pos)->stage = stage;
+        ((PayloadSampler*)curr_pos)->stage = (uint8_t)stage;
         ((PayloadSampler*)curr_pos)->slot = slot;
 
         curr_payload_offset += sizeof(PayloadSampler);
@@ -115,11 +115,120 @@ namespace gfxcommand::aux::bindtable
 
 }
 
+namespace gfxcommand::aux::computebindtable
+{
+    // validation
+    ComputeFiller::~ComputeFiller()
+    {
+        // check so that we have added the bindings that we have declared
+        assert(active_counts == hdr.counts);
+    }
 
+    ComputeFiller::ComputeFiller(void* memory, const ComputeHeader& header) :
+        hdr(header),
+        payload_start((char*)memory + sizeof(ComputeHeader))
+    {
+        // copy header to the start of the memory
+        *(ComputeHeader*)memory = header;
+    }
 
-/*
-    Copy to buffer     
-*/
+    ComputeFiller& ComputeFiller::add_vb(BufferHandle handle, uint32_t stride, uint32_t offset)
+    {
+        assert(active_counts.vbs < hdr.counts.vbs);
+
+        char* vbs_start = payload_start + vb_offset;
+        PayloadVB* mem = (PayloadVB*)(vbs_start + active_counts.vbs * sizeof(PayloadVB));
+        mem->hdl = handle;
+        mem->stride = stride;
+        mem->offset = offset;
+
+        ++active_counts.vbs;
+        return *this;
+    }
+    ComputeFiller& ComputeFiller::add_cb(BufferHandle handle, ShaderStage stage, uint8_t slot, uint32_t offset56s, uint32_t range56s)
+    {
+        assert(active_counts.cbs < hdr.counts.cbs);
+
+        char* cbs_start = payload_start + cb_offset;
+        PayloadCB* mem = (PayloadCB*)(cbs_start + active_counts.cbs * sizeof(PayloadCB));
+        mem->hdl = handle;
+        mem->stage = (uint8_t)stage;
+        mem->slot = slot;
+        mem->offset56s = offset56s;
+        mem->range56s = range56s;
+
+        ++active_counts.cbs;
+        return *this;
+    }
+    ComputeFiller& ComputeFiller::add_read_tex(TextureHandle handle, ShaderStage stage, uint8_t slot)
+    {
+        assert(active_counts.tex_reads < hdr.counts.tex_reads);
+
+        char* tex_reads_start = payload_start + tex_read_offset;
+        PayloadTexture* mem = (PayloadTexture*)(tex_reads_start + active_counts.tex_reads * sizeof(PayloadTexture));
+        mem->hdl = handle;
+        mem->stage = (uint8_t)stage;
+        mem->slot = slot;
+
+        ++active_counts.tex_reads;
+        return *this;
+    }
+    ComputeFiller& ComputeFiller::add_read_buf(BufferHandle handle, ShaderStage stage, uint8_t slot)
+    {
+        assert(active_counts.buf_reads < hdr.counts.buf_reads);
+
+        char* buf_reads_start = payload_start + buf_read_offset;
+        PayloadBuffer* mem = (PayloadBuffer*)(buf_reads_start + active_counts.buf_reads * sizeof(PayloadBuffer));
+        mem->hdl = handle;
+        mem->stage = (uint8_t)stage;
+        mem->slot = slot;
+
+        ++active_counts.buf_reads;
+        return *this;
+    }
+    ComputeFiller& ComputeFiller::add_rw_tex(TextureHandle handle, ShaderStage stage, uint8_t slot)
+    {
+        assert(active_counts.tex_rws < hdr.counts.tex_rws);
+
+        char* tex_rws_start = payload_start + tex_rws_offset;
+        PayloadTexture* mem = (PayloadTexture*)(tex_rws_start + active_counts.tex_rws * sizeof(PayloadTexture));
+        mem->hdl = handle;
+        mem->stage = (uint8_t)stage;
+        mem->slot = slot;
+
+        ++active_counts.tex_rws;
+        return *this;
+    }
+    ComputeFiller& ComputeFiller::add_rw_buf(BufferHandle handle, ShaderStage stage, uint8_t slot)
+    {
+        assert(active_counts.buf_rws < hdr.counts.buf_rws);
+
+        char* buf_rws_start = payload_start + buf_rws_offset;
+        PayloadBuffer* mem = (PayloadBuffer*)(buf_rws_start + active_counts.buf_rws * sizeof(PayloadBuffer));
+        mem->hdl = handle;
+        mem->stage = (uint8_t)stage;
+        mem->slot = slot;
+
+        ++active_counts.buf_rws;
+        return *this;
+
+    }
+    ComputeFiller& ComputeFiller::add_sampler(SamplerHandle handle, ShaderStage stage, uint8_t slot)
+    {
+        assert(active_counts.samplers < hdr.counts.samplers);
+
+        char* samplers_start = payload_start + samplers_offset;
+        PayloadSampler* mem = (PayloadSampler*)(samplers_start + active_counts.samplers * sizeof(PayloadSampler));
+        mem->hdl = handle;
+        mem->stage = (uint8_t)stage;
+        mem->slot = slot;
+
+        ++active_counts.samplers;
+        return *this;
+    }
+
+}
+
 
 
 

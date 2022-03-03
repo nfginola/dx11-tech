@@ -53,6 +53,10 @@ ModelRenderer::ModelRenderer(Renderer* master_renderer) :
 	m_per_object_data_allocator(make_unique<LinearAllocator>(MAX_SUBMISSION_PER_FRAME * sizeof(PerObjectData)))
 {
 	m_per_object_cb = gfx::dev->create_buffer(BufferDesc::constant(gfxconstants::MIN_CB_SIZE_FOR_RANGES * MAX_SUBMISSION_PER_FRAME));
+
+	int i = sizeof(gfxcommand::aux::computebindtable::ComputeHeader);
+	int x = sizeof(gfxcommand::aux::computebindtable::ComputeFiller);
+	int y = sizeof(gfxcommand::aux::computebindtable::PayloadBuffer);
 }
 
 void ModelRenderer::begin()
@@ -73,6 +77,8 @@ void ModelRenderer::end()
 	m_per_object_data_allocator->reset();
 
 }
+
+void thingy(void* cmd);
 
 void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& wm, ModelRenderSpec spec)
 {
@@ -140,6 +146,47 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 			cmd->vertex_start = mesh.vertex_start;
 			cmd->pipeline = m_shared_resources->depth_only_pipe;	// Always uses depth only pipe for shadow rendering
 
+			/*
+				// Declare header
+				// Build pattern lets you write only what you use (decrease bloat)
+				auto header = gfxcommand::aux::computebindtable::ComputeHeader()
+					.set_cbs(3)
+					.set_tex_reads(2)
+					.set_buf_reads(1)
+					.set_tex_rws(4)
+					.set_buf_rws(1)
+					.set_samplers(1);
+
+				add_command(aux, header.get_size())		// get_size returns sizeof(Header) + all require bindings size
+
+				
+				
+				// constructor should verify that the declared binds in the header is less in size than the payload
+				// think of this as a deferred validation, since Header and Payload are cohesive
+
+				// Constructor copies Header into the beginning of aux and then sets the payload..
+				auto payload = gfxcommand::aux::computebindtable::ComputeFiller(aux, header)
+					.set_cb(..., 0)
+					.set_cb(..., 1)
+					...
+					
+					only validation needed is during set where we check if curr_bound < max_bound!
+						--> less room for error (e.g forgetting to validate at the end)
+					
+					support arbitrary order of setting payload by reserving exactly the supplied amount of space per bind attribute
+					[header, cb, cb, cb, tex, tex, buf, tex, tex, tex, tex, buf, sampler] (using header above as example for this load)
+					
+					// note that this is a part of Filler (helper) and not a part of the Payload! :)
+					// uint16_t for below types should be enough
+					cb_offset = sizeof(Header)
+					tex_read_offset = cb_offset + cbs * sizeof(PayloadCB)
+					buf_read_offset = tex_read_offset + tex_reads * sizeof(TexturePayload)
+					tex_rws_offset = buf_read_offset + buf_reads * sizeof(BufferPayload)
+					buf_rws_offset = tex_rws_offset + tex_rws * sizeof(TexturePayload)
+					samplers_offset = buf_rws_offset + buf_rws * sizeoof(BufferPayload)
+
+			*/
+
 			// Fill draw call payload (bind table)
 			payload = gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(cmd), vbs_in, cbs_in, samplers_in, textures_in);
 			for (int i = 0; i < vbs_in; ++i)
@@ -148,7 +195,108 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 			payload.add_cb(m_per_object_cb.hdl, ShaderStage::eVertex, 1, m_submission_count);
 			payload.validate();
 		}
+
+
+		//// Custom call
+		//auto hdr = gfxcommand::aux::computebindtable::ComputeHeader()
+		//	.set_cbs(3)
+		//	.set_buf_reads(1)
+		//	.set_tex_reads(2);
+
+		//auto cmd2 = transp_bucket->add_command<gfxcommand::Draw>(0, hdr.size());
+
+		//// fill header + payload in aux memory
+		//gfxcommand::aux::computebindtable::ComputeFiller(gfxcommandpacket::get_aux_memory(cmd2), hdr)
+		//	.add_cb(BufferHandle{ 1 }, ShaderStage::eVertex, 0)
+		//	.add_cb(BufferHandle{ 5 }, ShaderStage::eVertex, 1)
+		//	.add_cb(BufferHandle{ 13 }, ShaderStage::eVertex, 2)
+		//	.add_read_tex(TextureHandle{ 50 }, ShaderStage::ePixel, 3)
+		//	.add_read_buf(BufferHandle{ 31 }, ShaderStage::ePixel, 10)
+		//	.add_read_tex(TextureHandle{ 71 }, ShaderStage::ePixel, 1);
+		//	
+		//thingy(gfxcommandpacket::get_aux_memory(cmd2));
+
+
 	}
 
 	++m_submission_count;
+}
+
+void thingy(void* cmd)
+{
+	using namespace gfxcommand::aux::computebindtable;
+
+	ComputeHeader* hdr = (ComputeHeader*)cmd;
+	const auto& counts = hdr->get_counts();
+	char* payload = (char*)hdr + sizeof(ComputeHeader);
+	char* look_now = payload;
+
+	/*
+	Payload layout:
+		PayloadCB
+		..
+		PayloadTexture (Read)
+		..
+		PayloadBuffer (Read)
+		..
+		PayloadTexture (RW)
+		..
+		PayloadBuffer (RW)
+		..
+		Sampler
+	*/
+	for (uint64_t i = 0; i < counts.cbs; ++i)
+	{
+		auto cb = (PayloadCB*)look_now;
+		
+		fmt::print("Buffer: {}, {}, {}\n", cb->hdl.hdl, cb->slot, cb->stage);
+
+		look_now += sizeof(PayloadCB);
+	}	
+
+	for (uint64_t i = 0; i < counts.tex_reads; ++i)
+	{
+		auto tex = (PayloadTexture*)look_now;
+
+		fmt::print("Texture: {}, {}, {}\n", tex->hdl.hdl, tex->slot, tex->stage);
+
+		look_now += sizeof(PayloadTexture);
+	}
+
+	for (uint64_t i = 0; i < counts.buf_reads; ++i)
+	{
+		auto buffer = (PayloadBuffer*)look_now;
+
+		fmt::print("Buffer: {}, {}, {}\n", buffer->hdl.hdl, buffer->slot, buffer->stage);
+
+		look_now += sizeof(PayloadBuffer);
+	}
+
+	for (uint64_t i = 0; i < counts.tex_rws; ++i)
+	{
+		auto tex = (PayloadTexture*)look_now;
+
+		fmt::print("Texture: {}, {}, {}\n", tex->hdl.hdl, tex->slot, tex->stage);
+
+		look_now += sizeof(PayloadTexture);
+	}
+
+	for (uint64_t i = 0; i < counts.buf_rws; ++i)
+	{
+		auto buffer = (PayloadBuffer*)look_now;
+
+		fmt::print("Buffer: {}, {}, {}\n", buffer->hdl.hdl, buffer->slot, buffer->stage);
+
+		look_now += sizeof(PayloadBuffer);
+	}
+
+
+	for (uint64_t i = 0; i < counts.samplers; ++i)
+	{
+		auto sampler = (PayloadSampler*)look_now;
+
+		fmt::print("Sampler: {}, {}, {}\n", sampler->hdl.hdl, sampler->slot, sampler->stage);
+
+		look_now += sizeof(PayloadCB);
+	}
 }

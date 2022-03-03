@@ -499,7 +499,7 @@ void GfxDevice::end_pass()
 	{
 		ctx->OMSetRenderTargetsAndUnorderedAccessViews(
 			gfxconstants::MAX_RENDER_TARGETS, (ID3D11RenderTargetView* const*)gfxconstants::NULL_RESOURCE, nullptr,
-			0, gfxconstants::MAX_RASTER_UAVS, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, nullptr);
+			0, gfxconstants::MAX_BOUND_UAVS, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, nullptr);
 		m_raster_rw_range_this_pass = 0;
 	}
 	else
@@ -722,7 +722,7 @@ void GfxDevice::dispatch(UINT blocks_x, UINT blocks_y, UINT blocks_z)
 	// Ans: Check GP Discord, DirectX section, answer from jwki
 	// No need to sync with Fence
 	// https://stackoverflow.com/questions/55005420/how-to-do-a-blocking-wait-for-a-compute-shader-with-direct3d11
-	ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_CS_UAV, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
+	ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_BOUND_UAVS, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
 }
 
 void GfxDevice::draw(UINT vertex_count, UINT start_loc)
@@ -1359,7 +1359,7 @@ void GfxDevice::begin_pass(const RenderPass* RenderPass, DepthStencilClear ds_cl
 	{
 		ctx->OMSetRenderTargetsAndUnorderedAccessViews(
 			gfxconstants::MAX_RENDER_TARGETS, rtvs, dsv,
-			0, gfxconstants::MAX_RASTER_UAVS, m_raster_uavs.data(), m_raster_uav_initial_counts.data());
+			0, gfxconstants::MAX_BOUND_UAVS, m_raster_uavs.data(), m_raster_uav_initial_counts.data());
 	}
 	else
 	{
