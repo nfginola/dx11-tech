@@ -227,11 +227,16 @@ void GfxDevice::recompile_pipeline_shaders_by_name(const std::string& name)
 		"Recompile every pipeline".
 
 		It is currently redundantly recompiling shaders. It does it more than once (since its recompiling for every pipeline).
-		We don't need to do this, but as recompilation is a cold-feature (for rare debug or rapid experimentation), I'll just ignore this for now.
+		As recompilation is a cold-feature (for rare debug or rapid experimentation), I'll just ignore this for now.
 	*/
 	if (graphics_pipe)
 	{
 		auto& pipelines = graphics_it->second;
+		/*
+			we recompile everything for every pipeline that is related to the reloaded shader.
+			if we e.g change output of VS, changes in HS/DS/GS/PS (input) is likely to be changed as well.
+			So lets just recompile em all, even if it is slightly redundant
+		*/
 		for (auto& p : pipelines)
 		{
 			auto existing_pipeline = m_pipelines.look_up(p.hdl);
@@ -270,16 +275,17 @@ void GfxDevice::recompile_pipeline_shaders_by_name(const std::string& name)
 	}
 	else // compute
 	{
+		ShaderBytecode bc;
+		compile_shader(ShaderStage::eCompute, fname, &bc, true);
+
 		auto& pipelines = compute_it->second;
 		for (auto& p : pipelines)
 		{
 			auto existing_pipeline = m_compute_pipelines.look_up(p.hdl);
-
 			auto existing_cs = m_shaders.look_up(existing_pipeline->cs.hdl);
-			const auto& cs_name = existing_cs->m_blob.fname;
 			
-			// recompile cs
-			compile_and_create_shader(ShaderStage::eCompute, cs_name, existing_cs, true);
+			// simply recreate internal resource without modifying handles
+			create_shader(ShaderStage::eCompute, bc, existing_cs);
 		}
 	}
 
