@@ -423,6 +423,8 @@ PipelineHandle GfxDevice::create_pipeline(const PipelineDesc& desc)
 
 ComputePipelineHandle GfxDevice::create_compute_pipeline(const ComputePipelineDesc& desc)
 {
+	assert(desc.m_cs.hdl != 0);
+
 	auto [hdl, pipeline] = m_compute_pipelines.get_next_free_handle();
 	pipeline->handle = hdl;
 	
@@ -528,6 +530,13 @@ void GfxDevice::end_pass()
 
 
 
+void GfxDevice::bind_compute_pipeline(ComputePipelineHandle pipeline)
+{
+	const auto p = m_compute_pipelines.look_up(pipeline.hdl);
+	const auto cs = m_shaders.look_up(p->cs.hdl);
+	m_dev->get_context()->CSSetShader((ID3D11ComputeShader*)cs->m_internal_resource.Get(), nullptr, 0);
+}
+
 void GfxDevice::bind_pipeline(PipelineHandle pipeline, std::array<FLOAT, 4> blend_factor, UINT stencil_ref)
 {
 	bind_pipeline(m_pipelines.look_up(pipeline.hdl), blend_factor, stencil_ref);
@@ -535,6 +544,9 @@ void GfxDevice::bind_pipeline(PipelineHandle pipeline, std::array<FLOAT, 4> blen
 
 void GfxDevice::bind_vertex_buffers(UINT start_slot, const std::vector<std::tuple<BufferHandle, UINT, UINT>>& buffers_strides_offsets)
 {
+	if (buffers_strides_offsets.size() == 0)
+		return;
+
 	UINT identical = 0;
 	for (int i = 0; i < buffers_strides_offsets.size(); ++i)
 	{
@@ -573,6 +585,9 @@ void GfxDevice::bind_vertex_buffers(UINT start_slot, const std::vector<std::tupl
 
 void GfxDevice::bind_vertex_buffers(UINT start_slot, void* buffers_strides_offsets, uint8_t count)
 {
+	if (count == 0)
+		return;
+
 	struct BSO
 	{
 		BufferHandle hdl;

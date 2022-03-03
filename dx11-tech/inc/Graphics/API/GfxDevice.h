@@ -85,7 +85,7 @@ public:
 	void free_renderpass(RenderPassHandle hdl);
 	
 	// Binds
-	//void bind_compute_pipeline(const ComputePipeline* pipeline);
+	void bind_compute_pipeline(ComputePipelineHandle pipeline);
 	void bind_pipeline(PipelineHandle pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
 	void begin_pass(RenderPassHandle rp, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
 	void end_pass();

@@ -61,7 +61,7 @@ Renderer::Renderer()
 	{
 		CD3D11_VIEWPORT(0.f, 0.f, (FLOAT)sc_dim.first, (FLOAT)sc_dim.second),	// To Swapchain (changes when swapchain is resized)
 		CD3D11_VIEWPORT(0.f, 0.f, (FLOAT)sc_dim.first, (FLOAT)sc_dim.second),	// Render to texture (stays the same for Geometry Pass)
-		CD3D11_VIEWPORT(0.f, 0.f, shadow_res, shadow_res)								// Shadow (temp hardcoded)
+		CD3D11_VIEWPORT(0.f, 0.f, (FLOAT)shadow_res, (FLOAT)shadow_res)								// Shadow (temp hardcoded)
 	};
 
 	// setup geometry pass 
@@ -237,8 +237,11 @@ void Renderer::render()
 	// Upload per frame data to GPU
 	gfx::dev->map_copy(m_cb_per_frame, SubresourceData(&m_cb_dat, sizeof(m_cb_dat)));
 
-	// Flush miscellaneous per-frame GPU copies
+	// Dispatch miscellaneous per-frame GPU copies
 	m_copy_bucket.flush();
+
+	// Dispatch compute work
+	m_compute_bucket.flush();
 
 	// Bind per frame data (should be bound to like slot 14 as reserved space)
 	gfx::dev->bind_constant_buffer(0, ShaderStage::eVertex, m_cb_per_frame, 0);

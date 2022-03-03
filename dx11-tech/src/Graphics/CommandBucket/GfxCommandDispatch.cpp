@@ -3,94 +3,104 @@
 #include "Graphics/CommandBucket/GfxCommand.h"
 #include "Graphics/CommandBucket/GfxCommandPacket.h"
 #include "Graphics/API/GfxDevice.h"
+#include "Profiler/FrameProfiler.h"
 
 // Global dependencies
 namespace gfx
 {
 	extern GfxDevice* dev;
 }
+// FrameProfiler
+
+// ================== helper decls
+void bind_resource_table(char* look_now, const gfxcommand::aux::bindtable::ResourceCounts& counts);
+
+
+// ================== commands
 
 void gfxcommand_dispatch::draw(const void* data)
 {
-    using namespace gfxcommand::aux;
-    const gfxcommand::Draw* cmd = reinterpret_cast<const gfxcommand::Draw*>(data);
+	const auto cmd = (const gfxcommand::Draw*)data;
+	using namespace gfxcommand::aux::bindtable;
 
-    // Grab bind table
-    auto aux = gfxcommandpacket::get_aux_memory(cmd);
-    assert(aux != nullptr);
-    bindtable::Header* md = reinterpret_cast<bindtable::Header*>(aux);
-    assert(md->validated == 1);
-    
-    // Grab payload
-    char* payload_now = (char*)md + sizeof(bindtable::Header);
+	// Grab bind table header and payload
+	auto aux = gfxcommandpacket::get_aux_memory(cmd);
+	Header* hdr = (Header*)aux;
+	const auto& counts = hdr->get_counts();
+	char* payload = (char*)hdr + sizeof(Header);
+	char* look_now = payload;
+	
+	// Bind resources
+	bind_resource_table(look_now, counts);
 
-    // Bind VBs
-    auto* vbs = reinterpret_cast<bindtable::PayloadVB*>(payload_now);
-    gfx::dev->bind_vertex_buffers(0, vbs, md->vbs);
-    payload_now += md->vbs * sizeof(bindtable::PayloadVB);  // go to next type
-
-    // Bind CBs
-    auto* cbs = reinterpret_cast<bindtable::PayloadCB*>(payload_now);
-    for (unsigned int i = 0; i < md->cbs; ++i)
-    {
-        const auto& cb_dat = cbs[i];
-        gfx::dev->bind_constant_buffer(cb_dat.slot, (ShaderStage)cb_dat.stage, BufferHandle{ cb_dat.hdl }, cb_dat.offset56s, cb_dat.range56s);
-    }
-    payload_now += md->cbs * sizeof(bindtable::PayloadCB);  // go to next type
-    
-    // Bind read textures
-    auto* textures = reinterpret_cast<bindtable::PayloadTexture*>(payload_now);
-    for (unsigned int i = 0; i < md->textures; ++i)
-    {
-        const auto& texture_dat = textures[i];
-        gfx::dev->bind_resource(texture_dat.slot, (ShaderStage)texture_dat.stage, TextureHandle{ texture_dat.hdl });
-    }
-    payload_now += md->textures * sizeof(bindtable::PayloadTexture);  // go to next type
-    
-    // Bind samplers
-    auto* samplers = reinterpret_cast<bindtable::PayloadSampler*>(payload_now);
-    for (unsigned int i = 0; i < md->samplers; ++i)
-    {
-        const auto& sampler_dat = samplers[i];
-        gfx::dev->bind_sampler(sampler_dat.slot, (ShaderStage)sampler_dat.stage, SamplerHandle{ sampler_dat.hdl });
-    }
-    
-    // Draw
-    gfx::dev->bind_pipeline(cmd->pipeline);
-    gfx::dev->bind_index_buffer(cmd->ib);
-    gfx::dev->draw_indexed(cmd->index_count, cmd->index_start, cmd->vertex_start);
-
+	// Draw
+	gfx::dev->bind_pipeline(cmd->pipeline);
+	gfx::dev->bind_index_buffer(cmd->ib);
+	gfx::dev->draw_indexed(cmd->index_count, cmd->index_start, cmd->vertex_start);
 }
 
-void gfxcommand_dispatch::draw2(const void* data)
+void gfxcommand_dispatch::dispatch(const void* data)
 {
-	const gfxcommand::Draw* cmd = reinterpret_cast<const gfxcommand::Draw*>(data);
-	using namespace gfxcommand::aux::computebindtable;
+	const auto cmd = (const gfxcommand::ComputeDispatch*)data;
+	using namespace gfxcommand::aux::bindtable;
 
-	// Grab bind table
+	// Grab bind table header and payload
 	auto aux = gfxcommandpacket::get_aux_memory(cmd);
-	ComputeHeader* hdr = (ComputeHeader*)aux;
+	Header* hdr = (Header*)aux;
 	const auto& counts = hdr->get_counts();
-	char* payload = (char*)hdr + sizeof(ComputeHeader);
+	char* payload = (char*)hdr + sizeof(Header);
 	char* look_now = payload;
 
+	// Bind resources (user is responsible for making sure the binds are directed to the CS stage)
+	// Otherwise, binds on the normal rendering pipeline are done (if any)
+	//bind_resource_table(look_now, counts);
+
+	// Bind compute and dispatch
+	if (cmd->profile_name[0] == '\0')
+	{
+		gfx::dev->dispatch(cmd->x_blocks, cmd->y_blocks, cmd->z_blocks);
+		bind_resource_table(look_now, counts);
+
+	}
+	else
+	{
+		auto _ = FrameProfiler::Scoped(cmd->profile_name.data());
+		// Is read/write stalls recorded by scoping over binds? (I will assume yes for now)
+		bind_resource_table(look_now, counts);							
+		gfx::dev->dispatch(cmd->x_blocks, cmd->y_blocks, cmd->z_blocks);
+	}
+}
+
+void gfxcommand_dispatch::copy_to_buffer(const void* data)
+{
+    const gfxcommand::CopyToBuffer* cmd = reinterpret_cast<const gfxcommand::CopyToBuffer*>(data);
+    gfx::dev->map_copy(cmd->buffer, SubresourceData(cmd->data, (UINT)cmd->data_size));
+}
+
+
+
+// ================== helper defs
+void bind_resource_table(char* look_now, const gfxcommand::aux::bindtable::ResourceCounts& counts)
+{
 	/*
-	Payload layout:
-		PayloadVB
-		..
-		PayloadCB
-		..
-		PayloadTexture (Read)
-		..
-		PayloadBuffer (Read)
-		..
-		PayloadTexture (RW)
-		..
-		PayloadBuffer (RW)
-		..
-		Sampler
+		Payload layout:
+			PayloadVB
+			..
+			PayloadCB
+			..
+			PayloadTexture (Read)
+			..
+			PayloadBuffer (Read)
+			..
+			PayloadTexture (RW)
+			..
+			PayloadBuffer (RW)
+			..
+			Sampler
 	*/
 	
+	using namespace gfxcommand::aux::bindtable;
+
 	// Bind VBs
 	gfx::dev->bind_vertex_buffers(0, look_now, counts.vbs);
 	look_now += counts.vbs * sizeof(PayloadVB);
@@ -138,16 +148,4 @@ void gfxcommand_dispatch::draw2(const void* data)
 		gfx::dev->bind_sampler(sampler->slot, (ShaderStage)sampler->stage, sampler->hdl);
 		look_now += sizeof(PayloadCB);
 	}
-
-	// Draw
-	gfx::dev->bind_pipeline(cmd->pipeline);
-	gfx::dev->bind_index_buffer(cmd->ib);
-	gfx::dev->draw_indexed(cmd->index_count, cmd->index_start, cmd->vertex_start);
-}
-
-
-void gfxcommand_dispatch::copy_to_buffer(const void* data)
-{
-    const gfxcommand::CopyToBuffer* cmd = reinterpret_cast<const gfxcommand::CopyToBuffer*>(data);
-    gfx::dev->map_copy(cmd->buffer, SubresourceData(cmd->data, (UINT)cmd->data_size));
 }

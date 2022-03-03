@@ -51,7 +51,7 @@ DXDevice::DXDevice(HWND hwnd, int bbWidth, int bbHeight) :
 	create_bb_target();
 
 	// Grab annotation
-	HRCHECK(m_context->QueryInterface(__uuidof(ID3DUserDefinedAnnotation), (void**)m_annotation.GetAddressOf()));
+	HRCHECK(m_context_1->QueryInterface(__uuidof(ID3DUserDefinedAnnotation), (void**)m_annotation.GetAddressOf()));
 
 	// Prevent DXGI from responding to Mode Changes and Alt + Enter (We will handle this ourselves)
 	//m_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER);		// orig
@@ -70,7 +70,10 @@ DXDevice::~DXDevice()
 
 void DXDevice::create_device_and_context()
 {
-	std::array<D3D_FEATURE_LEVEL, 2> featureLevels{ D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_11_1 };		// 11.1
+	// https://stackoverflow.com/questions/14804636/directx-11-1-and-win32-desktop
+	// Using 11_1
+
+	std::array<D3D_FEATURE_LEVEL, 1> featureLevels{ D3D_FEATURE_LEVEL_11_1 };		// 11.1
 	UINT flags = D3D11_CREATE_DEVICE_DEBUG/*| D3D11_CREATE_DEVICE_SINGLETHREADED*/;		// We may have async resource creation
 
 	HRCHECK(
@@ -88,20 +91,20 @@ void DXDevice::create_device_and_context()
 		)
 	);
 
-	// Get factory associated with the created device
-	ComPtr<IDXGIDevice> dxgi_dev;
-	HRCHECK(m_device->QueryInterface(__uuidof(IDXGIDevice), (void**)dxgi_dev.GetAddressOf()));
-	HRCHECK(dxgi_dev->GetParent(__uuidof(IDXGIAdapter), (void**)m_adapter.GetAddressOf()));
-	HRCHECK(m_adapter->GetParent(__uuidof(IDXGIFactory), (void**)m_factory.GetAddressOf()));
-
 	// Get 11.1 Device and Context
 	HRCHECK(m_device->QueryInterface(__uuidof(ID3D11Device1), (void**)m_device_1.GetAddressOf()));
 	m_device_1->GetImmediateContext1(m_context_1.GetAddressOf());
+
+	// Get factory associated with the created device
+	ComPtr<IDXGIDevice> dxgi_dev;
+	HRCHECK(m_device_1->QueryInterface(__uuidof(IDXGIDevice), (void**)dxgi_dev.GetAddressOf()));
+	HRCHECK(dxgi_dev->GetParent(__uuidof(IDXGIAdapter), (void**)m_adapter.GetAddressOf()));
+	HRCHECK(m_adapter->GetParent(__uuidof(IDXGIFactory), (void**)m_factory.GetAddressOf()));
 }
 
 void DXDevice::get_debug()
 {
-	HRCHECK(m_device->QueryInterface(__uuidof(ID3D11Debug), (void**)m_debug.GetAddressOf()));
+	HRCHECK(m_device_1->QueryInterface(__uuidof(ID3D11Debug), (void**)m_debug.GetAddressOf()));
 	HRCHECK(m_debug->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)s_info_queue.GetAddressOf()));
 	s_info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
 	s_info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
@@ -157,7 +160,7 @@ void DXDevice::create_swapchain(HWND hwnd, int bbWidth, int bbHeight)
 	// No we dont allow Mode Switch: We handle exclusive fullscreen manually :)
 	//m_sc_desc.Flags = 0;
 
-	HRCHECK(m_factory->CreateSwapChain(m_device.Get(), &m_sc_desc, m_sc.GetAddressOf()));
+	HRCHECK(m_factory->CreateSwapChain(m_device_1.Get(), &m_sc_desc, m_sc.GetAddressOf()));
 
 	// Setup viewport 
 	m_bbViewport.TopLeftX = m_bbViewport.TopLeftY = 0;
@@ -186,7 +189,7 @@ void DXDevice::create_bb_target()
 	//HRCHECK(m_device->CreateRenderTargetView(m_bbTex.Get(), &rtvDesc, m_bbView.GetAddressOf()));
 
 	// We will use default UNORM non-SRGB specified by Texture format (We gamma correct manually)
-	HRCHECK(m_device->CreateRenderTargetView(m_bbTex.Get(), nullptr, m_bbView.GetAddressOf()));
+	HRCHECK(m_device_1->CreateRenderTargetView(m_bbTex.Get(), nullptr, m_bbView.GetAddressOf()));
 }
 
 HWND DXDevice::get_hwnd() const

@@ -65,11 +65,9 @@ private:
 	PerObjectData* m_per_object_data = nullptr;
 	uint32_t m_submission_count = 0;
 
-	// Temporary (should be removed later)
-	//PipelineHandle m_def_pipeline;
 
-	// should be moved 
-	//PipelineHandle m_depth_only_pipe;
+	// test compute
+	ComputePipelineHandle m_compute_pipe;
 
 
 };

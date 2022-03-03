@@ -79,7 +79,7 @@ class ComputePipelineDesc
 	friend class GfxDevice;
 
 public:
-	ComputePipelineDesc& set_shader(ComputeShader cs);
+	ComputePipelineDesc(ComputeShader cs);
 
 private:
 	ShaderHandle m_cs;

@@ -303,6 +303,7 @@
     <FxCompile Include="shaders\finalQuadPS.hlsl" />
     <FxCompile Include="shaders\depthOnlyVS.hlsl" />
     <FxCompile Include="shaders\depthOnlyPS.hlsl" />
+    <FxCompile Include="shaders\ComputeShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\TonemappingAlgorithms.hlsli" />

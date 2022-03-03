@@ -40,11 +40,16 @@ namespace gfxcommand
 	struct ComputeDispatch
 	{
 		static const GfxCommandDispatch DISPATCH;
+		ComputePipelineHandle pipeline;
 		uint32_t x_blocks = 1;
 		uint32_t y_blocks = 1;
 		uint32_t z_blocks = 1;
+		std::array<char, 32> profile_name;
 
-
+		void set_profile_name(const char* name)
+		{
+			strncpy_s(profile_name.data(), profile_name.size(), "compute_test", profile_name.size());
+		}
 	};
 
 
@@ -52,84 +57,6 @@ namespace gfxcommand
 	namespace aux
 	{
 		namespace bindtable
-		{
-			size_t get_size(uint8_t vb_count, uint8_t cb_count, uint8_t sampler_count, uint8_t texture_count);
-
-			struct Header
-			{
-				unsigned int vbs : 4;
-				unsigned int cbs : 4;
-				unsigned int textures : 7;
-				unsigned int validated : 1;
-				unsigned int samplers : 3;
-
-				Header() = delete;
-				Header(uint8_t vbs_in, uint8_t cbs_in, uint8_t samplers_in, uint8_t textures_in)
-				{
-					validated = 0;
-					vbs = vbs_in;
-					cbs = cbs_in;
-					samplers = samplers_in;
-					textures = textures_in;
-				}
-			};
-
-			struct Filler
-			{
-				Filler(void* start, uint8_t vbs_in, uint8_t cbs_in, uint8_t samplers_in, uint8_t textures_in);
-				Filler& add_vb(res_handle handle, uint32_t stride, uint32_t offset);
-				Filler& add_cb(res_handle handle, ShaderStage stage, uint8_t slot, uint32_t offset56s = 0, uint32_t range56s = 1);
-				Filler& add_texture(res_handle handle, ShaderStage stage, uint8_t slot);
-				Filler& add_sampler(res_handle handle, ShaderStage stage, uint8_t slot);
-				void validate();
-
-				Header* hdr;
-				char* payload_start = nullptr;
-				size_t curr_payload_offset = 0;
-
-				int vb_count = 0;
-				int cb_count = 0;
-				int sampler_count = 0;
-				int texture_count = 0;
-
-				bool vb_off = false;
-				bool cb_off = false;
-				bool sampler_off = false;
-				bool textures_off = false;
-			};
-
-			struct PayloadVB
-			{
-				res_handle hdl;
-				uint32_t stride;
-				uint32_t offset;
-			};
-
-			struct PayloadCB
-			{
-				res_handle hdl;
-				uint8_t stage;
-				uint8_t slot;
-				uint32_t offset56s;
-				uint32_t range56s;
-			};
-
-			struct PayloadSampler
-			{
-				res_handle hdl;
-				uint8_t stage;
-				uint8_t slot;
-			};
-
-			struct PayloadTexture
-			{
-				res_handle hdl;
-				uint8_t stage;
-				uint8_t slot;
-			};
-		}
-
-		namespace computebindtable
 		{
 			struct PayloadVB
 			{
@@ -210,22 +137,22 @@ namespace gfxcommand
 			
 			};
 
-			struct ComputeHeader
+			struct Header
 			{
-				friend struct ComputeFiller;
+				friend struct Filler;
 			public:
-				ComputeHeader() = default;
+				Header() = default;
 
 				// builder
-				ComputeHeader& set_vbs(uint8_t vb_count) { counts.vbs = vb_count; return *this; };
-				ComputeHeader& set_cbs(uint8_t cb_count) { counts.cbs = cb_count; return *this; };
-				ComputeHeader& set_tex_reads(uint8_t tex_read_count) { counts.tex_reads = tex_read_count; return *this; };
-				ComputeHeader& set_buf_reads(uint8_t buf_read_count) { counts.buf_reads = buf_read_count; return *this; };
-				ComputeHeader& set_tex_rws(uint8_t tex_rw_count) { counts.tex_rws = tex_rw_count; return *this; };
-				ComputeHeader& set_buf_rws(uint8_t buf_rw_count) { counts.buf_rws = buf_rw_count; return *this; };
+				Header& set_vbs(uint8_t vb_count) { counts.vbs = vb_count; return *this; };
+				Header& set_cbs(uint8_t cb_count) { counts.cbs = cb_count; return *this; };
+				Header& set_tex_reads(uint8_t tex_read_count) { counts.tex_reads = tex_read_count; return *this; };
+				Header& set_buf_reads(uint8_t buf_read_count) { counts.buf_reads = buf_read_count; return *this; };
+				Header& set_tex_rws(uint8_t tex_rw_count) { counts.tex_rws = tex_rw_count; return *this; };
+				Header& set_buf_rws(uint8_t buf_rw_count) { counts.buf_rws = buf_rw_count; return *this; };
 
 				// Returns (header + payload) size
-				size_t size() const { return sizeof(ComputeHeader) + counts.size(); }
+				size_t size() const { return sizeof(Header) + counts.size(); }
 
 				const ResourceCounts& get_counts() const { return counts; }
 
@@ -233,22 +160,22 @@ namespace gfxcommand
 				ResourceCounts counts;
 			};
 
-			struct ComputeFiller
+			struct Filler
 			{
 			public:
-				ComputeFiller() = delete;
-				~ComputeFiller();
-				ComputeFiller(void* memory, const ComputeHeader& header);
+				Filler() = delete;
+				~Filler();
+				Filler(void* memory, const Header& header);
 
 				// order determines binding slot [0, 15]
-				ComputeFiller& add_vb(BufferHandle handle, uint32_t stride, uint32_t offset);
+				Filler& add_vb(BufferHandle handle, uint32_t stride, uint32_t offset);
 
-				ComputeFiller& add_cb(ShaderStage stage, uint8_t slot, BufferHandle handle, uint32_t offset56s = 0, uint32_t range56s = 1);
-				ComputeFiller& add_read_tex(ShaderStage stage, uint8_t slot, TextureHandle handle);
-				ComputeFiller& add_read_buf(ShaderStage stage, uint8_t slot, BufferHandle handle);
-				ComputeFiller& add_rw_tex(ShaderStage stage, uint8_t slot, TextureHandle handle);
-				ComputeFiller& add_rw_buf(ShaderStage stage, uint8_t slot, BufferHandle handle);
-				ComputeFiller& add_sampler(ShaderStage stage, uint8_t slot, SamplerHandle handle);
+				Filler& add_cb(ShaderStage stage, uint8_t slot, BufferHandle handle, uint32_t offset56s = 0, uint32_t range56s = 1);
+				Filler& add_read_tex(ShaderStage stage, uint8_t slot, TextureHandle handle);
+				Filler& add_read_buf(ShaderStage stage, uint8_t slot, BufferHandle handle);
+				Filler& add_rw_tex(ShaderStage stage, uint8_t slot, TextureHandle handle);
+				Filler& add_rw_buf(ShaderStage stage, uint8_t slot, BufferHandle handle);
+				Filler& add_sampler(ShaderStage stage, uint8_t slot, SamplerHandle handle);
 
 	
 				/*
@@ -270,7 +197,7 @@ namespace gfxcommand
 					If none, order is still preserved
 				*/
 			private:
-				const ComputeHeader& hdr;
+				const Header& hdr;
 				char* const payload_start;
 
 				// offset from payload start

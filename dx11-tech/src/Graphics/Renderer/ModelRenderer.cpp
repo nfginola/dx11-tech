@@ -54,15 +54,16 @@ ModelRenderer::ModelRenderer(Renderer* master_renderer) :
 {
 	m_per_object_cb = gfx::dev->create_buffer(BufferDesc::constant(gfxconstants::MIN_CB_SIZE_FOR_RANGES * MAX_SUBMISSION_PER_FRAME));
 
-	int i = sizeof(gfxcommand::aux::computebindtable::ComputeHeader);
-	int x = sizeof(gfxcommand::aux::computebindtable::ComputeFiller);
-	int y = sizeof(gfxcommand::aux::computebindtable::PayloadBuffer);
+	ShaderHandle cs = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "ComputeShader.hlsl");
+	m_compute_pipe = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs)));
 }
 
 void ModelRenderer::begin()
 {
 	m_per_object_data = (PerObjectData*)m_per_object_data_allocator->allocate(MAX_SUBMISSION_PER_FRAME * sizeof(PerObjectData));
 }
+
+static bool done = false;
 
 void ModelRenderer::end()
 {
@@ -76,9 +77,8 @@ void ModelRenderer::end()
 	m_submission_count = 0;
 	m_per_object_data_allocator->reset();
 
+	done = false;
 }
-
-void thingy(void* cmd);
 
 void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& wm, ModelRenderSpec spec)
 {
@@ -100,40 +100,15 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 		const auto& mesh = meshes[i];
 		const auto& mat = materials[i];
 
-		//uint8_t vbs_in = (uint8_t)model->get_vb().size();
-		//uint8_t cbs_in = 1;	
-		//uint8_t textures_in = 1;
-		//uint8_t samplers_in = 0;
-
-		//// Key based on texture
-		//uint64_t key = mat->get_texture(Material::Texture::eAlbedo).hdl;
-
-		//// Create draw call
-		//size_t aux_size = gfxcommand::aux::bindtable::get_size(vbs_in, cbs_in, textures_in, samplers_in);
-		//auto cmd = opaque_bucket->add_command<gfxcommand::Draw>(key, aux_size);
-		//cmd->ib = model->get_ib();
-		//cmd->index_count = mesh.index_count;
-		//cmd->index_start = mesh.index_start;
-		//cmd->vertex_start = mesh.vertex_start;
-		//cmd->pipeline = m_shared_resources->deferred_gpass_pipe;	// Should come from material if Forward or internal GPass pipeline if Deferred
-
-		//// Fill draw call payload (bind table)
-		//auto payload = gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(cmd), vbs_in, cbs_in, samplers_in, textures_in);
-		//for (int i = 0; i < vbs_in; ++i)
-		//	payload.add_vb(std::get<0>(model->get_vb()[i]).hdl, std::get<1>(model->get_vb()[i]), std::get<2>(model->get_vb()[i]));
-
-		//payload.add_cb(m_per_object_cb.hdl, ShaderStage::eVertex, 1, m_submission_count);
-		//payload.add_texture(mat->get_texture(Material::Texture::eAlbedo).hdl, ShaderStage::ePixel, 0);
-		//payload.validate();
-
-		// New version of submission
 		uint64_t key = mat->get_texture(Material::Texture::eAlbedo).hdl;
 		
-		auto hdr = gfxcommand::aux::computebindtable::ComputeHeader()
-			.set_vbs(model->get_vb().size())
+		// .. Setup header for payload ..
+		auto hdr = gfxcommand::aux::bindtable::Header()
+			.set_vbs((uint8_t)model->get_vb().size())
 			.set_cbs(1)
 			.set_tex_reads(1);
 
+		// .. and allocate command ..
 		auto cmd = opaque_bucket->add_command<gfxcommand::Draw>(key, hdr.size());
 		cmd->ib = model->get_ib();
 		cmd->index_count = mesh.index_count;
@@ -141,7 +116,8 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 		cmd->vertex_start = mesh.vertex_start;
 		cmd->pipeline = m_shared_resources->deferred_gpass_pipe;
 
-		auto payload = gfxcommand::aux::computebindtable::ComputeFiller(gfxcommandpacket::get_aux_memory(cmd), hdr);
+		// .. and fill binding table
+		auto payload = gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(cmd), hdr);
 		for (int i = 0; i < model->get_vb().size(); ++i)
 			payload.add_vb(std::get<0>(model->get_vb()[i]), std::get<1>(model->get_vb()[i]), std::get<2>(model->get_vb()[i]));
 		payload
@@ -149,39 +125,10 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 			.add_read_tex(ShaderStage::ePixel, 0, mat->get_texture(Material::Texture::eAlbedo));
 
 
-			
 		// Replicate draw for shadow, but only using positions
-		bool temp = false;
 		if (spec.casts_shadow)
-		//if (temp)
 		{
-			//auto vbs_in = 1;
-			//auto cbs_in = 1;
-			//auto textures_in = 0;
-			//auto samplers_in = 0;
-
-			//// Key based on distance (should be in viewspace ..)
-			//uint16_t new_key = (uint16_t)(1.f - (wm.Translation().z / std::numeric_limits<float>::max()));
-
-			//// Create draw call
-			//auto aux_size = gfxcommand::aux::bindtable::get_size(vbs_in, cbs_in, textures_in, samplers_in);
-			//cmd = shadow_bucket->add_command<gfxcommand::Draw>(new_key, aux_size);
-			//cmd->ib = model->get_ib();
-			//cmd->index_count = mesh.index_count;
-			//cmd->index_start = mesh.index_start;
-			//cmd->vertex_start = mesh.vertex_start;
-			//cmd->pipeline = m_shared_resources->depth_only_pipe;	// Always uses depth only pipe for shadow rendering
-
-			//// Fill draw call payload (bind table)
-			//auto payload = gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(cmd), vbs_in, cbs_in, samplers_in, textures_in);
-			//for (int i = 0; i < vbs_in; ++i)
-			//	payload.add_vb(std::get<0>(model->get_vb()[i]).hdl, std::get<1>(model->get_vb()[i]), std::get<2>(model->get_vb()[i]));
-
-			//payload.add_cb(m_per_object_cb.hdl, ShaderStage::eVertex, 1, m_submission_count);
-			//payload.validate();
-
-			// New way
-			auto shadow_hdr = gfxcommand::aux::computebindtable::ComputeHeader()
+			auto shadow_hdr = gfxcommand::aux::bindtable::Header()
 				.set_vbs(1)	// position only
 				.set_cbs(1);
 			
@@ -192,155 +139,30 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 			shadow_cmd->vertex_start = mesh.vertex_start;
 			shadow_cmd->pipeline = m_shared_resources->depth_only_pipe;	// Always uses depth only pipe for shadow rendering
 
-			gfxcommand::aux::computebindtable::ComputeFiller(gfxcommandpacket::get_aux_memory(shadow_cmd), shadow_hdr)
+			gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(shadow_cmd), shadow_hdr)
 				.add_vb(std::get<0>(model->get_vb()[0]), std::get<1>(model->get_vb()[0]), std::get<2>(model->get_vb()[0]))
 				.add_cb(ShaderStage::eVertex, 1, m_per_object_cb, m_submission_count);
-			
-			/*
-				// Declare header
-				// Build pattern lets you write only what you use (decrease bloat)
-				auto header = gfxcommand::aux::computebindtable::ComputeHeader()
-					.set_cbs(3)
-					.set_tex_reads(2)
-					.set_buf_reads(1)
-					.set_tex_rws(4)
-					.set_buf_rws(1)
-					.set_samplers(1);
-
-				add_command(aux, header.get_size())		// get_size returns sizeof(Header) + all require bindings size
-
-				
-				
-				// constructor should verify that the declared binds in the header is less in size than the payload
-				// think of this as a deferred validation, since Header and Payload are cohesive
-
-				// Constructor copies Header into the beginning of aux and then sets the payload..
-				auto payload = gfxcommand::aux::computebindtable::ComputeFiller(aux, header)
-					.set_cb(..., 0)
-					.set_cb(..., 1)
-					...
-					
-					only validation needed is during set where we check if curr_bound < max_bound!
-						--> less room for error (e.g forgetting to validate at the end)
-					
-					support arbitrary order of setting payload by reserving exactly the supplied amount of space per bind attribute
-					[header, cb, cb, cb, tex, tex, buf, tex, tex, tex, tex, buf, sampler] (using header above as example for this load)
-					
-					// note that this is a part of Filler (helper) and not a part of the Payload! :)
-					// uint16_t for below types should be enough
-					cb_offset = sizeof(Header)
-					tex_read_offset = cb_offset + cbs * sizeof(PayloadCB)
-					buf_read_offset = tex_read_offset + tex_reads * sizeof(TexturePayload)
-					tex_rws_offset = buf_read_offset + buf_reads * sizeof(BufferPayload)
-					buf_rws_offset = tex_rws_offset + tex_rws * sizeof(TexturePayload)
-					samplers_offset = buf_rws_offset + buf_rws * sizeoof(BufferPayload)
-
-			*/
-
-
 		}
-
-
-		//// Custom call
-		//auto hdr = gfxcommand::aux::computebindtable::ComputeHeader()
-		//	.set_cbs(3)
-		//	.set_buf_reads(1)
-		//	.set_tex_reads(2);
-
-		//auto cmd2 = transp_bucket->add_command<gfxcommand::Draw>(0, hdr.size());
-
-		//// fill header + payload in aux memory
-		//gfxcommand::aux::computebindtable::ComputeFiller(gfxcommandpacket::get_aux_memory(cmd2), hdr)
-		//	.add_cb(BufferHandle{ 1 }, ShaderStage::eVertex, 0)
-		//	.add_cb(BufferHandle{ 5 }, ShaderStage::eVertex, 1)
-		//	.add_cb(BufferHandle{ 13 }, ShaderStage::eVertex, 2)
-		//	.add_read_tex(TextureHandle{ 50 }, ShaderStage::ePixel, 3)
-		//	.add_read_buf(BufferHandle{ 31 }, ShaderStage::ePixel, 10)
-		//	.add_read_tex(TextureHandle{ 71 }, ShaderStage::ePixel, 1);
-		//	
-		//thingy(gfxcommandpacket::get_aux_memory(cmd2));
-
-
 	}
+
+
+	if (!done)
+	{
+		auto compute_bucket = m_master_renderer->get_compute_bucket();
+
+		// Create command with zero-initialized header
+		auto hdr = gfxcommand::aux::bindtable::Header();
+		auto compute_cmd = compute_bucket->add_command<gfxcommand::ComputeDispatch>(0, hdr.size());
+		auto zero_init = gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(compute_cmd), hdr);
+
+		compute_cmd->pipeline = m_compute_pipe;
+		compute_cmd->x_blocks = 3;
+		compute_cmd->y_blocks = 4;
+		compute_cmd->z_blocks = 5;
+		compute_cmd->set_profile_name("compute test");
+		done = true;
+	}
+
 
 	++m_submission_count;
-}
-
-void thingy(void* cmd)
-{
-	using namespace gfxcommand::aux::computebindtable;
-
-	ComputeHeader* hdr = (ComputeHeader*)cmd;
-	const auto& counts = hdr->get_counts();
-	char* payload = (char*)hdr + sizeof(ComputeHeader);
-	char* look_now = payload;
-
-	/*
-	Payload layout:
-		PayloadCB
-		..
-		PayloadTexture (Read)
-		..
-		PayloadBuffer (Read)
-		..
-		PayloadTexture (RW)
-		..
-		PayloadBuffer (RW)
-		..
-		Sampler
-	*/
-	for (uint64_t i = 0; i < counts.cbs; ++i)
-	{
-		auto cb = (PayloadCB*)look_now;
-		
-		fmt::print("Buffer: {}, {}, {}\n", cb->hdl.hdl, cb->slot, cb->stage);
-
-		look_now += sizeof(PayloadCB);
-	}	
-
-	for (uint64_t i = 0; i < counts.tex_reads; ++i)
-	{
-		auto tex = (PayloadTexture*)look_now;
-
-		fmt::print("Texture: {}, {}, {}\n", tex->hdl.hdl, tex->slot, tex->stage);
-
-		look_now += sizeof(PayloadTexture);
-	}
-
-	for (uint64_t i = 0; i < counts.buf_reads; ++i)
-	{
-		auto buffer = (PayloadBuffer*)look_now;
-
-		fmt::print("Buffer: {}, {}, {}\n", buffer->hdl.hdl, buffer->slot, buffer->stage);
-
-		look_now += sizeof(PayloadBuffer);
-	}
-
-	for (uint64_t i = 0; i < counts.tex_rws; ++i)
-	{
-		auto tex = (PayloadTexture*)look_now;
-
-		fmt::print("Texture: {}, {}, {}\n", tex->hdl.hdl, tex->slot, tex->stage);
-
-		look_now += sizeof(PayloadTexture);
-	}
-
-	for (uint64_t i = 0; i < counts.buf_rws; ++i)
-	{
-		auto buffer = (PayloadBuffer*)look_now;
-
-		fmt::print("Buffer: {}, {}, {}\n", buffer->hdl.hdl, buffer->slot, buffer->stage);
-
-		look_now += sizeof(PayloadBuffer);
-	}
-
-
-	for (uint64_t i = 0; i < counts.samplers; ++i)
-	{
-		auto sampler = (PayloadSampler*)look_now;
-
-		fmt::print("Sampler: {}, {}, {}\n", sampler->hdl.hdl, sampler->slot, sampler->stage);
-
-		look_now += sizeof(PayloadCB);
-	}
 }

@@ -45,6 +45,7 @@ public:
 		This way, we can have a Renderer interface and swap between different techniques! (and extend in a flexible manner)
 	*/
 	GfxCommandBucket<uint8_t>* get_copy_bucket() { return &m_copy_bucket; };
+	GfxCommandBucket<uint8_t>* get_compute_bucket() { return &m_compute_bucket; };
 	GfxCommandBucket<uint64_t>* get_opaque_bucket() { return &m_opaque_bucket; };
 	GfxCommandBucket<uint32_t>* get_transparent_bucket() { return &m_transparent_bucket; };
 	GfxCommandBucket<uint16_t>* get_shadow_bucket() { return &m_shadow_bucket; };
@@ -109,6 +110,7 @@ private:
 
 	// Command buckets for dispatches
 	GfxCommandBucket<uint8_t> m_copy_bucket;			// For per-frame copies and other miscellaneous copies pre-draw
+	GfxCommandBucket<uint8_t> m_compute_bucket;			// GPU compute work
 	GfxCommandBucket<uint16_t> m_shadow_bucket;			// Drawing geometry for shadows
 	GfxCommandBucket<uint64_t> m_opaque_bucket;			// Opaque geometry
 	GfxCommandBucket<uint32_t> m_transparent_bucket;	// Transparent geometry
