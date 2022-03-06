@@ -8,6 +8,10 @@
 #include "Graphics/CommandBucket/GfxCommand.h"
 //#include "Graphics/CommandBucket/GfxCommandPacket.h"
 
+// temp
+#include "Graphics/DiskTextureManager.h"
+
+#include <random>
 
 namespace gfx 
 { 
@@ -56,6 +60,68 @@ ModelRenderer::ModelRenderer(Renderer* master_renderer) :
 
 	ShaderHandle cs = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "ComputeShader.hlsl");
 	m_compute_pipe = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs)));
+
+	ShaderHandle cs2 = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "FinalReduction.hlsl");
+	m_compute_pipe2 = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs2)));
+	
+	
+	float* random_data = new float[1920 * 1080];
+	std::memset(random_data, 1, 1920 * 1080 * sizeof(float));
+
+
+	std::random_device rd;  // Will be used to obtain a seed for the random number engine
+	std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+	std::uniform_real_distribution<> dis(0.3, 0.9);
+
+	float max = std::numeric_limits<float>::min();
+	float min = std::numeric_limits<float>::max();
+	for (int y = 0; y < 1080; ++y)
+	{
+		for (int x = 0; x < 1920; ++x)
+		{
+			auto val = dis(gen);
+			random_data[x + y * 1920] = val;
+
+			if (val > max)
+				max = val;
+			if (val < min)
+				min = val;
+		}
+	}
+
+	std::cout << "Max: " << max << "\n";
+	std::cout << "Min: " << min << "\n";
+
+
+	
+	m_rw_tex = gfx::dev->create_texture(TextureDesc::make_2d(
+		DXGI_FORMAT_R32_FLOAT,
+		1920, 1080,
+		D3D11_BIND_UNORDERED_ACCESS), 
+		SubresourceData(random_data, 1920 * sizeof(float)));	// row in bytes
+
+	delete[] random_data;
+
+	m_rw_tex2 = gfx::dev->create_texture(TextureDesc::make_2d(
+		DXGI_FORMAT_R32_FLOAT,
+		1920, 1080,
+		D3D11_BIND_UNORDERED_ACCESS));	
+
+	// 60 x 34 is the amount of blocks from Compute Test
+	float* null_data = new float[60 * 34];
+
+	// Reset maxes to 0
+	std::memset(null_data, 0, 60 * 34 * sizeof(float));
+	m_rw_buf = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), {0, 60 * 34}, D3D11_BIND_UNORDERED_ACCESS), 
+		SubresourceData(null_data, 60 * 34 * sizeof(float)));
+
+	// Reset mins to 1
+	std::memset(null_data, 1, 60 * 34 * sizeof(float));
+	m_rw_buf2 = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 60 * 34 }, D3D11_BIND_UNORDERED_ACCESS),
+		SubresourceData(null_data, 60 * 34 * sizeof(float)));
+
+	delete[] null_data;
+
 }
 
 void ModelRenderer::begin()
@@ -150,16 +216,55 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 	{
 		auto compute_bucket = m_master_renderer->get_compute_bucket();
 
-		// Create command with zero-initialized header
-		auto hdr = gfxcommand::aux::bindtable::Header();
+		// Reduce to 60 x 34 
+		auto hdr = gfxcommand::aux::bindtable::Header()
+			.set_tex_rws(2)
+			.set_buf_rws(2)
+			.set_tex_reads(1);
 		auto compute_cmd = compute_bucket->add_command<gfxcommand::ComputeDispatch>(0, hdr.size());
-		auto zero_init = gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(compute_cmd), hdr);
+		gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(compute_cmd), hdr)
+			.add_read_tex(ShaderStage::eCompute, 0, m_shared_resources->temp_depth)
+			.add_rw_tex(ShaderStage::eCompute, 0, m_rw_tex)
+			.add_rw_tex(ShaderStage::eCompute, 1, m_rw_tex2)
+			.add_rw_buf(ShaderStage::eCompute, 2, m_rw_buf)		// Max
+			.add_rw_buf(ShaderStage::eCompute, 3, m_rw_buf2);	// Min
 
 		compute_cmd->pipeline = m_compute_pipe;
-		compute_cmd->x_blocks = 3;
-		compute_cmd->y_blocks = 4;
-		compute_cmd->z_blocks = 5;
-		compute_cmd->set_profile_name("Null Compute");
+		compute_cmd->x_blocks = 60;
+		compute_cmd->y_blocks = 34;
+		compute_cmd->z_blocks = 1;
+		compute_cmd->set_profile_name("Reduction 1");
+
+		// Reduce to 2 (note that 60 x 34 = 2040, we cant do it in one block)
+		hdr = gfxcommand::aux::bindtable::Header()
+			.set_buf_rws(2);
+		compute_cmd = compute_bucket->add_command<gfxcommand::ComputeDispatch>(0, hdr.size());
+		gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(compute_cmd), hdr)
+			.add_rw_buf(ShaderStage::eCompute, 0, m_rw_buf)
+			.add_rw_buf(ShaderStage::eCompute, 1, m_rw_buf2);
+
+		compute_cmd->pipeline = m_compute_pipe2;
+		compute_cmd->x_blocks = 2;
+		compute_cmd->y_blocks = 1;
+		compute_cmd->z_blocks = 1;
+		compute_cmd->set_profile_name("Reduction 2");
+
+		// Reduce to 1
+		hdr = gfxcommand::aux::bindtable::Header()
+			.set_buf_rws(2);
+		compute_cmd = compute_bucket->add_command<gfxcommand::ComputeDispatch>(0, hdr.size());
+		gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(compute_cmd), hdr)
+			.add_rw_buf(ShaderStage::eCompute, 0, m_rw_buf)
+			.add_rw_buf(ShaderStage::eCompute, 1, m_rw_buf2);
+
+		compute_cmd->pipeline = m_compute_pipe2;
+		compute_cmd->x_blocks = 1;
+		compute_cmd->y_blocks = 1;
+		compute_cmd->z_blocks = 1;
+		compute_cmd->set_profile_name("Reduction 3");
+
+
+
 		done = true;
 	}
 

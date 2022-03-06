@@ -46,9 +46,9 @@ namespace gfxcommand
 		uint32_t z_blocks = 1;
 		std::array<char, 32> profile_name;
 
-		void set_profile_name(const char* name)
+		void set_profile_name(const std::string& name)
 		{
-			strncpy_s(profile_name.data(), profile_name.size(), "compute_test", profile_name.size());
+			strncpy_s(profile_name.data(), profile_name.size(), name.data(), profile_name.size());
 		}
 	};
 
@@ -70,8 +70,8 @@ namespace gfxcommand
 				BufferHandle hdl;
 				uint8_t stage;
 				uint8_t slot;
-				uint32_t offset56s;
-				uint32_t range56s;
+				uint32_t offset256s;
+				uint32_t range256s;
 			};
 
 			struct PayloadSampler
@@ -170,7 +170,7 @@ namespace gfxcommand
 				// order determines binding slot [0, 15]
 				Filler& add_vb(BufferHandle handle, uint32_t stride, uint32_t offset);
 
-				Filler& add_cb(ShaderStage stage, uint8_t slot, BufferHandle handle, uint32_t offset56s = 0, uint32_t range56s = 1);
+				Filler& add_cb(ShaderStage stage, uint8_t slot, BufferHandle handle, uint32_t offset256s = 0, uint32_t range256s = 1);
 				Filler& add_read_tex(ShaderStage stage, uint8_t slot, TextureHandle handle);
 				Filler& add_read_buf(ShaderStage stage, uint8_t slot, BufferHandle handle);
 				Filler& add_rw_tex(ShaderStage stage, uint8_t slot, TextureHandle handle);

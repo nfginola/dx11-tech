@@ -29,6 +29,8 @@ struct RendererSharedResources
 
 	// Deferred specific
 	PipelineHandle deferred_gpass_pipe;
+
+	TextureHandle temp_depth;
 };
 
 class Renderer

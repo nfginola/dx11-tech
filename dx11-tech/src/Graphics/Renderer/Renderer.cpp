@@ -194,7 +194,45 @@ Renderer::Renderer()
 		m_shared_resources.deferred_gpass_pipe = gfx::dev->create_pipeline(p_d);
 	}
 
+
+
+	m_shared_resources.temp_depth = m_d_32;
+
+
 }
+
+void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
+{
+	if (m_allocated)
+	{
+		gfx::dev->free_texture(m_d_32);
+		gfx::dev->free_texture(m_lightpass_output);
+		m_gbuffer_res.free(gfx::dev);
+		m_allocated = false;
+	}
+
+	// Render to Texture
+	{
+		// viewport
+		viewports[1].Width = (FLOAT)width;
+		viewports[1].Height = (FLOAT)height;
+
+		// create 32-bit depth tex
+		m_d_32 = gfx::dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, width, height, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
+
+		// create gbuffer textures and pass
+		m_gbuffer_res.create_gbuffers(gfx::dev, width, height);
+		m_gbuffer_res.create_rp(gfx::dev, m_d_32);
+
+		// create light pass output (16-bit per channel HDR)
+		m_lightpass_output = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET));
+		m_lightpass_rp = gfx::dev->create_renderpass(RenderPassDesc({ m_lightpass_output }));	// no depth
+	}
+
+	m_allocated = true;
+}
+
+
 
 void Renderer::begin()
 {
@@ -320,36 +358,8 @@ void Renderer::render()
 	}
 }
 
-void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
-{
-	if (m_allocated)
-	{
-		gfx::dev->free_texture(m_d_32);
-		gfx::dev->free_texture(m_lightpass_output);
-		m_gbuffer_res.free(gfx::dev);
-		m_allocated = false;
-	}
 
-	// Render to Texture
-	{
-		// viewport
-		viewports[1].Width = (FLOAT)width;
-		viewports[1].Height = (FLOAT)height;
 
-		// create 32-bit depth tex
-		m_d_32 = gfx::dev->create_texture(TextureDesc::depth_stencil(DepthFormat::eD32, width, height, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
-
-		// create gbuffer textures and pass
-		m_gbuffer_res.create_gbuffers(gfx::dev, width, height);
-		m_gbuffer_res.create_rp(gfx::dev, m_d_32);
-
-		// create light pass output (16-bit per channel HDR)
-		m_lightpass_output = gfx::dev->create_texture(TextureDesc::make_2d(DXGI_FORMAT_R16G16B16A16_FLOAT, width, height, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET));
-		m_lightpass_rp = gfx::dev->create_renderpass(RenderPassDesc({ m_lightpass_output }));	// no depth
-	}
-
-	m_allocated = true;
-}
 
 void Renderer::on_resize(UINT width, UINT height)
 {
@@ -361,6 +371,9 @@ void Renderer::on_change_resolution(UINT width, UINT height)
 {
 	create_resolution_dependent_resources(width, height);
 }
+
+
+
 
 void Renderer::declare_ui()
 {
@@ -535,6 +548,9 @@ void Renderer::declare_shader_reloader_ui()
 
 	ImGui::End();
 }
+
+
+
 
 void Renderer::GBuffer::create_gbuffers(GfxDevice* dev, UINT width, UINT height)
 {

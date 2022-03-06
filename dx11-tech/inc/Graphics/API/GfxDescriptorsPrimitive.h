@@ -13,6 +13,7 @@ public:
 	static BufferDesc constant(size_t size_in_bytes, bool dynamic = true);
 	static BufferDesc index(size_t size_in_bytes, bool dynamic = false);
 	static BufferDesc vertex(size_t size_in_bytes, bool dynamic = false);
+	static BufferDesc structured(size_t size_in_bytes, const std::pair<UINT, UINT> element_range, UINT bind_flags, bool cpu_dynamic = false);
 	/*
 		make others..
 	*/
@@ -20,6 +21,9 @@ public:
 private:
 	D3D11_BUFFER_DESC m_desc{};
 	BufferType m_type = BufferType::eNone;
+
+	// Used for view creation
+	std::pair<UINT, UINT> m_start_and_count = { 0, 0 };
 };
 
 class TextureDesc

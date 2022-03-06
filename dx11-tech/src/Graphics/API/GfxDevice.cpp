@@ -544,13 +544,13 @@ void GfxDevice::end_pass()
 
 
 	// resolve any ms targets if any
-	if (!m_active_RenderPass->m_resolve_targets.empty())
+	if (!m_active_rp->m_resolve_targets.empty())
 	{
-		for (int i = 0; i < m_active_RenderPass->m_targets.size(); ++i)
+		for (int i = 0; i < m_active_rp->m_targets.size(); ++i)
 		{
-			auto src = (ID3D11Texture2D*)m_textures.look_up(std::get<TextureHandle>(m_active_RenderPass->m_targets[i]).hdl)->m_internal_resource.Get();
-			auto dst = (ID3D11Texture2D*)m_textures.look_up(m_active_RenderPass->m_resolve_targets[i].hdl)->m_internal_resource.Get();
-			auto format = std::get<DXGI_FORMAT>(m_active_RenderPass->m_targets[i]);
+			auto src = (ID3D11Texture2D*)m_textures.look_up(std::get<TextureHandle>(m_active_rp->m_targets[i]).hdl)->m_internal_resource.Get();
+			auto dst = (ID3D11Texture2D*)m_textures.look_up(m_active_rp->m_resolve_targets[i].hdl)->m_internal_resource.Get();
+			auto format = std::get<DXGI_FORMAT>(m_active_rp->m_targets[i]);
 			ctx->ResolveSubresource(dst, 0, src, 0, format);
 		}
 	}
@@ -558,7 +558,7 @@ void GfxDevice::end_pass()
 	// TO-DO: resolve depth target using compute shader
 	// https://wickedengine.net/2016/11/13/how-to-resolve-an-msaa-depthbuffer/#comments
 
-	m_active_RenderPass = nullptr;
+	m_active_rp = nullptr;
 }
 
 
@@ -694,19 +694,19 @@ void GfxDevice::update_subresource(TextureHandle dst, const SubresourceData& dat
 	update_subresource(m_textures.look_up(dst.hdl), data, dst_box, dst_subres_idx);
 }
 
-void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset56s, UINT range56s)
+void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset256s, UINT range256s)
 {
 	auto& curr_bound = m_bound_cbuffers[(UINT)stage - 1][slot];
 
 	if (std::get<BufferHandle>(curr_bound).hdl == buffer.hdl &&
-		std::get<1>(curr_bound) == offset56s &&
-		std::get<2>(curr_bound) == range56s)
+		std::get<1>(curr_bound) == offset256s &&
+		std::get<2>(curr_bound) == range256s)
 		return;
 
-	bind_constant_buffer(slot, stage, m_buffers.look_up(buffer.hdl), offset56s, range56s);
+	bind_constant_buffer(slot, stage, m_buffers.look_up(buffer.hdl), offset256s, range256s);
 	std::get<BufferHandle>(curr_bound) = buffer;
-	std::get<1>(curr_bound) = offset56s;
-	std::get<2>(curr_bound) = range56s;
+	std::get<1>(curr_bound) = offset256s;
+	std::get<2>(curr_bound) = range256s;
 }
 
 void GfxDevice::bind_resource(UINT slot, ShaderStage stage, BufferHandle resource)
@@ -771,6 +771,7 @@ void GfxDevice::dispatch(UINT blocks_x, UINT blocks_y, UINT blocks_z)
 	// No need to sync with Fence
 	// https://stackoverflow.com/questions/55005420/how-to-do-a-blocking-wait-for-a-compute-shader-with-direct3d11
 	ctx->CSSetUnorderedAccessViews(0, gfxconstants::MAX_BOUND_UAVS, (ID3D11UnorderedAccessView* const*)gfxconstants::NULL_RESOURCE, (const UINT*)gfxconstants::NULL_RESOURCE);
+	ctx->CSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
 }
 
 void GfxDevice::draw(UINT vertex_count, UINT start_loc)
@@ -815,14 +816,50 @@ void GfxDevice::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::op
 		subres ? &subres->m_subres : nullptr,
 		(ID3D11Buffer**)buffer->m_internal_resource.ReleaseAndGetAddressOf()));
 
+	// constant buffers dont need views
+	if (desc.m_type == BufferType::eConstant)
+		return;
+
 	// Create views
 	if (d3d_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE)
 	{
 		assert(false && "Buffer Shader Access view is not supported right now");
 	}
-	else if (d3d_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
+	
+	if (d3d_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
 	{
-		assert(false && "Buffer Unordered Access View is not supported right now");
+		D3D11_UAV_DIMENSION view_dim = D3D11_UAV_DIMENSION_BUFFER;
+		UINT flags = 0;
+
+		switch (desc.m_type)
+		{
+		case BufferType::eRaw:
+			flags = D3D11_BUFFER_UAV_FLAG_RAW;
+			break;
+		case BufferType::eAppendConsume:	// AppendConsume Structured Buffer
+			flags = D3D11_BUFFER_UAV_FLAG_APPEND;
+			flags |= D3D11_BUFFER_UAV_FLAG_COUNTER;		// enable access to Increment/DecrementCounter
+			break;
+
+
+		}
+
+		auto uav_desc = CD3D11_UNORDERED_ACCESS_VIEW_DESC
+		(
+			(ID3D11Buffer*)buffer->m_internal_resource.Get(),
+			DXGI_FORMAT_UNKNOWN, desc.m_start_and_count.first, desc.m_start_and_count.second, flags
+		);
+
+		// spec requirement https://docs.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_buffer_uav_flag
+		if ((flags & D3D11_BUFFER_UAV_FLAG_COUNTER) == D3D11_BUFFER_UAV_FLAG_COUNTER)
+			assert(uav_desc.Format == DXGI_FORMAT_UNKNOWN);
+
+		m_dev->get_device()->CreateUnorderedAccessView(
+			(ID3D11Resource*)buffer->m_internal_resource.Get(),
+			&uav_desc,
+			buffer->m_uav.GetAddressOf());
+
+		//assert(false && "Buffer Unordered Access View is not supported right now");
 	}
 }
 
@@ -949,13 +986,13 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 			v_desc = CD3D11_SHADER_RESOURCE_VIEW_DESC(
 				(ID3D11Texture2D*)texture->m_internal_resource.Get(),
 				view_dim,
-				DXGI_FORMAT_UNKNOWN,	// auto resolves to the texture format
+				DXGI_FORMAT_UNKNOWN,	// setting to unknown --> auto resolves to the underlying texture format
 				0,						// most detailed mip idx
 				-1,						// max mips down to the least detailed
 				0,						// first array slice	
 				-1);					// array size (auto calc from tex)
 
-			// Depth-stencil as read (read only 32-bit depth part)
+			// Depth-stencil as read (read only depth part)
 			if (v_desc.Format == DXGI_FORMAT_R32_TYPELESS)
 				v_desc.Format = DXGI_FORMAT_R32_FLOAT;
 			else if (v_desc.Format == DXGI_FORMAT_R32G8X24_TYPELESS)
@@ -1018,13 +1055,6 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 				else
 				{
 					view_dim = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
-					v_desc = CD3D11_RENDER_TARGET_VIEW_DESC(
-						(ID3D11Texture2D*)texture->m_internal_resource.Get(),
-						view_dim,
-						DXGI_FORMAT_UNKNOWN,
-						0,
-						0,						// start at subres idx 0
-						d3d_desc.ArraySize);	// array size
 				}
 			}
 			else
@@ -1063,6 +1093,16 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 					0,
 					-1);	// array size (auto calc from tex)
 			}
+			else if (view_dim == D3D11_RTV_DIMENSION_TEXTURE2DARRAY)
+			{
+				v_desc = CD3D11_RENDER_TARGET_VIEW_DESC(
+					(ID3D11Texture2D*)texture->m_internal_resource.Get(),
+					view_dim,
+					DXGI_FORMAT_UNKNOWN,
+					0,
+					0,						// start at subres idx 0
+					d3d_desc.ArraySize);	// array size
+			}
 			break;
 		case TextureType::e3D:
 			assert(false && "RTV for Texture 3D is currently not supported");
@@ -1082,8 +1122,81 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 
 	if (d3d_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
 	{
-		assert(false && "Texture Unordered Access View is not supported right now");
+		// Find dimension
+		D3D11_UAV_DIMENSION view_dim = D3D11_UAV_DIMENSION_UNKNOWN;
+		D3D11_UNORDERED_ACCESS_VIEW_DESC v_desc{};
+		switch (desc.m_type)
+		{
+		case TextureType::e1D:
+			if (is_array)
+				view_dim = D3D11_UAV_DIMENSION_TEXTURE1DARRAY;
+			else
+				view_dim = D3D11_UAV_DIMENSION_TEXTURE1D;
+			break;
+		case TextureType::e2D:
+			if (is_array)
+			{
+				view_dim = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+			}
+			else
+			{
+				view_dim = D3D11_UAV_DIMENSION_TEXTURE2D;
+			}
+			break;
+		case TextureType::e3D:
+			view_dim = D3D11_UAV_DIMENSION_TEXTURE3D;
+			break;
+		default:
+			assert(false);
+			break;
+		}
+		if (view_dim == D3D11_UAV_DIMENSION_UNKNOWN)
+			assert(false);
 
+
+		// Create desc
+		switch (desc.m_type)
+		{
+		case TextureType::e1D:
+			assert(false && "UAV for Texture 1D is currently not supported");
+			break;
+		case TextureType::e2D:
+
+			if (view_dim == D3D11_UAV_DIMENSION_TEXTURE2D)
+			{
+				v_desc = CD3D11_UNORDERED_ACCESS_VIEW_DESC(
+					(ID3D11Texture2D*)texture->m_internal_resource.Get(),
+					view_dim,
+					DXGI_FORMAT_UNKNOWN,
+					0,
+					0,
+					-1);	// array size (auto calc from tex)
+			}
+			else if (view_dim == D3D11_UAV_DIMENSION_TEXTURE2DARRAY)
+			{
+				v_desc = CD3D11_UNORDERED_ACCESS_VIEW_DESC(
+					(ID3D11Texture2D*)texture->m_internal_resource.Get(),
+					view_dim,
+					DXGI_FORMAT_UNKNOWN,
+					0,
+					0,						// start at subres idx 0
+					d3d_desc.ArraySize);	// array size
+			}
+			break;
+		case TextureType::e3D:
+			assert(false && "UAV for Texture 3D is currently not supported");
+			break;
+		default:
+			assert(false);
+			break;
+		}
+
+		// Create view
+		HRCHECK(m_dev->get_device()->CreateUnorderedAccessView(
+			(ID3D11Resource*)texture->m_internal_resource.Get(),
+			&v_desc,
+			texture->m_uav.ReleaseAndGetAddressOf()
+		));
 	}
 
 	if (d3d_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL)
@@ -1376,7 +1489,7 @@ void GfxDevice::begin_pass(const RenderPass* RenderPass, DepthStencilClear ds_cl
 		return;
 	}
 
-	m_active_RenderPass = RenderPass;
+	m_active_rp = RenderPass;
 	m_inside_pass = true;
 
 	auto& ctx = m_dev->get_context();
@@ -1416,13 +1529,13 @@ void GfxDevice::begin_pass(const RenderPass* RenderPass, DepthStencilClear ds_cl
 
 }
 
-void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer, UINT offset56s, UINT range56s)
+void GfxDevice::bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer, UINT offset256s, UINT range256s)
 {
 	ID3D11Buffer* cbs[] = { (ID3D11Buffer*)buffer->m_internal_resource.Get() };
 	auto& ctx = m_dev->get_context();
 
-	UINT first_constant = offset56s * 16;
-	UINT num_constants = range56s * 16;
+	UINT first_constant = offset256s * 16;
+	UINT num_constants = range256s * 16;
 
 	switch (stage)
 	{
@@ -1483,7 +1596,7 @@ void GfxDevice::bind_resource(UINT slot, ShaderStage stage, const GPUResource* r
 
 void GfxDevice::bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource, UINT initial_count)
 {
-	assert(m_inside_pass == true && "Resource RWs must be bound prior to begin_pass()");
+	//assert(m_inside_pass == true && "Resource RWs must be bound prior to begin_pass()");
 
 	ID3D11UnorderedAccessView* uavs[] = { resource->m_uav.Get() };
 	auto& ctx = m_dev->get_context();

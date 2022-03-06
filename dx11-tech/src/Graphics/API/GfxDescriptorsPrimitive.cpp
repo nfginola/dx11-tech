@@ -27,6 +27,46 @@ BufferDesc BufferDesc::vertex(size_t size_in_bytes, bool dynamic)
 		return BufferDesc(CD3D11_BUFFER_DESC((UINT)size_in_bytes, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_IMMUTABLE), BufferType::eVertex);
 }
 
+BufferDesc BufferDesc::structured(size_t size_per_element, const std::pair<UINT, UINT> start_and_count, UINT bind_flags, bool cpu_dynamic)
+{
+	// 4 byte align (must be multiple of 4 if MiscFlag Structured specified)
+	if (size_per_element % 4 != 0)
+		size_per_element = size_per_element + (4 - (size_per_element % 4));
+
+	assert(size_per_element <= 2048);
+	UINT total_bytes = (UINT)size_per_element * (start_and_count.second - start_and_count.first);	// total elements
+
+	bool gpu_dynamic = ((bind_flags & D3D11_BIND_UNORDERED_ACCESS) == D3D11_BIND_UNORDERED_ACCESS) ? true : false;
+
+	if (cpu_dynamic)
+	{
+		auto desc = BufferDesc(CD3D11_BUFFER_DESC((UINT)total_bytes, bind_flags, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE,
+			D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, (UINT)size_per_element),
+			BufferType::eStructured);
+		desc.m_start_and_count = start_and_count;
+		return desc;
+	}
+	else
+	{
+		if (gpu_dynamic)
+		{
+			auto desc = BufferDesc(CD3D11_BUFFER_DESC((UINT)total_bytes, bind_flags, D3D11_USAGE_DEFAULT,
+				0, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, (UINT)size_per_element),
+				BufferType::eStructured);
+			desc.m_start_and_count = start_and_count;
+			return desc;
+		}
+		else
+		{
+			auto desc = BufferDesc(CD3D11_BUFFER_DESC((UINT)total_bytes, bind_flags, D3D11_USAGE_IMMUTABLE,
+				0, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, (UINT)size_per_element),
+				BufferType::eStructured);
+			desc.m_start_and_count = start_and_count;
+			return desc;
+		}
+	}
+}
+
 TextureDesc TextureDesc::depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT mip_levels, UINT sample_count, UINT sample_quality)
 {
 	// Depth stencil

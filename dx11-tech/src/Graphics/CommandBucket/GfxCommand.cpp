@@ -43,7 +43,7 @@ namespace gfxcommand::aux::bindtable
         ++active_counts.vbs;
         return *this;
     }
-    Filler& Filler::add_cb(ShaderStage stage, uint8_t slot, BufferHandle handle, uint32_t offset56s, uint32_t range56s)
+    Filler& Filler::add_cb(ShaderStage stage, uint8_t slot, BufferHandle handle, uint32_t offset256s, uint32_t range256s)
     {
         assert(active_counts.cbs < hdr.counts.cbs);
 
@@ -52,8 +52,8 @@ namespace gfxcommand::aux::bindtable
         mem->hdl = handle;
         mem->stage = (uint8_t)stage;
         mem->slot = slot;
-        mem->offset56s = offset56s;
-        mem->range56s = range56s;
+        mem->offset256s = offset256s;
+        mem->range256s = range256s;
 
         ++active_counts.cbs;
         return *this;

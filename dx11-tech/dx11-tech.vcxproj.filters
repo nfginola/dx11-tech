@@ -304,6 +304,7 @@
     <FxCompile Include="shaders\depthOnlyVS.hlsl" />
     <FxCompile Include="shaders\depthOnlyPS.hlsl" />
     <FxCompile Include="shaders\ComputeShader.hlsl" />
+    <FxCompile Include="shaders\FinalReduction.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\TonemappingAlgorithms.hlsli" />

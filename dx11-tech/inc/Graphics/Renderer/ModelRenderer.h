@@ -69,6 +69,17 @@ private:
 	// test compute
 	ComputePipelineHandle m_compute_pipe;
 
+	ComputePipelineHandle m_compute_pipe2;
+
+	// test uav, bind to compute, write to it
+	TextureHandle m_rw_tex;			// Initial
+	TextureHandle m_rw_tex2;		// Continually changing
+
+	BufferHandle m_rw_buf;		// Max
+	BufferHandle m_rw_buf2;		// Min
+		
+
+
 
 };
 

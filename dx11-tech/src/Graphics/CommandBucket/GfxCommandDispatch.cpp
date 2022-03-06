@@ -55,6 +55,8 @@ void gfxcommand_dispatch::dispatch(const void* data)
 	// Otherwise, binds on the normal rendering pipeline are done (if any)
 	//bind_resource_table(look_now, counts);
 
+	gfx::dev->bind_compute_pipeline(cmd->pipeline);
+
 	// Bind compute and dispatch
 	if (cmd->profile_name[0] == '\0')
 	{
@@ -108,7 +110,7 @@ void bind_resource_table(char* look_now, const gfxcommand::aux::bindtable::Resou
 	for (uint64_t i = 0; i < counts.cbs; ++i)
 	{
 		auto cb = (const PayloadCB* const)look_now;
-		gfx::dev->bind_constant_buffer(cb->slot, (ShaderStage)cb->stage, cb->hdl, cb->offset56s, cb->range56s);
+		gfx::dev->bind_constant_buffer(cb->slot, (ShaderStage)cb->stage, cb->hdl, cb->offset256s, cb->range256s);
 		look_now += sizeof(PayloadCB);
 	}
 

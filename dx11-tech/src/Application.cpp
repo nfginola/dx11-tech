@@ -264,15 +264,15 @@ void Application::run()
 			Renderers->End();
 		*/
 		m_model_renderer->begin();
-		m_model_renderer->submit(m_sponza, DirectX::SimpleMath::Matrix::CreateScale(0.07));
 
+		m_model_renderer->submit(m_sponza, DirectX::SimpleMath::Matrix::CreateScale(0.07));
 		for (int i = 0; i < 10; ++i)
 		{
 			// Try turning off shadows for certain submissions
 			if (i % 2 == 0)
 			{
 				ModelRenderSpec spec;
-				spec.casts_shadow = false;
+				spec.casts_shadow = true;
 
 				m_model_renderer->submit(m_nanosuit, DirectX::SimpleMath::Matrix::CreateScale(1.0) *
 					DirectX::SimpleMath::Matrix::CreateTranslation(-45.f + i * 8.f, 0.f, 10.f), spec);

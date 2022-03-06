@@ -93,7 +93,7 @@ public:
 	// https://developer.nvidia.com/content/constant-buffers-without-constant-pain-0
 	// Use the giant constant buffer thingy for per draw data! (not instancing, thats a different buffer which is passed through VB)
 	// We have 256 bytes per draw (16 floats!) 
-	void bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset56s = 0, UINT range56s = 1);
+	void bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset256s = 0, UINT range256s = 1);
 	void bind_vertex_buffers(UINT start_slot, const std::vector<std::tuple<BufferHandle, UINT, UINT>>& buffers_strides_offsets);
 	void bind_vertex_buffers(UINT start_slot, void* buffers_strides_offsets, uint8_t count);
 	void bind_index_buffer(BufferHandle buffer, DXGI_FORMAT format = DXGI_FORMAT_R32_UINT, UINT offset = 0);
@@ -182,7 +182,7 @@ private:
 	void bind_resource(UINT slot, ShaderStage stage, const GPUResource* resource);
 	void bind_resource_rw(UINT slot, ShaderStage stage, const GPUResource* resource, UINT initial_count);
 	void bind_sampler(UINT slot, ShaderStage stage, const Sampler* sampler);
-	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer, UINT offset56s = 0, UINT range56s = 1);
+	void bind_constant_buffer(UINT slot, ShaderStage stage, const GPUBuffer* buffer, UINT offset256s = 0, UINT range256s = 1);
 	void bind_pipeline(const GraphicsPipeline* pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
 	
 	void update_subresource(const GPUResource* dst, const SubresourceData& data, const D3D11_BOX& dst_box, UINT dst_subres_idx = 0);
@@ -215,7 +215,7 @@ private:
 
 	// State
 	bool m_inside_pass = false;
-	const RenderPass* m_active_RenderPass = nullptr;
+	const RenderPass* m_active_rp = nullptr;
 	const GraphicsPipeline* m_curr_pipeline = nullptr;
 
 	// Redundant state filtering
