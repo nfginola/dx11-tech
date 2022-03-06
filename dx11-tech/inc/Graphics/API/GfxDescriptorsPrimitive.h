@@ -13,7 +13,8 @@ public:
 	static BufferDesc constant(size_t size_in_bytes, bool dynamic = true);
 	static BufferDesc index(size_t size_in_bytes, bool dynamic = false);
 	static BufferDesc vertex(size_t size_in_bytes, bool dynamic = false);
-	static BufferDesc structured(size_t size_in_bytes, const std::pair<UINT, UINT> element_range, UINT bind_flags, bool cpu_dynamic = false);
+	static BufferDesc structured(size_t size_per_element, const std::pair<UINT, UINT> element_range, UINT bind_flags, bool cpu_dynamic = false);
+	static BufferDesc staging(size_t size_in_bytes);
 	/*
 		make others..
 	*/

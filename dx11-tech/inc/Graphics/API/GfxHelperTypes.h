@@ -94,4 +94,43 @@ struct ShaderBytecode
 };
 
 
+class CopyRegionDst
+{
+	friend class GfxDevice;
+public:
+	CopyRegionDst() = delete;
+	~CopyRegionDst() = default;
+	CopyRegionDst& operator=(const CopyRegionDst&) = delete;
+	CopyRegionDst(const CopyRegionDst&) = delete;
 
+	CopyRegionDst(UINT subres_idx, UINT x = 0, UINT y = 0, UINT z = 0) : 
+		m_subres(subres_idx), 
+		m_x(x),
+		m_y(y),
+		m_z(z) {}
+
+private:
+	UINT m_subres = 0;
+	UINT m_x = 0;
+	UINT m_y = 0;
+	UINT m_z = 0;
+};
+
+class CopyRegionSrc
+{
+	friend class GfxDevice;
+public:
+	CopyRegionSrc() = delete;
+	~CopyRegionSrc() = default;
+	CopyRegionSrc& operator=(const CopyRegionDst&) = delete;
+	CopyRegionSrc(const CopyRegionDst&) = delete;
+	CopyRegionSrc(UINT subres_idx, const D3D11_BOX& box, UINT copy_flags = D3D11_COPY_DISCARD) :
+		m_subres(subres_idx),
+		m_box(box),
+		m_copy_flags(copy_flags) {}
+
+private:
+	UINT m_subres = 0;
+	D3D11_BOX m_box = {};
+	UINT m_copy_flags;
+};

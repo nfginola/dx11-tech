@@ -67,6 +67,13 @@ BufferDesc BufferDesc::structured(size_t size_per_element, const std::pair<UINT,
 	}
 }
 
+BufferDesc BufferDesc::staging(size_t size_in_bytes)
+{
+	return BufferDesc(CD3D11_BUFFER_DESC((UINT)size_in_bytes, 0, D3D11_USAGE_STAGING,
+		D3D11_CPU_ACCESS_READ, 0, 0),
+		BufferType::eStaging);
+}
+
 TextureDesc TextureDesc::depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT mip_levels, UINT sample_count, UINT sample_quality)
 {
 	// Depth stencil

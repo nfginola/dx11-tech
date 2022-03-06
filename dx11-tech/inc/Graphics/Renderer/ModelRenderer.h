@@ -49,6 +49,7 @@ private:
 
 	ResourceHandlePool<ModelInternal> m_loaded_models;
 	uint64_t m_counter = 0;
+	uint64_t m_curr_frame = 0;
 
 private:
 	// Per Object data
@@ -67,16 +68,13 @@ private:
 
 
 	// test compute
-	ComputePipelineHandle m_compute_pipe;
-
-	ComputePipelineHandle m_compute_pipe2;
-
-	// test uav, bind to compute, write to it
-	TextureHandle m_rw_tex;			// Initial
-	TextureHandle m_rw_tex2;		// Continually changing
+	ComputePipelineHandle m_compute_pipe;		// Texture to Buffer reduction
+	ComputePipelineHandle m_compute_pipe2;		// Buffer to buffer reduction
 
 	BufferHandle m_rw_buf;		// Max
 	BufferHandle m_rw_buf2;		// Min
+
+	BufferHandle m_staging[3];
 		
 
 

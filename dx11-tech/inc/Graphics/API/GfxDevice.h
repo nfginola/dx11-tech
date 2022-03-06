@@ -120,6 +120,8 @@ public:
 	void draw_indexed(UINT index_count, UINT index_start = 0, UINT vertex_start = 0);
 	void present(bool vsync = true);
 
+	void copy_resource_region(BufferHandle dst, const CopyRegionDst& dst_dsc, BufferHandle src, const CopyRegionSrc& src_desc);
+	void map_read_temp(BufferHandle buf);
 
 	/*
 

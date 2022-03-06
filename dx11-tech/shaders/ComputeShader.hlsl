@@ -1,9 +1,7 @@
-RWTexture2D<float> g_test_texture : register(u0);
-RWTexture2D<float> g_test_texture_output : register(u1);
-RWStructuredBuffer<float> g_output_buf : register(u2);
-RWStructuredBuffer<float> g_output_buf2 : register(u3);
-
 Texture2D<float> g_depth : register(t0);
+RWStructuredBuffer<float> g_output_buf : register(u0);
+RWStructuredBuffer<float> g_output_buf2 : register(u1);
+
 
 #define BLOCK_DIM_X 32
 #define BLOCK_DIM_Y 32
@@ -39,8 +37,6 @@ void main( uint3 DTid : SV_DispatchThreadID, uint Tidx : SV_GroupIndex, uint3 Gi
         }
         AllMemoryBarrierWithGroupSync();
     }
-    
-    //g_test_texture_output[DTid.xy] = z_values[0];
 
     if (Tidx == 0)
     {

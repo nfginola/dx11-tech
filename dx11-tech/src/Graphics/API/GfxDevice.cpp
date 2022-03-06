@@ -792,6 +792,34 @@ void GfxDevice::present(bool vsync)
 	//m_profiler->end("Presentation");
 }
 
+void GfxDevice::copy_resource_region(BufferHandle dst, const CopyRegionDst& dst_desc, BufferHandle src, const CopyRegionSrc& src_desc)
+{
+	auto dst_b = (ID3D11Resource*)m_buffers.look_up(dst.hdl)->m_internal_resource.Get();
+	auto src_b = (ID3D11Resource*)m_buffers.look_up(src.hdl)->m_internal_resource.Get();
+
+	m_dev->get_context()->CopySubresourceRegion1(
+		dst_b, dst_desc.m_subres, dst_desc.m_x, dst_desc.m_y, dst_desc.m_z,
+		src_b, src_desc.m_subres, &src_desc.m_box, src_desc.m_copy_flags);
+}
+
+void GfxDevice::map_read_temp(BufferHandle buf)
+{
+	auto res = (ID3D11Resource*)m_buffers.look_up(buf.hdl)->m_internal_resource.Get();
+	D3D11_MAPPED_SUBRESOURCE subr;
+	m_dev->get_context()->Map(res, 0, D3D11_MAP_READ, 0, &subr);
+
+	float minmax[2] = { 0, 0 };
+	for (int i = 0; i < 2; ++i)
+	{
+		minmax[i] = ((float*)subr.pData)[i];
+	}
+
+	fmt::print("Min: {:.5f}, Max: {:.5f}\n", minmax[1], minmax[0]);
+
+
+	m_dev->get_context()->Unmap(res, 0);
+}
+
 
 
 
