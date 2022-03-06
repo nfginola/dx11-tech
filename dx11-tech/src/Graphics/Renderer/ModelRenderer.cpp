@@ -227,6 +227,7 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 	
 		// Triple buffered to minimize sync stalls
 		// Map will wait for the Copy to finish
+		// https://stackoverflow.com/questions/40808759/id3d11devicecontextmap-slow-performance
 		{
 			auto _ = FrameProfiler::Scoped("Min/Max Copy");
 			gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, 0), m_rw_buf, CopyRegionSrc(0, {0, 0, 0, sizeof(float), 1, 1}));
