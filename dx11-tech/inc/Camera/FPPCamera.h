@@ -4,7 +4,7 @@
 class FPPCamera final : public Camera
 {
 public:
-	FPPCamera(float fov_deg, float aspect_ratio, float near_plane = 0.1f, float far_plane = 100.f, bool reversed_depth = false);
+	FPPCamera(float fov_deg, float aspect_ratio, float near_plane = 0.1f, float far_plane = 100.f);
 	~FPPCamera() = default;
 
 	void update_orientation(float mouse_x_delta, float mouse_y_delta, float dt);

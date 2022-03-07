@@ -50,12 +50,21 @@ float4 main(PixelInput input) : SV_TARGET0
     float ldepth = g_directional_sm.Sample(sm_samp, lspace_uv).r;       // Depth of this pixel from shadow persp.
     float real_depth = lspace_ndc.z;                                    // Depth of curr frag 
 
-    float bias = max(0.005 * (1.0 - normalize(dot(nor, g_light_direction.xyz))), 0.0012);
+    //return float4(ldepth.xxx, 1.f);
+
+    //float bias = max(0.005 * (1.0 - normalize(dot(nor, g_light_direction.xyz))), 0.0012);
+    float bias = max(0.0001 * (1.0 - normalize(dot(nor, g_light_direction.xyz))), 0.00001);
+
 
     float shadow_factor = 1.f;      // Lit
 
-    if (real_depth - bias > ldepth)
-        shadow_factor = 0.f;        // Not lit
+    //if (real_depth - bias > ldepth)
+    if (real_depth + bias < ldepth)
+    {
+        shadow_factor = 0.f; // Not lit
+    }
+
+            
  
     float dir_light_contrib = max(dot(nor, -g_light_direction.xyz), 0.f) * 1.f; // intensity
     float3 diffuse = col * dir_light_contrib;       // if you want to add tint, multiplicative blend is the way (represent light factor absorbed per channel)

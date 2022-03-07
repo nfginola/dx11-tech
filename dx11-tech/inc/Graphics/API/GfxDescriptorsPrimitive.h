@@ -144,7 +144,13 @@ class DepthStencilDesc
 {
 	friend class GfxDevice;
 public:
-	DepthStencilDesc() = default;
+	DepthStencilDesc()
+	{
+		// if reverse Z-depth
+#ifdef REVERSE_Z_DEPTH
+		m_depth_stencil_desc.DepthFunc = D3D11_COMPARISON_GREATER;
+#endif
+	};
 	DepthStencilDesc(const D3D11_DEPTH_STENCIL_DESC& desc) : m_depth_stencil_desc(desc) {}
 
 private:
@@ -152,5 +158,6 @@ private:
 		depth true, comparison less, depth write mask all, stencil off
 	*/
 	D3D11_DEPTH_STENCIL_DESC m_depth_stencil_desc = CD3D11_DEPTH_STENCIL_DESC(CD3D11_DEFAULT());
+
 };
 

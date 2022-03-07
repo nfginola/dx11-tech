@@ -152,8 +152,16 @@ Renderer::Renderer()
 		auto focus_pos = DirectX::SimpleMath::Vector3(0.f, 0.f, 0.f);
 		auto eye_pos = -light_direction * 200.f;	// place 100 units away from origin
 
+		float far_z = 450.f;
+		float near_z = 10.f;
+
+#ifdef REVERSE_Z_DEPTH
 		DirectX::SimpleMath::Matrix viewproj = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f }) *
-			DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, 10.f, 450.f);
+			DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, far_z, near_z);		// reverse z depth
+#else
+		DirectX::SimpleMath::Matrix viewproj = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f }) *
+			DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, near_z, far_z);			
+#endif
 		m_light_data.view_proj = viewproj;
 		m_light_data.view_proj_inv = viewproj.Invert();
 	}

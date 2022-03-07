@@ -255,6 +255,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="inc\DepthDefines.h" />
     <ClInclude Include="inc\Graphics\API\GfxHandles.h" />
     <ClInclude Include="inc\Graphics\CommandBucket\GfxCommandBucket.h" />
     <ClInclude Include="inc\Graphics\CommandBucket\GfxCommandDispatch.h" />

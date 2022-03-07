@@ -814,7 +814,7 @@ void GfxDevice::map_read_temp(BufferHandle buf)
 		minmax[i] = ((float*)subr.pData)[i];
 	}
 
-	//fmt::print("Min: {:.5f}, Max: {:.5f}\n", minmax[1], minmax[0]);
+	fmt::print("Min: {:.5f}, Max: {:.5f}\n", minmax[1], minmax[0]);
 
 
 	m_dev->get_context()->Unmap(res, 0);

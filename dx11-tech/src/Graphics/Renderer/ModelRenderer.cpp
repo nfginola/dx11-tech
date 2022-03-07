@@ -58,14 +58,32 @@ ModelRenderer::ModelRenderer(Renderer* master_renderer) :
 {
 	m_per_object_cb = gfx::dev->create_buffer(BufferDesc::constant(gfxconstants::MIN_CB_SIZE_FOR_RANGES * MAX_SUBMISSION_PER_FRAME));
 
+	// Texture to block reduction
 	ShaderHandle cs = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "ComputeShader.hlsl");
 	m_compute_pipe = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs)));
 
+	// Block to block reduction
 	ShaderHandle cs2 = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "FinalReduction.hlsl");
 	m_compute_pipe2 = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs2)));
 	
 	
 	// 60 x 34 is the amount of blocks from Compute Test
+	/*
+		We can derive these numbers by
+			ceil(RESOLUTION_WIDTH / 32)			Assumed to use 32x32x1 threads per block
+			ceil(RESOLUTION_HEIGHT / 32)
+
+		Further passes use the prev numbers multiplied and divide them by 1024
+			e.g
+
+			60 x 34 = 2040
+			ceil(2040/1024) = 2
+
+		keep doing until that number = 1 and then call it one last time.
+
+			
+
+	*/
 	float* null_data = new float[60 * 34];
 
 	// Reset maxes to 0
@@ -230,7 +248,10 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 		// https://stackoverflow.com/questions/40808759/id3d11devicecontextmap-slow-performance
 		{
 			auto _ = FrameProfiler::Scoped("Min/Max Copy");
+			// fill 0 - sizeof(float) with first sizeof(float) in src
 			gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, 0), m_rw_buf, CopyRegionSrc(0, {0, 0, 0, sizeof(float), 1, 1}));
+			
+			// fill sizeof(float) -> sizeof(float) * 2 with first sizeof(float) in src
 			gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, sizeof(float)), m_rw_buf2, CopyRegionSrc(0, {0, 0, 0, sizeof(float), 1, 1}));
 		}
 		{

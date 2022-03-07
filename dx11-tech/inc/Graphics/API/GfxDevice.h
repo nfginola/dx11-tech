@@ -87,7 +87,7 @@ public:
 	// Binds
 	void bind_compute_pipeline(ComputePipelineHandle pipeline);
 	void bind_pipeline(PipelineHandle pipeline, std::array<FLOAT, 4> blend_factor = { 1.f, 1.f, 1.f, 1.f }, UINT stencil_ref = 0);
-	void begin_pass(RenderPassHandle rp, DepthStencilClear ds_clear = DepthStencilClear::d1_s0());
+	void begin_pass(RenderPassHandle rp, DepthStencilClear ds_clear = DepthStencilClear());
 	void end_pass();
 
 	// https://developer.nvidia.com/content/constant-buffers-without-constant-pain-0

@@ -1,13 +1,31 @@
 #include "pch.h"
 #include "Camera/FPPCamera.h"
+#include "DepthDefines.h"
 
-FPPCamera::FPPCamera(float fov_deg, float aspect_ratio, float near_plane, float far_plane, bool reversed_depth)
+FPPCamera::FPPCamera(float fov_deg, float aspect_ratio, float near_plane, float far_plane)
 {
 	// Create persp mat
+#ifdef REVERSE_Z_DEPTH
+	m_proj_mat = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(fov_deg), aspect_ratio, far_plane, near_plane);
+#else
 	m_proj_mat = DirectX::XMMatrixPerspectiveFovLH(DirectX::XMConvertToRadians(fov_deg), aspect_ratio, near_plane, far_plane);
+#endif
 
-	// Fix reversed depth later (manual perspective mat?)
 
+	//float rad = DirectX::XMConvertToRadians(fov_deg);
+	//float h = cos(0.5f * rad) / sin(0.5f * rad);
+	//float w = h * aspect_ratio;
+
+	//std::swap(far_plane, near_plane);
+
+	//DirectX::SimpleMath::Matrix p;
+	//p.m[0][0] = w;
+	//p.m[1][1] = h;
+	//p.m[2][2] = near_plane / (near_plane - far_plane);
+	//p.m[2][3] = -1;
+	//p.m[3][2] = -(far_plane * near_plane) / (far_plane - near_plane);
+	//
+	//m_proj_mat = p;
 }
 
 void FPPCamera::update_orientation(float mouse_x_delta, float mouse_y_delta, float dt)

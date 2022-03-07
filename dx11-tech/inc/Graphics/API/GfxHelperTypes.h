@@ -1,5 +1,7 @@
 #pragma once
 #include "Graphics/API/GfxCommon.h"
+#include "DepthDefines.h"
+
 
 // User can get an annotator from the GfxDevice
 class GPUAnnotator
@@ -40,16 +42,29 @@ class DepthStencilClear
 {
 	friend class GfxDevice;
 public:
+
+#ifdef REVERSE_Z_DEPTH
+	DepthStencilClear() { *this = d0_s0(); }
+#else
+	DepthStencilClear() { *this = d1_s0(); }
+#endif
 	DepthStencilClear(FLOAT depth, UINT8 stencil, UINT clear_flags = D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL) :
 		m_clear_flags(clear_flags),
 		m_depth(depth),
 		m_stencil(stencil)
 	{}
 	static DepthStencilClear d1_s0() { return DepthStencilClear(1.0f, 0); }
+	static DepthStencilClear d0_s0() { return DepthStencilClear(0.0f, 0); }	
 
 private:
 	UINT m_clear_flags = D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL;
-	FLOAT m_depth = 1.0f;
+
+#ifdef REVERSE_Z_DEPTH
+	FLOAT m_depth = 0.0f;
+#else
+	FLOAT m_depth = 1.f;
+#endif
+
 	UINT8 m_stencil = 0;
 };
 
