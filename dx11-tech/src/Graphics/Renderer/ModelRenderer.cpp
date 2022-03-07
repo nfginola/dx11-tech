@@ -58,61 +58,12 @@ ModelRenderer::ModelRenderer(Renderer* master_renderer) :
 {
 	m_per_object_cb = gfx::dev->create_buffer(BufferDesc::constant(gfxconstants::MIN_CB_SIZE_FOR_RANGES * MAX_SUBMISSION_PER_FRAME));
 
-	// Texture to block reduction
-	ShaderHandle cs = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "ComputeShader.hlsl");
-	m_compute_pipe = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs)));
-
-	// Block to block reduction
-	ShaderHandle cs2 = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "FinalReduction.hlsl");
-	m_compute_pipe2 = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs2)));
-	
-	
-	// 60 x 34 is the amount of blocks from Compute Test
-	/*
-		We can derive these numbers by
-			ceil(RESOLUTION_WIDTH / 32)			Assumed to use 32x32x1 threads per block
-			ceil(RESOLUTION_HEIGHT / 32)
-
-		Further passes use the prev numbers multiplied and divide them by 1024
-			e.g
-
-			60 x 34 = 2040
-			ceil(2040/1024) = 2
-
-		keep doing until that number = 1 and then call it one last time.
-
-			
-
-	*/
-	float* null_data = new float[60 * 34];
-
-	// Reset maxes to 0
-	std::memset(null_data, 0, 60 * 34 * sizeof(float));
-	m_rw_buf = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), {0, 60 * 34}, D3D11_BIND_UNORDERED_ACCESS), 
-		SubresourceData(null_data, 60 * 34 * sizeof(float)));
-
-	// Reset mins to 1
-	std::memset(null_data, 1, 60 * 34 * sizeof(float));
-	m_rw_buf2 = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 60 * 34 }, D3D11_BIND_UNORDERED_ACCESS),
-		SubresourceData(null_data, 60 * 34 * sizeof(float)));
-
-	delete[] null_data;
-
-
-	m_staging[0] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
-	m_staging[1] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
-	m_staging[2] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
-
-
 }
 
 void ModelRenderer::begin()
 {
 	m_per_object_data = (PerObjectData*)m_per_object_data_allocator->allocate(MAX_SUBMISSION_PER_FRAME * sizeof(PerObjectData));
-	++m_curr_frame;
 }
-
-static bool done = false;
 
 void ModelRenderer::end()
 {
@@ -125,8 +76,6 @@ void ModelRenderer::end()
 
 	m_submission_count = 0;
 	m_per_object_data_allocator->reset();
-
-	done = false;
 }
 
 void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& wm, ModelRenderSpec spec)
@@ -192,76 +141,6 @@ void ModelRenderer::submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& w
 				.add_vb(std::get<0>(model->get_vb()[0]), std::get<1>(model->get_vb()[0]), std::get<2>(model->get_vb()[0]))
 				.add_cb(ShaderStage::eVertex, 1, m_per_object_cb, m_submission_count);
 		}
-	}
-
-
-	if (!done)
-	{
-		auto compute_bucket = m_master_renderer->get_compute_bucket();
-
-		// Reduce to 60 x 34 
-		auto hdr = gfxcommand::aux::bindtable::Header()
-			.set_buf_rws(2)
-			.set_tex_reads(1);
-		auto compute_cmd = compute_bucket->add_command<gfxcommand::ComputeDispatch>(0, hdr.size());
-		gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(compute_cmd), hdr)
-			.add_read_tex(ShaderStage::eCompute, 0, m_shared_resources->temp_depth)
-			.add_rw_buf(ShaderStage::eCompute, 0, m_rw_buf)		// Max
-			.add_rw_buf(ShaderStage::eCompute, 1, m_rw_buf2);	// Min
-
-		compute_cmd->pipeline = m_compute_pipe;
-		compute_cmd->x_blocks = 60;
-		compute_cmd->y_blocks = 34;
-		compute_cmd->z_blocks = 1;
-		compute_cmd->set_profile_name("Reduction 1");
-
-		// Reduce to 2 (note that 60 x 34 = 2040, we cant do it in one block)
-		hdr = gfxcommand::aux::bindtable::Header()
-			.set_buf_rws(2);
-		compute_cmd = compute_bucket->add_command<gfxcommand::ComputeDispatch>(0, hdr.size());
-		gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(compute_cmd), hdr)
-			.add_rw_buf(ShaderStage::eCompute, 0, m_rw_buf)
-			.add_rw_buf(ShaderStage::eCompute, 1, m_rw_buf2);
-
-		compute_cmd->pipeline = m_compute_pipe2;
-		compute_cmd->x_blocks = 2;
-		compute_cmd->y_blocks = 1;
-		compute_cmd->z_blocks = 1;
-		compute_cmd->set_profile_name("Reduction 2");
-
-		// Reduce to 1
-		hdr = gfxcommand::aux::bindtable::Header()
-			.set_buf_rws(2);
-		compute_cmd = compute_bucket->add_command<gfxcommand::ComputeDispatch>(0, hdr.size());
-		gfxcommand::aux::bindtable::Filler(gfxcommandpacket::get_aux_memory(compute_cmd), hdr)
-			.add_rw_buf(ShaderStage::eCompute, 0, m_rw_buf)
-			.add_rw_buf(ShaderStage::eCompute, 1, m_rw_buf2);
-
-		compute_cmd->pipeline = m_compute_pipe2;
-		compute_cmd->x_blocks = 1;
-		compute_cmd->y_blocks = 1;
-		compute_cmd->z_blocks = 1;
-		compute_cmd->set_profile_name("Reduction 3");
-	
-		// Triple buffered to minimize sync stalls
-		// Map will wait for the Copy to finish
-		// https://stackoverflow.com/questions/40808759/id3d11devicecontextmap-slow-performance
-		{
-			auto _ = FrameProfiler::Scoped("Min/Max Copy");
-			// fill 0 - sizeof(float) with first sizeof(float) in src
-			gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, 0), m_rw_buf, CopyRegionSrc(0, {0, 0, 0, sizeof(float), 1, 1}));
-			
-			// fill sizeof(float) -> sizeof(float) * 2 with first sizeof(float) in src
-			gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, sizeof(float)), m_rw_buf2, CopyRegionSrc(0, {0, 0, 0, sizeof(float), 1, 1}));
-		}
-		{
-			auto _ = FrameProfiler::Scoped("Min/Max Read");
-
-			gfx::dev->map_read_temp(m_staging[m_curr_frame % 3]);
-		}
-
-
-		done = true;
 	}
 
 

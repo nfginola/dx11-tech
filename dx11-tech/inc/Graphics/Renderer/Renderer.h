@@ -29,8 +29,6 @@ struct RendererSharedResources
 
 	// Deferred specific
 	PipelineHandle deferred_gpass_pipe;
-
-	TextureHandle temp_depth;
 };
 
 class Renderer
@@ -104,6 +102,7 @@ private:
 
 private:
 	bool m_vsync = true;
+	uint64_t m_curr_frame = 0;
 
 
 	// Main render technique
@@ -135,13 +134,8 @@ private:
 	SamplerHandle m_shadow_sampler;
 	//PipelineHandle m_depth_only_pipe;
 
-
-	// temporary (should be moved to a shadow mapper)
-	/*
-		MasterRenderer owns a ShadowMapper
-			--> ShadowMapper owns resources related to shadow mapping, but the master renderer can look into it and use exposed resources
-		
-	*/
+	
+	// Light
 	struct PerLightData
 	{
 		DirectX::XMMATRIX view_proj;
@@ -150,6 +144,20 @@ private:
 	};
 	PerLightData m_light_data;
 	BufferHandle m_per_light_cb;
+
+
+	
+	// Main camera depth min/max parallel reduction
+	ComputePipelineHandle m_compute_pipe;		// Texture to Buffer reduction
+	ComputePipelineHandle m_compute_pipe2;		// Buffer to buffer reduction
+
+	BufferHandle m_rw_buf;		// Max buffer
+	BufferHandle m_rw_buf2;		// Min buffer
+
+	BufferHandle m_staging[3];
+
+
+
 
 
 	// Light-pass

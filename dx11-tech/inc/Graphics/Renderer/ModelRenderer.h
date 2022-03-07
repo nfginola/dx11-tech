@@ -30,14 +30,13 @@ public:
 
 	ModelHandle load_model(const std::filesystem::path& rel_path);
 	void free_model(ModelHandle hdl);
-	
+
 	void submit(ModelHandle hdl, const DirectX::SimpleMath::Matrix& mat, ModelRenderSpec spec = {});
 
 
 private:
 	Renderer* m_master_renderer;
 	const RendererSharedResources* m_shared_resources;
-
 
 	struct ModelInternal
 	{
@@ -49,9 +48,10 @@ private:
 
 	ResourceHandlePool<ModelInternal> m_loaded_models;
 	uint64_t m_counter = 0;
-	uint64_t m_curr_frame = 0;
 
 private:
+	DirectX::SimpleMath::Matrix m_view_mat;
+
 	// Per Object data
 	struct alignas(gfxconstants::MIN_CB_SIZE_FOR_RANGES) PerObjectData
 	{
@@ -66,15 +66,6 @@ private:
 	PerObjectData* m_per_object_data = nullptr;
 	uint32_t m_submission_count = 0;
 
-
-	// test compute
-	ComputePipelineHandle m_compute_pipe;		// Texture to Buffer reduction
-	ComputePipelineHandle m_compute_pipe2;		// Buffer to buffer reduction
-
-	BufferHandle m_rw_buf;		// Max
-	BufferHandle m_rw_buf2;		// Min
-
-	BufferHandle m_staging[3];
 		
 
 

@@ -50,8 +50,6 @@ float4 main(PixelInput input) : SV_TARGET0
     float ldepth = g_directional_sm.Sample(sm_samp, lspace_uv).r;       // Depth of this pixel from shadow persp.
     float real_depth = lspace_ndc.z;                                    // Depth of curr frag 
 
-    //return float4(ldepth.xxx, 1.f);
-
     //float bias = max(0.005 * (1.0 - normalize(dot(nor, g_light_direction.xyz))), 0.0012);
     float bias = max(0.0001 * (1.0 - normalize(dot(nor, g_light_direction.xyz))), 0.00001);
 

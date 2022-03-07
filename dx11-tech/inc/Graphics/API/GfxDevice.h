@@ -101,8 +101,8 @@ public:
 	void bind_resource(UINT slot, ShaderStage stage, BufferHandle resource);
 	void bind_resource(UINT slot, ShaderStage stage, TextureHandle resource);
 	void bind_sampler(UINT slot, ShaderStage stage, SamplerHandle sampler);
-	void bind_resource_rw(UINT slot, ShaderStage stage, BufferHandle resource, UINT initial_count);
-	void bind_resource_rw(UINT slot, ShaderStage stage, TextureHandle resource, UINT initial_count);
+	void bind_resource_rw(UINT slot, ShaderStage stage, BufferHandle resource, UINT initial_count = 0);
+	void bind_resource_rw(UINT slot, ShaderStage stage, TextureHandle resource, UINT initial_count = 0);
 
 	void bind_viewports(const std::vector<D3D11_VIEWPORT>& viewports);
 	void bind_scissors(const std::vector<D3D11_RECT>& rects);

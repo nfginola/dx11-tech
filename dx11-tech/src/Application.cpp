@@ -265,7 +265,7 @@ void Application::run()
 		*/
 		m_model_renderer->begin();
 
-		m_model_renderer->submit(m_sponza, DirectX::SimpleMath::Matrix::CreateScale(0.07));
+		m_model_renderer->submit(m_sponza, DirectX::SimpleMath::Matrix::CreateScale(0.07f));
 		for (int i = 0; i < 10; ++i)
 		{
 			// Try turning off shadows for certain submissions
