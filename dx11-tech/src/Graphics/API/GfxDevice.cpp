@@ -558,6 +558,13 @@ void GfxDevice::end_pass()
 	// TO-DO: resolve depth target using compute shader
 	// https://wickedengine.net/2016/11/13/how-to-resolve-an-msaa-depthbuffer/#comments
 
+	ctx->VSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
+	ctx->HSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
+	ctx->DSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
+	ctx->GSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
+	ctx->PSSetShaderResources(0, gfxconstants::MAX_SHADER_INPUT_RESOURCE_SLOTS, (ID3D11ShaderResourceView* const*)gfxconstants::NULL_RESOURCE);
+
+
 	m_active_rp = nullptr;
 }
 
@@ -851,7 +858,24 @@ void GfxDevice::create_buffer(const BufferDesc& desc, GPUBuffer* buffer, std::op
 	// Create views
 	if (d3d_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE)
 	{
-		assert(false && "Buffer Shader Access view is not supported right now");
+		D3D11_SRV_DIMENSION view_dim = D3D11_SRV_DIMENSION_BUFFER;
+		UINT flags = 0;
+
+		auto srv_desc = D3D11_SHADER_RESOURCE_VIEW_DESC();
+		srv_desc.Format = DXGI_FORMAT_UNKNOWN;
+		srv_desc.ViewDimension = view_dim;
+		srv_desc.Buffer.FirstElement = desc.m_start_and_count.first;
+		srv_desc.Buffer.NumElements = desc.m_start_and_count.second;
+		
+		// Handle RAW BUFFER (BufferEx) some other time
+
+
+		m_dev->get_device()->CreateShaderResourceView(
+			(ID3D11Resource*)buffer->m_internal_resource.Get(),
+			&srv_desc,
+			buffer->m_srv.GetAddressOf());
+
+		//assert(false && "Buffer Shader Access view is not supported right now");
 	}
 	
 	if (d3d_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS)

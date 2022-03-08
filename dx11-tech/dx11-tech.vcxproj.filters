@@ -296,18 +296,25 @@
     <ClInclude Include="inc\DepthDefines.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="shaders\ShaderInterop_Common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shaders\ShaderInterop_Renderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="shaders\VertexShader.hlsl" />
-    <FxCompile Include="shaders\PixelShader.hlsl" />
+    <FxCompile Include="shaders\gpassVS.hlsl" />
+    <FxCompile Include="shaders\gpassPS.hlsl" />
     <FxCompile Include="shaders\lightpassVS.hlsl" />
     <FxCompile Include="shaders\lightPassPS.hlsl" />
     <FxCompile Include="shaders\finalQuadVS.hlsl" />
     <FxCompile Include="shaders\finalQuadPS.hlsl" />
     <FxCompile Include="shaders\depthOnlyVS.hlsl" />
     <FxCompile Include="shaders\depthOnlyPS.hlsl" />
-    <FxCompile Include="shaders\ComputeShader.hlsl" />
-    <FxCompile Include="shaders\FinalReduction.hlsl" />
+    <FxCompile Include="shaders\SDSM_ReduceTexToBuffer.hlsl" />
+    <FxCompile Include="shaders\SDSM_FinalReduction.hlsl" />
+    <FxCompile Include="shaders\SDSM_ComputeSplits.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\TonemappingAlgorithms.hlsli" />

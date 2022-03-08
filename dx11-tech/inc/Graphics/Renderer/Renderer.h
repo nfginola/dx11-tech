@@ -4,6 +4,8 @@
 
 #include "Graphics/CommandBucket/GfxCommandBucket.h"
 
+#include "ShaderInterop_Renderer.h"
+
 /*
 	
 	Master Renderer.
@@ -71,6 +73,9 @@ private:
 	Renderer();
 	~Renderer() = default;
 
+	void setup_SDSM();
+	void compute_SDSM();
+
 	void declare_ui();
 	void declare_profiler_ui();
 	void declare_shader_reloader_ui();
@@ -79,10 +84,7 @@ private:
 	void create_resolution_dependent_resources(UINT width, UINT height);
 
 private:
-	struct PerFrameData
-	{
-		DirectX::XMMATRIX view_mat, proj_mat;
-	} m_cb_dat;
+	PerFrameData m_cb_dat;
 
 	// Phong GBuffer
 	struct GBuffer
@@ -103,6 +105,7 @@ private:
 private:
 	bool m_vsync = true;
 	uint64_t m_curr_frame = 0;
+	std::pair<UINT, UINT> m_curr_resolution;
 
 
 	// Main render technique
@@ -132,7 +135,6 @@ private:
 	TextureHandle m_dir_d32;
 	RenderPassHandle m_dir_rp;
 	SamplerHandle m_shadow_sampler;
-	//PipelineHandle m_depth_only_pipe;
 
 	
 	// Light
@@ -146,15 +148,9 @@ private:
 	BufferHandle m_per_light_cb;
 
 
-	
-	// Main camera depth min/max parallel reduction
-	ComputePipelineHandle m_compute_pipe;		// Texture to Buffer reduction
-	ComputePipelineHandle m_compute_pipe2;		// Buffer to buffer reduction
+	float m_lambda = 0.5f;
+	int m_cascade = 0;
 
-	BufferHandle m_rw_buf;		// Max buffer
-	BufferHandle m_rw_buf2;		// Min buffer
-
-	BufferHandle m_staging[3];
 
 
 
@@ -191,6 +187,23 @@ private:
 	const char* selected_item = "";
 
 
+
+
+
+
+
+
+	// SDSM variables (WIP)
+	// Main camera depth min/max parallel reduction
+	//ComputePipelineHandle m_compute_pipe;		// Texture to Buffer reduction
+	//ComputePipelineHandle m_compute_pipe2;		// Buffer to buffer reduction
+	//ComputePipelineHandle m_compute_pipe3;		// Buffer to buffer reduction
+
+	//BufferHandle m_rw_buf;			// Max buffer
+	//BufferHandle m_rw_buf2;			// Min buffer
+	//BufferHandle m_rw_splits;		// Split buffer
+
+	//BufferHandle m_staging[3];
 
 
 };

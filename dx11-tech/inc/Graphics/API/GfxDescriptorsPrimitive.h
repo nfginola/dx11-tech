@@ -114,6 +114,8 @@ public:
 	RasterizerDesc() = default;
 	RasterizerDesc(const D3D11_RASTERIZER_DESC1& desc) : m_rasterizer_desc(desc) {}
 
+	static RasterizerDesc no_backface_cull() { auto def = RasterizerDesc(); def.m_rasterizer_desc.CullMode = D3D11_CULL_NONE; return def; }
+
 private:
 	/*
 		Default: Solid, Cull Back, Front is Clockwise, Depth Enable

@@ -1,13 +1,15 @@
+#include "ShaderInterop_Renderer.h"
+#include "../inc/DepthDefines.h"
+
 struct PixelInput
 {
     float4 position : SV_POSITION;
     float2 uv : UV;
 };
 
-cbuffer PerFrameData : register(b0)
+CBUFFER(PerFrameCB, PER_FRAME_CB_SLOT)
 {
-    matrix g_view_mat;
-    matrix g_proj_mat;
+    PerFrameData g_per_frame;
 }
 
 cbuffer PerLightData : register(b1)
@@ -21,6 +23,8 @@ Texture2D g_albedo : register(t0);
 Texture2D g_normal : register(t1);
 Texture2D g_world : register(t2);
 
+//StructuredBuffer<float> g_splits : register(t5);
+Texture2D g_main_depth : register(t6);
 Texture2D g_directional_sm : register(t7);
 
 SamplerState lin_samp : register(s0);
@@ -56,8 +60,11 @@ float4 main(PixelInput input) : SV_TARGET0
 
     float shadow_factor = 1.f;      // Lit
 
-    //if (real_depth - bias > ldepth)
+    #ifdef REVERSE_Z_DEPTH
     if (real_depth + bias < ldepth)
+    #else
+    if (real_depth - bias > ldepth)
+    #endif
     {
         shadow_factor = 0.f; // Not lit
     }
@@ -68,5 +75,28 @@ float4 main(PixelInput input) : SV_TARGET0
     float3 diffuse = col * dir_light_contrib;       // if you want to add tint, multiplicative blend is the way (represent light factor absorbed per channel)
 
 
-    return float4(ambient + diffuse * shadow_factor, 1.f);
+    //float curr_view_depth = g_main_depth.Sample(sm_samp, input.uv).r;
+    //float3 tint;
+    //float tint_strength = 0.05;
+    //if (curr_view_depth > g_splits[0])
+    //{
+    //    tint = float3(1.f, 0.f, 0.f) * tint_strength;
+    //}
+    //else if (curr_view_depth > g_splits[1])
+    //{
+    //    tint = float3(0.f, 1.f, 0.f) * tint_strength;
+    //}
+    //else if (curr_view_depth > g_splits[2])
+    //{
+    //    tint = float3(0.f, 0.f, 1.f) * tint_strength;
+    //}
+    //else
+    //{
+    //    tint = float3(0.0f, 1.f, 1.f) * tint_strength;
+    //}
+
+    float3 final_color = ambient + diffuse * shadow_factor;
+    //final_color += tint;
+
+    return float4(final_color, 1.f);
 }

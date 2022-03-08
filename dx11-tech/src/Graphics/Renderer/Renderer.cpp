@@ -54,7 +54,7 @@ Renderer::Renderer()
 
 	m_cb_per_frame = gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)));
 
-	UINT shadow_res = 2048;
+	UINT shadow_res = 1024;
 
 	auto sc_dim = gfx::dev->get_sc_dim();
 	viewports =
@@ -143,27 +143,34 @@ Renderer::Renderer()
 
 		gfx::dev->bind_sampler(3, ShaderStage::ePixel, m_shadow_sampler);
 
-
 		m_per_light_cb = gfx::dev->create_buffer(BufferDesc::constant(1 * sizeof(PerLightData)));
 
+
+
+		// Hardcoded directional light for now
 		auto light_direction = DirectX::SimpleMath::Vector3{ 0.2f, -0.8f, 0.2f };
 		light_direction.Normalize();
 		m_light_data.light_direction = DirectX::SimpleMath::Vector4(light_direction.x, light_direction.y, light_direction.z, 0.f);
-		auto focus_pos = DirectX::SimpleMath::Vector3(0.f, 0.f, 0.f);
-		auto eye_pos = -light_direction * 200.f;	// place 100 units away from origin
 
-		float far_z = 450.f;
+		auto focus_pos = DirectX::SimpleMath::Vector3(0.f, 0.f, 0.f);
+		auto eye_pos = -light_direction * 200.f;
+
 		float near_z = 10.f;
+		float far_z = 450.f;
 
 #ifdef REVERSE_Z_DEPTH
-		DirectX::SimpleMath::Matrix viewproj = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f }) *
-			DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, far_z, near_z);		// reverse z depth
+		DirectX::SimpleMath::Matrix light_view = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f });
+
+		DirectX::SimpleMath::Matrix viewproj = light_view *
+			DirectX::XMMatrixOrthographicOffCenterLH(-125.f, 125.f, -125.f, 125.f, far_z, near_z);		// reverse z depth
 #else
 		DirectX::SimpleMath::Matrix viewproj = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f }) *
-			DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, near_z, far_z);			
+			DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, near_z, far_z);
 #endif
+
 		m_light_data.view_proj = viewproj;
 		m_light_data.view_proj_inv = viewproj.Invert();
+
 	}
 
 
@@ -179,14 +186,15 @@ Renderer::Renderer()
 
 		m_shared_resources.depth_only_pipe = gfx::dev->create_pipeline(PipelineDesc()
 			.set_shaders(VertexShader(vs_depth), PixelShader(ps_depth))
-			.set_input_layout(do_layout));
+			.set_input_layout(do_layout)
+			.set_rasterizer(RasterizerDesc::no_backface_cull()));
 	}
 
 	// deferred gpass pipe
 	{
 		ShaderHandle vs, ps;
-		vs = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "VertexShader.hlsl");
-		ps = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "PixelShader.hlsl");
+		vs = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "gpassVS.hlsl");
+		ps = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "gpassPS.hlsl");
 
 		// interleaved layout
 		auto layout = InputLayoutDesc()
@@ -203,54 +211,145 @@ Renderer::Renderer()
 	}
 
 
-	// Parallel min/max reduction
-	{
-		// Texture to block reduction
-		ShaderHandle cs = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "ComputeShader.hlsl");
-		m_compute_pipe = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs)));
-
-		// Block to block reduction
-		ShaderHandle cs2 = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "FinalReduction.hlsl");
-		m_compute_pipe2 = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs2)));
-
-
-		// 60 x 34 is the amount of blocks from Compute Test
-		/*
-			We can derive these numbers by
-				ceil(RESOLUTION_WIDTH / 32)			Assumed to use 32x32x1 threads per block
-				ceil(RESOLUTION_HEIGHT / 32)
-
-			Further passes use the prev numbers multiplied and divide them by 1024
-				e.g
-
-				60 x 34 = 2040
-				ceil(2040/1024) = 2
-
-			keep doing until that number = 1 and then call it one last time.
 
 
 
-		*/
-		float* null_data = new float[60 * 34];
 
-		// Reset maxes to 0
-		std::memset(null_data, 0, 60 * 34 * sizeof(float));
-		m_rw_buf = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 60 * 34 }, D3D11_BIND_UNORDERED_ACCESS),
-			SubresourceData(null_data, 60 * 34 * sizeof(float)));
+	//setup_SDSM();
+}
 
-		// Reset mins to 1
-		std::memset(null_data, 1, 60 * 34 * sizeof(float));
-		m_rw_buf2 = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 60 * 34 }, D3D11_BIND_UNORDERED_ACCESS),
-			SubresourceData(null_data, 60 * 34 * sizeof(float)));
+void Renderer::setup_SDSM()
+{
+	//// Parallel min/max reduction
+	//{
+	//	// Texture to block reduction
+	//	ShaderHandle cs = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "SDSM_ReduceTexToBuffer.hlsl");
+	//	m_compute_pipe = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs)));
 
-		delete[] null_data;
+	//	// Block to block reduction
+	//	ShaderHandle cs2 = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "SDSM_FinalReduction.hlsl");
+	//	m_compute_pipe2 = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs2)));
+
+	//	// Compute splits
+	//	ShaderHandle cs3 = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "SDSM_ComputeSplits.hlsl");
+	//	m_compute_pipe3 = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs3)));
 
 
-		m_staging[0] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
-		m_staging[1] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
-		m_staging[2] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
-	}
+	//	// 60 x 34 is the amount of blocks from Compute Test
+	//	/*
+	//		We can derive these numbers by
+	//			ceil(RESOLUTION_WIDTH / 32)			Assumed to use 32x32x1 threads per block
+	//			ceil(RESOLUTION_HEIGHT / 32)
 
+	//		Further passes use the prev numbers multiplied and divide them by 1024
+	//			e.g
+
+	//			60 x 34 = 2040
+	//			ceil(2040/1024) = 2
+
+	//		keep doing until that number = 1 and then call it one last time.
+
+
+
+	//	*/
+	//	float* null_data = new float[60 * 34];
+
+	//	// Reset maxes to 0
+	//	std::memset(null_data, 0, 60 * 34 * sizeof(float));
+	//	m_rw_buf = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 60 * 34 }, D3D11_BIND_UNORDERED_ACCESS),
+	//		SubresourceData(null_data, 60 * 34 * sizeof(float)));
+
+	//	// Reset mins to 1
+	//	std::memset(null_data, 1, 60 * 34 * sizeof(float));
+	//	m_rw_buf2 = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 60 * 34 }, D3D11_BIND_UNORDERED_ACCESS),
+	//		SubresourceData(null_data, 60 * 34 * sizeof(float)));
+
+	//	delete[] null_data;
+
+	//	// Compute splits (4) from CS and use in light pass
+	//	m_rw_splits = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 4 }, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE));
+
+
+	//	m_staging[0] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
+	//	m_staging[1] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
+	//	m_staging[2] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
+	//}
+
+
+}
+
+void Renderer::compute_SDSM()
+{
+	//// Parallel min/max reduction
+	//{
+	//	// Reduce to 60 x 34 (Texture to buffer)
+	//	auto x_blocks = std::ceilf(m_curr_resolution.first / 32.f);
+	//	const auto y_blocks = std::ceilf(m_curr_resolution.second / 32.f);
+	//	{
+	//		auto _ = FrameProfiler::Scoped("Reduction 1");
+	//		gfx::dev->bind_resource(0, ShaderStage::eCompute, m_d_32);
+	//		gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
+	//		gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);
+	//		gfx::dev->bind_compute_pipeline(m_compute_pipe);
+	//		//gfx::dev->dispatch(60, 34, 1);
+
+	//		gfx::dev->dispatch(x_blocks, y_blocks, 1);
+	//	}
+
+
+	//	// (Buffer to buffer)
+	//	// Reduce to 2 (note that 60 x 34 = 2040, we cant do it in one block)
+	//	{
+	//		auto _ = FrameProfiler::Scoped("Reduction 2");
+	//		gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
+	//		gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);
+	//		gfx::dev->bind_constant_buffer(PER_FRAME_CB_SLOT, ShaderStage::eCompute, m_cb_per_frame);
+	//		gfx::dev->bind_compute_pipeline(m_compute_pipe2);
+
+	//		x_blocks = std::ceilf((x_blocks * y_blocks) / 1024.f);
+	//		gfx::dev->dispatch(x_blocks, 1, 1);
+	//	}
+
+	//	// Reduce to 1
+	//	{
+	//		auto _ = FrameProfiler::Scoped("Reduction 3");
+	//		gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
+	//		gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);
+	//		gfx::dev->bind_compute_pipeline(m_compute_pipe2);
+
+	//		x_blocks = std::ceilf(x_blocks / 1024.f);
+	//		gfx::dev->dispatch(x_blocks, 1, 1);
+	//	}
+
+	//	{
+	//		auto _ = FrameProfiler::Scoped("Compute Split");
+	//		gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf2);		// Note these are swapped (0 --> mins, 1 --> maxes)
+	//		gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf);
+	//		gfx::dev->bind_resource_rw(2, ShaderStage::eCompute, m_rw_splits);
+	//		gfx::dev->bind_compute_pipeline(m_compute_pipe3);
+
+	//		gfx::dev->dispatch(1, 1, 1);
+	//	}
+
+	//	// Delayed CPU read (buffered)
+	//	{
+	//		// Triple buffered to minimize sync stalls
+	//		// Map will wait for the Copy to finish
+	//		// https://stackoverflow.com/questions/40808759/id3d11devicecontextmap-slow-performance
+	//		{
+	//			auto _ = FrameProfiler::Scoped("Min/Max Copy");
+	//			// fill 0 - sizeof(float) with first sizeof(float) in src
+	//			gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, 0), m_rw_buf, CopyRegionSrc(0, { 0, 0, 0, sizeof(float), 1, 1 }));
+
+	//			// fill sizeof(float) -> sizeof(float) * 2 with first sizeof(float) in src
+	//			gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, sizeof(float)), m_rw_buf2, CopyRegionSrc(0, { 0, 0, 0, sizeof(float), 1, 1 }));
+	//		}
+	//		{
+	//			auto _ = FrameProfiler::Scoped("Min/Max Read");
+	//			gfx::dev->map_read_temp(m_staging[m_curr_frame % 3]);
+	//		}
+	//	}
+	//}
 
 }
 
@@ -263,6 +362,9 @@ void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
 		m_gbuffer_res.free(gfx::dev);
 		m_allocated = false;
 	}
+
+	m_curr_resolution.first = width;
+	m_curr_resolution.second = height;
 
 	// Render to Texture
 	{
@@ -287,6 +389,8 @@ void Renderer::create_resolution_dependent_resources(UINT width, UINT height)
 
 
 
+
+
 void Renderer::begin()
 {
 	gfx::dev->frame_start();
@@ -308,11 +412,256 @@ void Renderer::end()
 	gfx::dev->frame_end();
 }
 
+
+float get_cascade_split(float lambda, UINT current_partition, UINT number_of_partitions, float near_z, float far_z)
+{
+	// https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-10-parallel-split-shadow-maps-programmable-gpus
+
+	float exp = (float)current_partition / number_of_partitions;
+
+	// Logarithmic split scheme
+	float Ci_log = near_z * std::powf((far_z / near_z), exp);
+
+	// Uniform split scheme
+	float Ci_uni = near_z + (far_z - near_z) * exp;
+
+	// Lambda [0, 1]
+	float Ci = lambda * Ci_log + (1.f - lambda) * Ci_uni;
+	return Ci;
+}
+
+
 void Renderer::render()
 {
 	// Update persistent per frame camera data
 	m_cb_dat.view_mat = m_main_cam->get_view_mat();
 	m_cb_dat.proj_mat = m_main_cam->get_proj_mat();
+	m_cb_dat.inv_proj_mat = m_main_cam->get_proj_mat().Invert();
+
+	// Get cascade splits
+	{
+		// Hardcoded directional light for now
+		auto light_direction = DirectX::SimpleMath::Vector3{ 0.2f, -0.8f, 0.2f };
+		light_direction.Normalize();
+		m_light_data.light_direction = DirectX::SimpleMath::Vector4(light_direction.x, light_direction.y, light_direction.z, 0.f);
+
+		auto focus_pos = DirectX::SimpleMath::Vector3(0.f, 0.f, 0.f);
+		auto eye_pos = -light_direction * 200.f;
+
+		float near_z = 10.f;
+		float far_z = 450.f;
+
+#ifdef REVERSE_Z_DEPTH
+		DirectX::SimpleMath::Matrix light_view = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f });
+
+		DirectX::SimpleMath::Matrix viewproj = light_view *
+			DirectX::XMMatrixOrthographicOffCenterLH(-125.f, 125.f, -125.f, 125.f, far_z, near_z);		// reverse z depth
+#else
+		DirectX::SimpleMath::Matrix viewproj = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f }) *
+			DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, near_z, far_z);
+#endif
+
+
+		// Cascade stuff..
+		float cam_near_z = 0.1f;
+		float cam_far_z = 1000.f;
+
+		float clip_range = cam_far_z - cam_near_z;
+		
+		// Get splits
+		std::array<float, 4> cascade_splits;
+		for (int i = 0; i < cascade_splits.size(); ++i)
+		{
+			cascade_splits[i] = get_cascade_split(m_lambda, i + 1, cascade_splits.size(), cam_near_z, cam_far_z) / clip_range;
+		}
+	
+		{
+			//// Setup NDC points of our main view frustum ...
+			//std::array<DirectX::SimpleMath::Vector4, 8> frustum_points =
+			//{
+			//	// Near plane
+			//	DirectX::SimpleMath::Vector4(-1, -1, 0, 1),
+			//	DirectX::SimpleMath::Vector4(-1,  1, 0, 1),
+			//	DirectX::SimpleMath::Vector4(1,  1, 0, 1),
+			//	DirectX::SimpleMath::Vector4(1, -1, 0, 1),
+
+			//	// Far plane
+			//	DirectX::SimpleMath::Vector4(-1, -1, 1, 1),
+			//	DirectX::SimpleMath::Vector4(-1,  1, 1, 1),
+			//	DirectX::SimpleMath::Vector4(1,  1, 1, 1),
+			//	DirectX::SimpleMath::Vector4(1, -1, 1, 1)
+			//};
+
+			//for (auto& p : frustum_points)
+			//{
+			//	// .. and transform into world space ..
+			//	auto clip_to_world = (m_main_cam->get_view_mat() * m_main_cam->get_proj_mat()).Invert();
+			//	p = DirectX::SimpleMath::Vector4::Transform(p, clip_to_world);
+
+			//	// Homogenous to cartesion (reverse perspective division)
+			//	p /= p.w;
+
+			//}
+
+			//// .. and transform into light space ..
+			//for (auto& p : frustum_points)
+			//	p = DirectX::SimpleMath::Vector4::Transform(p, light_view);
+
+
+			//// .. and find AABB in light space ..
+			//DirectX::SimpleMath::Matrix ortho_mat;
+			//float min_x = std::numeric_limits<float>::max();
+			//float min_y = std::numeric_limits<float>::max();
+			//float min_z = std::numeric_limits<float>::max();
+			//float max_x = std::numeric_limits<float>::min();
+			//float max_y = std::numeric_limits<float>::min();
+			//float max_z = std::numeric_limits<float>::min();
+			//for (const auto& p : frustum_points)
+			//{
+			//	if (p.x < min_x) min_x = p.x;
+			//	if (p.y < min_y) min_y = p.y;
+			//	if (p.z < min_z) min_z = p.z;
+
+			//	if (p.x > max_x) max_x = p.x;
+			//	if (p.y > max_y) max_y = p.y;
+			//	if (p.z > max_z) max_z = p.z;
+			//}
+
+			//auto AABB_min = DirectX::SimpleMath::Vector3(min_x, min_y, min_z);
+			//auto AABB_max = DirectX::SimpleMath::Vector3(max_x, max_y, max_z);
+
+			//// with reverse z-depth
+			//ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(min_x, max_x, min_y, max_y, max_z, min_z);
+
+			//auto final_view_proj = light_view * ortho_mat;
+
+			//m_light_data.view_proj = final_view_proj;
+			//m_light_data.view_proj_inv = final_view_proj.Invert();
+		}
+
+		// Calculate orthographic projection matrix for each cascade
+		std::array<DirectX::SimpleMath::Matrix, cascade_splits.size()> matrices;
+		float lastSplitDist = 0.0;
+		for (uint32_t i = 0; i < cascade_splits.size(); i++)
+		{
+			float splitDist = cascade_splits[i];
+
+			std::array<DirectX::SimpleMath::Vector3, 8> frustum_points =
+			{
+				// Near plane
+				DirectX::SimpleMath::Vector3(-1.0f,  1.0f, 0.0f),	// Top left
+				DirectX::SimpleMath::Vector3(1.0f,  1.0f, 0.0f),	// Top right
+				DirectX::SimpleMath::Vector3(1.0f, -1.0f, 0.0f),	// Bottom right
+				DirectX::SimpleMath::Vector3(-1.0f, -1.0f, 0.0f),	// Bottom left
+
+				// Far plane
+				DirectX::SimpleMath::Vector3(-1.0f, 1.0f, 1.f),		// Top left
+				DirectX::SimpleMath::Vector3(1.0f,  1.0f, 1.f),		// Top right
+				DirectX::SimpleMath::Vector3(1.0f, -1.0f, 1.f),		// Bottom right
+				DirectX::SimpleMath::Vector3(-1.0f, -1.0f, 1.f)		// Bottom left
+			};
+
+			for (auto& p : frustum_points)
+			{
+#ifdef REVERSE_Z_DEPTH
+				p.z = 1.f - p.z;
+#endif	
+				// .. and transform into world space ..
+				auto clip_to_world = (m_main_cam->get_view_mat() * m_main_cam->get_proj_mat()).Invert();
+				auto p_v4 = DirectX::SimpleMath::Vector4(p);
+				p_v4.w = 1.f;
+
+				auto p_v4_ws  = DirectX::SimpleMath::Vector4::Transform(p_v4, clip_to_world);
+				// Homogenous to cartesian (reverse perspective division)
+				p_v4_ws /= p_v4_ws.w;
+
+				p = DirectX::SimpleMath::Vector3(p_v4_ws);
+			}
+
+			for (uint32_t i = 0; i < 4; i++) 
+			{
+				auto dist = frustum_points[i + 4] - frustum_points[i];
+				//dist.Normalize();
+				frustum_points[i + 4] = frustum_points[i] + (dist * splitDist);
+				frustum_points[i] = frustum_points[i] + (dist * lastSplitDist);
+			}
+
+			// Get frustum center
+			// Sum contribution of all points, and find average to find the center of the frustum
+			auto frustum_center = DirectX::SimpleMath::Vector3(0.f);
+			for (const auto& p : frustum_points)
+				frustum_center += p;
+			frustum_center /= frustum_points.size();		
+
+			// Get max spherical radius for the frustum
+			float radius = 0.f;
+			for (const auto& p : frustum_points)
+			{
+				float distance = (p - frustum_center).Length();
+				radius = std::max(radius, distance);
+			}
+			radius = std::ceilf(radius * 16.f) / 16.f;		// ??
+
+
+			auto max_extents = DirectX::SimpleMath::Vector3(radius);
+			auto min_extents = -max_extents;
+
+			//auto light_view = DirectX::XMMatrixLookAtLH(frustum_center - light_direction * -min_extents.z, frustum_center, { 0.0f, 1.0f, 0.0f });
+			auto light_view = DirectX::XMMatrixLookAtLH(frustum_center - light_direction * -min_extents.z, frustum_center, { 0.0f, 1.0f, 0.0f });
+			
+#ifdef REVERSE_Z_DEPTH
+			auto ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(min_extents.x, max_extents.x, min_extents.y, max_extents.y, max_extents.z - min_extents.z, 0.f);
+#else
+			auto ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.f, max_extents.z - min_extents.z);
+#endif
+
+			//// Store split distance and matrix in cascade
+			//cascades[i].splitDepth = (camera.getNearClip() + splitDist * clipRange) * -1.0f;
+
+			DirectX::SimpleMath::Matrix total = light_view * ortho_mat;
+			matrices[i] = total;
+
+			lastSplitDist = cascade_splits[i];
+		}
+		
+		auto total = matrices[m_cascade];
+		m_light_data.view_proj = total;
+		m_light_data.view_proj_inv = total.Invert();
+
+
+
+		//m_light_data.view_proj = viewproj;
+		//m_light_data.view_proj_inv = viewproj.Invert();
+
+		//Light::CalculateCropMatrix(Frustum splitFrustum) 
+		//{   
+		//	Matrix lightViewProjMatrix = viewMatrix * projMatrix;  
+		//	// Find boundaries in light's clip space   
+		//	BoundingBox cropBB = CreateAABB(splitFrustum.AABB, lightViewProjMatrix);  
+		//	// Use default near-plane value   
+		//	cropBB.min.z = 0.0f;   
+		//	// Create the crop matrix   
+		//	float scaleX, scaleY, scaleZ;   
+		//	float offsetX, offsetY, offsetZ;  
+		//	scaleX = 2.0f / (cropBB.max.x - cropBB.min.x);  
+		//	scaleY = 2.0f / (cropBB.max.y - cropBB.min.y);   
+		//	offsetX = -0.5f * (cropBB.max.x + cropBB.min.x) * scaleX;   
+		//	offsetY = -0.5f * (cropBB.max.y + cropBB.min.y) * scaleY;   
+		//	scaleZ = 1.0f / (cropBB.max.z - cropBB.min.z);   
+		//	offsetZ = -cropBB.min.z * scaleZ;   
+		//	return Matrix( 
+		//		scaleX, 0.0f, 0.0f, 0.0f,   
+		//		0.0f, scaleY, 0.0f,  0.0f,           
+		//		0.0f, 0.0f,   scaleZ,  0.0f,                 
+		//		offsetX,  offsetY,  offsetZ,  1.0f);
+		//}
+
+
+		
+		fmt::print("splits: {}, {}, {}\n", cascade_splits[0], cascade_splits[1], cascade_splits[2]);
+	}
+
+
 
 	// Update light data
 	auto single_light_copy = m_copy_bucket.add_command<gfxcommand::CopyToBuffer>(0, 0);
@@ -337,19 +686,9 @@ void Renderer::render()
 	m_compute_bucket.flush();
 
 	// Bind per frame data (should be bound to like slot 14 as reserved space)
-	gfx::dev->bind_constant_buffer(0, ShaderStage::eVertex, m_cb_per_frame, 0);
+	gfx::dev->bind_constant_buffer(PER_FRAME_CB_SLOT, ShaderStage::eVertex, m_cb_per_frame, 0);
 
 
-	/*
-		If we have external techniques that want to hook onto technique specific underlying resource:
-			e.g use GBuffer data for some technique (maybe use the world space normals),
-			then, the technique CANNOT be external, it inherently becomes a part of the underlying technique.
-
-		If we have external techniques that wan to hook onto NON-technique specific underlying resources:
-			- Safe to create a Getter for it (e.g depth texture)
-				--> We will always have a depth texture for the geometries regardless of underlying tech (Forward/Def/Forward+)
-
-	*/
 
 
 	// Geometry Pass
@@ -391,6 +730,8 @@ void Renderer::render()
 		// Pointlight and Spotlight should be structured buffers (we'll save for later, implement SDSM first for directional)
 		gfx::dev->bind_constant_buffer(1, ShaderStage::ePixel, m_per_light_cb);
 		
+		//gfx::dev->bind_resource(5, ShaderStage::ePixel, m_rw_splits);
+		gfx::dev->bind_resource(6, ShaderStage::ePixel, m_d_32);
 		gfx::dev->bind_resource(7, ShaderStage::ePixel, m_dir_d32);
 
 		gfx::dev->draw(6);
@@ -413,59 +754,7 @@ void Renderer::render()
 	}
 
 
-	// Parallel min/max reduction
-	{
-		// Reduce to 60 x 34 
-		{
-			auto _ = FrameProfiler::Scoped("Reduction 1");
-			gfx::dev->bind_resource(0, ShaderStage::eCompute, m_d_32);
-			gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
-			gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);
-			gfx::dev->bind_compute_pipeline(m_compute_pipe);
-			gfx::dev->dispatch(60, 34, 1);
-		}
-
-		// Reduce to 2 (note that 60 x 34 = 2040, we cant do it in one block)
-		{
-			auto _ = FrameProfiler::Scoped("Reduction 2");
-			gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
-			gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);			
-			gfx::dev->bind_compute_pipeline(m_compute_pipe2);
-			gfx::dev->dispatch(2, 1, 1);
-		}
-
-		// Reduce to 1
-		{
-			auto _ = FrameProfiler::Scoped("Reduction 3");
-			gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
-			gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);
-			gfx::dev->bind_compute_pipeline(m_compute_pipe2);
-			gfx::dev->dispatch(1, 1, 1);
-		}
-
-		// Delayed CPU read (buffered)
-		{
-			// Triple buffered to minimize sync stalls
-			// Map will wait for the Copy to finish
-			// https://stackoverflow.com/questions/40808759/id3d11devicecontextmap-slow-performance
-			{
-				auto _ = FrameProfiler::Scoped("Min/Max Copy");
-				// fill 0 - sizeof(float) with first sizeof(float) in src
-				gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, 0), m_rw_buf, CopyRegionSrc(0, { 0, 0, 0, sizeof(float), 1, 1 }));
-
-				// fill sizeof(float) -> sizeof(float) * 2 with first sizeof(float) in src
-				gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, sizeof(float)), m_rw_buf2, CopyRegionSrc(0, { 0, 0, 0, sizeof(float), 1, 1 }));
-			}
-			{
-				auto _ = FrameProfiler::Scoped("Min/Max Read");
-				gfx::dev->map_read_temp(m_staging[m_curr_frame % 3]);
-			}
-		}
-
-
-
-	}
-
+	compute_SDSM();
 }
 
 
@@ -489,6 +778,9 @@ void Renderer::declare_ui()
 {
 	ImGui::Begin("Settings");
 	ImGui::Checkbox("Vsync", &m_vsync);
+	ImGui::SliderFloat("Lambda", &m_lambda, 0.0f, 1.f);
+	ImGui::SliderInt("Cascade", &m_cascade, 0, 3);
+
 	ImGui::End();
 
 
