@@ -1,9 +1,11 @@
-cbuffer PerDraw : register(b1)
+#include "ShaderInterop_Common.h"
+
+CBUFFER(PerDrawCB, 1)
 {
     matrix g_world_mat;
 }
 
-cbuffer PerLightCB : register(b2)
+CBUFFER(PerLightCB, 2)
 {
     matrix g_light_view_projection;
     matrix g_light_view_projection_inv;

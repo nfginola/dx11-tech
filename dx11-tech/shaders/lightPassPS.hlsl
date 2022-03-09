@@ -1,5 +1,5 @@
 #include "ShaderInterop_Renderer.h"
-#include "../inc/DepthDefines.h"
+#include "../inc/DepthDefines.h"            // Reverse Z-depth on/off
 
 struct PixelInput
 {
@@ -12,26 +12,22 @@ CBUFFER(PerFrameCB, GLOBAL_PER_FRAME_CB_SLOT)
     PerFrameData g_per_frame;
 }
 
-cbuffer PerLightData : register(b1)
+CBUFFER(PerLightCB, 1)
 {
     matrix g_light_view_proj;
     matrix g_light_view_proj_inv;
     float4 g_light_direction;
 }
 
+READ_RESOURCE(Texture2D, g_albedo, GBUFFER_ALBEDO_TEXTURE_SLOT)
+READ_RESOURCE(Texture2D, g_normal, GBUFFER_NORMAL_TEXTURE_SLOT)
+READ_RESOURCE(Texture2D, g_world, GBUFFER_WORLD_TEXTURE_SLOT)
 
-TEXTURE2D(g_albedo, GBUFFER_ALBEDO_TEXTURE_SLOT)
-TEXTURE2D(g_normal, GBUFFER_NORMAL_TEXTURE_SLOT)
-TEXTURE2D(g_world, GBUFFER_WORLD_TEXTURE_SLOT)
+READ_RESOURCE(Texture2D, g_main_depth, 6)
+READ_RESOURCE(Texture2D, g_directional_sm, 7)
 
-
-
-Texture2D g_main_depth : register(t6);
-Texture2D g_directional_sm : register(t7);
-
-SamplerState lin_samp : register(s0);
-SamplerState sm_samp : register(s3);
-
+SAMPLER(lin_samp, 0)
+SAMPLER(sm_samp, 3)
 
 float4 main(PixelInput input) : SV_TARGET0
 {
@@ -59,7 +55,7 @@ float4 main(PixelInput input) : SV_TARGET0
     //float bias = max(0.0001 * (1.0 - normalize(dot(nor, g_light_direction.xyz))), 0.00001);
 
 
-    float shadow_factor = 1.f;      // Lit
+    float is_shadowed = 0.f;      // Lit
 
     #ifdef REVERSE_Z_DEPTH
     if (real_depth + bias < ldepth)
@@ -67,7 +63,7 @@ float4 main(PixelInput input) : SV_TARGET0
     if (real_depth - bias > ldepth)
     #endif
     {
-        shadow_factor = 0.f; // Not lit
+        is_shadowed = 1.f; // Not lit
     }
 
             
@@ -96,7 +92,7 @@ float4 main(PixelInput input) : SV_TARGET0
     //    tint = float3(0.0f, 1.f, 1.f) * tint_strength;
     //}
 
-    float3 final_color = ambient + diffuse * shadow_factor;
+    float3 final_color = ambient + diffuse * (1.f - is_shadowed);
     //final_color += tint;
 
     return float4(final_color, 1.f);

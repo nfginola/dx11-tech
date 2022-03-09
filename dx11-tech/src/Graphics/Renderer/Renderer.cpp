@@ -69,6 +69,10 @@ Renderer::Renderer()
 	// setup depth only pass
 	{
 		// Using 16-bit because we are using Orthographic (linearly distributed values, so 16 bit is enough)
+		/*
+			https://gamedev.net/forums/topic/692064-shadow-mapping/5355978/
+			eD16 if need performance
+		*/
 		m_dir_d32 = gfx::dev->create_texture(TextureDesc::depth_stencil(
 			DepthFormat::eD32, m_shadow_map_resolution, m_shadow_map_resolution,
 			D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
@@ -438,7 +442,8 @@ void Renderer::render()
 		for (uint32_t i = 0; i < cascade_splits.size(); i++)
 		{
 			float splitDist = cascade_splits[i];
-
+		
+			// Setup NDC frustum points
 			std::array<DirectX::SimpleMath::Vector3, 8> frustum_points =
 			{
 				// Near plane
@@ -453,7 +458,8 @@ void Renderer::render()
 				DirectX::SimpleMath::Vector3(1.0f, -1.0f, 1.f),		// Bottom right
 				DirectX::SimpleMath::Vector3(-1.0f, -1.0f, 1.f)		// Bottom left
 			};
-
+			
+			// Transform frustum points to world space
 			for (auto& p : frustum_points)
 			{
 #ifdef REVERSE_Z_DEPTH
@@ -471,6 +477,7 @@ void Renderer::render()
 				p = DirectX::SimpleMath::Vector3(p_v4_ws);
 			}
 
+			// Modify frustum so we have the subfrustum for this cascade
 			for (uint32_t i = 0; i < 4; i++) 
 			{
 				auto dist = frustum_points[i + 4] - frustum_points[i];
@@ -483,9 +490,11 @@ void Renderer::render()
 			auto frustum_center = DirectX::SimpleMath::Vector3(0.f);
 			for (const auto& p : frustum_points)
 				frustum_center += p;
-			frustum_center /= frustum_points.size();		
-
+			frustum_center /= frustum_points.size();
+			
 			// Get max spherical radius for the frustum
+			// Notice that our new space (origin) is at frustum center.
+			// Thus, we find the min/max relative to the frustum center (sphere space)
 			float radius = 0.f;
 			for (const auto& p : frustum_points)
 			{

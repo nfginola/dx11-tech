@@ -1,5 +1,6 @@
 #ifndef TonemappingAlgorithms
 #define TonemappingAlgorithms
+#include "ShaderInterop_Common.h"
 
 // https://64.github.io/tonemapping/
 // Tonemapping algorithms

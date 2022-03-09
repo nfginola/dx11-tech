@@ -8,8 +8,8 @@ struct PixelInput
 
 static const float GAMMA = 2.2f;
 
-SamplerState lin_samp : register(s0);
-Texture2D g_final_tex : register(t0);
+SAMPLER(lin_samp, 0)
+READ_RESOURCE(Texture2D, g_final_tex, 0)
 
 float4 main(PixelInput input) : SV_TARGET
 {
