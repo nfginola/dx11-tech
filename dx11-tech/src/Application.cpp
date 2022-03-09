@@ -192,8 +192,8 @@ Application::Application()
 	Renderer::initialize();
 
 	// Create perspective camera
-	m_cam = make_unique<FPPCamera>(90.f, (float)WIDTH/HEIGHT, 0.1f, 1000.f);
-	m_cam_zoom = make_unique<FPPCamera>(28.f, (float)WIDTH / HEIGHT, 0.1f, 1000.f);		// Zoomed in secondary camera
+	m_cam = make_unique<FPPCamera>(90.f, (float)WIDTH/HEIGHT, 0.1f, 600.f);
+	m_cam_zoom = make_unique<FPPCamera>(28.f, (float)WIDTH / HEIGHT, 0.1f, 600.f);		// Zoomed in secondary camera
 
 	// Create a First-Person Camera Controller and attach a First-Person Perspective camera
 	m_camera_controller = make_unique<FPCController>(m_input.get());

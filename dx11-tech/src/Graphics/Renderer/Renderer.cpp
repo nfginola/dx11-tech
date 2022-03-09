@@ -447,22 +447,21 @@ void Renderer::render()
 
 		auto focus_pos = DirectX::SimpleMath::Vector3(0.f, 0.f, 0.f);
 		auto eye_pos = -light_direction * 200.f;
-
-		float near_z = 10.f;
-		float far_z = 450.f;
-
-#ifdef REVERSE_Z_DEPTH
 		DirectX::SimpleMath::Matrix light_view = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f });
 
-		DirectX::SimpleMath::Matrix viewproj = light_view *
-			DirectX::XMMatrixOrthographicOffCenterLH(-125.f, 125.f, -125.f, 125.f, far_z, near_z);		// reverse z depth
-#else
-		DirectX::SimpleMath::Matrix viewproj = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f }) *
-			DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, near_z, far_z);
-#endif
+//		float near_z = 10.f;
+//		float far_z = 450.f;
+//
+//#ifdef REVERSE_Z_DEPTH
+//
+//		DirectX::SimpleMath::Matrix viewproj = light_view *
+//			DirectX::XMMatrixOrthographicOffCenterLH(-125.f, 125.f, -125.f, 125.f, far_z, near_z);		// reverse z depth
+//#else
+//		DirectX::SimpleMath::Matrix viewproj = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f }) *
+//			DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, near_z, far_z);
+//#endif
 
 
-		// Cascade stuff..
 		float cam_near_z = 0.1f;
 		float cam_far_z = 1000.f;
 
@@ -475,70 +474,7 @@ void Renderer::render()
 			cascade_splits[i] = get_cascade_split(m_lambda, i + 1, cascade_splits.size(), cam_near_z, cam_far_z) / clip_range;
 		}
 	
-		{
-			//// Setup NDC points of our main view frustum ...
-			//std::array<DirectX::SimpleMath::Vector4, 8> frustum_points =
-			//{
-			//	// Near plane
-			//	DirectX::SimpleMath::Vector4(-1, -1, 0, 1),
-			//	DirectX::SimpleMath::Vector4(-1,  1, 0, 1),
-			//	DirectX::SimpleMath::Vector4(1,  1, 0, 1),
-			//	DirectX::SimpleMath::Vector4(1, -1, 0, 1),
-
-			//	// Far plane
-			//	DirectX::SimpleMath::Vector4(-1, -1, 1, 1),
-			//	DirectX::SimpleMath::Vector4(-1,  1, 1, 1),
-			//	DirectX::SimpleMath::Vector4(1,  1, 1, 1),
-			//	DirectX::SimpleMath::Vector4(1, -1, 1, 1)
-			//};
-
-			//for (auto& p : frustum_points)
-			//{
-			//	// .. and transform into world space ..
-			//	auto clip_to_world = (m_main_cam->get_view_mat() * m_main_cam->get_proj_mat()).Invert();
-			//	p = DirectX::SimpleMath::Vector4::Transform(p, clip_to_world);
-
-			//	// Homogenous to cartesion (reverse perspective division)
-			//	p /= p.w;
-
-			//}
-
-			//// .. and transform into light space ..
-			//for (auto& p : frustum_points)
-			//	p = DirectX::SimpleMath::Vector4::Transform(p, light_view);
-
-
-			//// .. and find AABB in light space ..
-			//DirectX::SimpleMath::Matrix ortho_mat;
-			//float min_x = std::numeric_limits<float>::max();
-			//float min_y = std::numeric_limits<float>::max();
-			//float min_z = std::numeric_limits<float>::max();
-			//float max_x = std::numeric_limits<float>::min();
-			//float max_y = std::numeric_limits<float>::min();
-			//float max_z = std::numeric_limits<float>::min();
-			//for (const auto& p : frustum_points)
-			//{
-			//	if (p.x < min_x) min_x = p.x;
-			//	if (p.y < min_y) min_y = p.y;
-			//	if (p.z < min_z) min_z = p.z;
-
-			//	if (p.x > max_x) max_x = p.x;
-			//	if (p.y > max_y) max_y = p.y;
-			//	if (p.z > max_z) max_z = p.z;
-			//}
-
-			//auto AABB_min = DirectX::SimpleMath::Vector3(min_x, min_y, min_z);
-			//auto AABB_max = DirectX::SimpleMath::Vector3(max_x, max_y, max_z);
-
-			//// with reverse z-depth
-			//ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(min_x, max_x, min_y, max_y, max_z, min_z);
-
-			//auto final_view_proj = light_view * ortho_mat;
-
-			//m_light_data.view_proj = final_view_proj;
-			//m_light_data.view_proj_inv = final_view_proj.Invert();
-		}
-
+	
 		// Calculate orthographic projection matrix for each cascade
 		std::array<DirectX::SimpleMath::Matrix, cascade_splits.size()> matrices;
 		float lastSplitDist = 0.0;
@@ -607,13 +543,36 @@ void Renderer::render()
 			auto min_extents = -max_extents;
 
 			//auto light_view = DirectX::XMMatrixLookAtLH(frustum_center - light_direction * -min_extents.z, frustum_center, { 0.0f, 1.0f, 0.0f });
-			auto light_view = DirectX::XMMatrixLookAtLH(frustum_center - light_direction * -min_extents.z, frustum_center, { 0.0f, 1.0f, 0.0f });
+			DirectX::SimpleMath::Matrix light_view = DirectX::XMMatrixLookAtLH(frustum_center - light_direction * -min_extents.z, frustum_center, { 0.0f, 1.0f, 0.0f });
 			
 #ifdef REVERSE_Z_DEPTH
-			auto ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(min_extents.x, max_extents.x, min_extents.y, max_extents.y, max_extents.z - min_extents.z, 0.f);
+			DirectX::SimpleMath::Matrix ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(min_extents.x, max_extents.x, min_extents.y, max_extents.y, max_extents.z - min_extents.z, 0.f);
 #else
 			auto ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.f, max_extents.z - min_extents.z);
 #endif
+
+			// Avoid shadow shimmering
+			// https://johanmedestrom.wordpress.com/2016/03/18/opengl-cascaded-shadow-maps/
+			auto shadowMatrix = light_view * ortho_mat;
+			auto shadowOrigin = DirectX::SimpleMath::Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+			shadowOrigin = DirectX::SimpleMath::Vector4::Transform(shadowOrigin, shadowMatrix);
+			shadowOrigin = shadowOrigin * 1024 / 2.0f;
+
+			auto roundedOrigin = DirectX::SimpleMath::Vector4(std::roundf(shadowOrigin.x), std::roundf(shadowOrigin.y), std::roundf(shadowOrigin.z), std::roundf(shadowOrigin.w));
+			auto roundOffset = roundedOrigin - shadowOrigin;
+			roundOffset = roundOffset * 2.0f / 1024;
+			roundOffset.z = 0.0f;
+			roundOffset.w = 0.0f;
+
+			//glm::mat4 shadowProj = lightOrthoMatrix;
+			//shadowProj[3] += roundOffset;
+			//lightOrthoMatrix = shadowProj;
+			ortho_mat.m[3][0] += roundOffset.x;
+			ortho_mat.m[3][1] += roundOffset.y;
+			ortho_mat.m[3][2] += roundOffset.z;
+			ortho_mat.m[3][3] += roundOffset.w;
+
+
 
 			//// Store split distance and matrix in cascade
 			//cascades[i].splitDepth = (camera.getNearClip() + splitDist * clipRange) * -1.0f;
