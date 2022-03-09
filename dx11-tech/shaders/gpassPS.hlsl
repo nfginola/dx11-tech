@@ -1,3 +1,5 @@
+#include "ShaderInterop_Common.h"
+
 struct PixelInput
 {
     float4 position : SV_POSITION;
@@ -13,8 +15,8 @@ struct PixelOutput
     float4 world : SV_TARGET2;
 };
 
-Texture2D main_tex : register(t0);
-SamplerState repeat_samp : register(s1);
+READ_RESOURCE(Texture2D, main_tex, 0)
+SAMPLER(repeat_samp, 1)
 
 PixelOutput main(PixelInput input)
 {

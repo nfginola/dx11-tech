@@ -74,7 +74,7 @@ Renderer::Renderer()
 			eD16 if need performance
 		*/
 		m_dir_d32 = gfx::dev->create_texture(TextureDesc::depth_stencil(
-			DepthFormat::eD32, m_shadow_map_resolution, m_shadow_map_resolution,
+			DepthFormat::eD32, (UINT)m_shadow_map_resolution, (UINT)m_shadow_map_resolution,
 			D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
 		m_dir_rp = gfx::dev->create_renderpass(RenderPassDesc({}, m_dir_d32));
 	}
@@ -155,8 +155,6 @@ Renderer::Renderer()
 
 
 
-
-
 	// depth only pipe
 	{
 		auto vs_depth = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "depthOnlyVS.hlsl");
@@ -188,7 +186,6 @@ Renderer::Renderer()
 
 		m_shared_resources.deferred_gpass_pipe = gfx::dev->create_pipeline(p_d);
 	}
-
 
 
 
@@ -420,7 +417,8 @@ void Renderer::render()
 	// Get cascade splits
 	{
 		// Hardcoded directional light for now
-		auto light_direction = DirectX::SimpleMath::Vector3{ 0.2f, -0.8f, 0.2f };
+		//auto light_direction = DirectX::SimpleMath::Vector3{ 0.2f, -0.8f, 0.2f };
+		auto light_direction = m_sun_direction;
 		light_direction.Normalize();
 
 
@@ -433,7 +431,7 @@ void Renderer::render()
 		std::array<float, NUM_CASCADES> cascade_splits;
 		for (int i = 0; i < cascade_splits.size(); ++i)
 		{
-			cascade_splits[i] = get_cascade_split(m_lambda, i + 1, cascade_splits.size(), cam_near_z, cam_far_z) / clip_range;
+			cascade_splits[i] = get_cascade_split(m_lambda, i + 1, (UINT)cascade_splits.size(), cam_near_z, cam_far_z) / clip_range;
 		}
 	
 		// Calculate orthographic projection matrix for each cascade
@@ -490,7 +488,7 @@ void Renderer::render()
 			auto frustum_center = DirectX::SimpleMath::Vector3(0.f);
 			for (const auto& p : frustum_points)
 				frustum_center += p;
-			frustum_center /= frustum_points.size();
+			frustum_center /= (float)frustum_points.size();
 			
 			// Get max spherical radius for the frustum
 			// Notice that our new space (origin) is at frustum center.
@@ -525,7 +523,11 @@ void Renderer::render()
 			shadowOrigin = DirectX::SimpleMath::Vector4::Transform(shadowOrigin, shadowMatrix);
 			shadowOrigin = shadowOrigin * m_shadow_map_resolution / 2.0f;
 
-			auto roundedOrigin = DirectX::SimpleMath::Vector4(std::roundf(shadowOrigin.x), std::roundf(shadowOrigin.y), std::roundf(shadowOrigin.z), std::roundf(shadowOrigin.w));
+			auto roundedOrigin = DirectX::SimpleMath::Vector4(
+				std::roundf(shadowOrigin.x), 
+				std::roundf(shadowOrigin.y), 
+				std::roundf(shadowOrigin.z), 
+				std::roundf(shadowOrigin.w));
 			auto roundOffset = roundedOrigin - shadowOrigin;
 			roundOffset = roundOffset * 2.0f / m_shadow_map_resolution;
 			roundOffset.z = 0.0f;
@@ -670,6 +672,7 @@ void Renderer::declare_ui()
 	ImGui::Checkbox("Vsync", &m_vsync);
 	ImGui::SliderFloat("Lambda", &m_lambda, 0.0f, 1.f);
 	ImGui::SliderInt("Cascade", &m_cascade, 0, NUM_CASCADES - 1);
+	ImGui::SliderFloat3("Sun Direction", &m_sun_direction.x, -1.f, 1.f);	// y and z lives right after x (check XMFLOAT3)
 	ImGui::End();
 
 	// Main menu
@@ -842,6 +845,7 @@ void Renderer::GBuffer::create_gbuffers(GfxDevice* dev, UINT width, UINT height)
 
 void Renderer::GBuffer::create_rp(GfxDevice* dev, TextureHandle depth)
 {
+	// geometry pass output
 	rp = gfx::dev->create_renderpass(RenderPassDesc(
 		{
 			albedo,

@@ -149,6 +149,7 @@ private:
 	float m_shadow_map_resolution = 2048;
 	float m_lambda = 0.5f;
 	int m_cascade = 0;
+	DirectX::SimpleMath::Vector3 m_sun_direction = { 0.2f, -0.8f, 0.2f };
 
 
 
