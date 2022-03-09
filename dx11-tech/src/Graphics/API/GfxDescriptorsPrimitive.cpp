@@ -96,6 +96,9 @@ TextureDesc TextureDesc::depth_stencil(DepthFormat format, UINT width, UINT heig
 	else if (format == DepthFormat::eD24_S8)
 		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R24G8_TYPELESS, width, height, 1, mip_levels, bind_flags,
 			D3D11_USAGE_DEFAULT, 0, sample_count, sample_quality, 0));
+	else if (format == DepthFormat::eD16)
+		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R16_TYPELESS, width, height, 1, mip_levels, bind_flags,
+			D3D11_USAGE_DEFAULT, 0, sample_count, sample_quality, 0));
 	else
 	{
 		assert(false);

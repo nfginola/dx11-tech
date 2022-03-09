@@ -13,7 +13,7 @@ RWStructuredBuffer<float> g_output_buf2 : register(u1);
 //{
 //    PerFrameData g_per_frame;
 //}
-CBUFFER(PerFrameCB, PER_FRAME_CB_SLOT)
+CBUFFER(PerFrameCB, GLOBAL_PER_FRAME_CB_SLOT)
 {
     PerFrameData g_per_frame;
 }

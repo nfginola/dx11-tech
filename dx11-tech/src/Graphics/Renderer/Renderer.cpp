@@ -54,14 +54,12 @@ Renderer::Renderer()
 
 	m_cb_per_frame = gfx::dev->create_buffer(BufferDesc::constant(sizeof(PerFrameData)));
 
-	UINT shadow_res = 1024;
-
 	auto sc_dim = gfx::dev->get_sc_dim();
 	viewports =
 	{
 		CD3D11_VIEWPORT(0.f, 0.f, (FLOAT)sc_dim.first, (FLOAT)sc_dim.second),	// To Swapchain (changes when swapchain is resized)
 		CD3D11_VIEWPORT(0.f, 0.f, (FLOAT)sc_dim.first, (FLOAT)sc_dim.second),	// Render to texture (stays the same for Geometry Pass)
-		CD3D11_VIEWPORT(0.f, 0.f, (FLOAT)shadow_res, (FLOAT)shadow_res)								// Shadow (temp hardcoded)
+		CD3D11_VIEWPORT(0.f, 0.f, (FLOAT)m_shadow_map_resolution, (FLOAT)m_shadow_map_resolution)								// Shadow (temp hardcoded)
 	};
 
 	// setup geometry pass 
@@ -70,8 +68,9 @@ Renderer::Renderer()
 
 	// setup depth only pass
 	{
+		// Using 16-bit because we are using Orthographic (linearly distributed values, so 16 bit is enough)
 		m_dir_d32 = gfx::dev->create_texture(TextureDesc::depth_stencil(
-			DepthFormat::eD32, shadow_res, shadow_res,
+			DepthFormat::eD32, m_shadow_map_resolution, m_shadow_map_resolution,
 			D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
 		m_dir_rp = gfx::dev->create_renderpass(RenderPassDesc({}, m_dir_d32));
 	}
@@ -146,30 +145,6 @@ Renderer::Renderer()
 		m_per_light_cb = gfx::dev->create_buffer(BufferDesc::constant(1 * sizeof(PerLightData)));
 
 
-
-		// Hardcoded directional light for now
-		auto light_direction = DirectX::SimpleMath::Vector3{ 0.2f, -0.8f, 0.2f };
-		light_direction.Normalize();
-		m_light_data.light_direction = DirectX::SimpleMath::Vector4(light_direction.x, light_direction.y, light_direction.z, 0.f);
-
-		auto focus_pos = DirectX::SimpleMath::Vector3(0.f, 0.f, 0.f);
-		auto eye_pos = -light_direction * 200.f;
-
-		float near_z = 10.f;
-		float far_z = 450.f;
-
-#ifdef REVERSE_Z_DEPTH
-		DirectX::SimpleMath::Matrix light_view = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f });
-
-		DirectX::SimpleMath::Matrix viewproj = light_view *
-			DirectX::XMMatrixOrthographicOffCenterLH(-125.f, 125.f, -125.f, 125.f, far_z, near_z);		// reverse z depth
-#else
-		DirectX::SimpleMath::Matrix viewproj = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f }) *
-			DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, near_z, far_z);
-#endif
-
-		m_light_data.view_proj = viewproj;
-		m_light_data.view_proj_inv = viewproj.Invert();
 
 	}
 
@@ -303,7 +278,7 @@ void Renderer::compute_SDSM()
 	//		auto _ = FrameProfiler::Scoped("Reduction 2");
 	//		gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
 	//		gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);
-	//		gfx::dev->bind_constant_buffer(PER_FRAME_CB_SLOT, ShaderStage::eCompute, m_cb_per_frame);
+	//		gfx::dev->bind_constant_buffer(GLOBAL_PER_FRAME_CB_SLOT, ShaderStage::eCompute, m_cb_per_frame);
 	//		gfx::dev->bind_compute_pipeline(m_compute_pipe2);
 
 	//		x_blocks = std::ceilf((x_blocks * y_blocks) / 1024.f);
@@ -443,23 +418,6 @@ void Renderer::render()
 		// Hardcoded directional light for now
 		auto light_direction = DirectX::SimpleMath::Vector3{ 0.2f, -0.8f, 0.2f };
 		light_direction.Normalize();
-		m_light_data.light_direction = DirectX::SimpleMath::Vector4(light_direction.x, light_direction.y, light_direction.z, 0.f);
-
-		auto focus_pos = DirectX::SimpleMath::Vector3(0.f, 0.f, 0.f);
-		auto eye_pos = -light_direction * 200.f;
-		DirectX::SimpleMath::Matrix light_view = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f });
-
-//		float near_z = 10.f;
-//		float far_z = 450.f;
-//
-//#ifdef REVERSE_Z_DEPTH
-//
-//		DirectX::SimpleMath::Matrix viewproj = light_view *
-//			DirectX::XMMatrixOrthographicOffCenterLH(-125.f, 125.f, -125.f, 125.f, far_z, near_z);		// reverse z depth
-//#else
-//		DirectX::SimpleMath::Matrix viewproj = DirectX::XMMatrixLookAtLH(eye_pos, focus_pos, { 0.f, 1.f, 0.f }) *
-//			DirectX::XMMatrixOrthographicOffCenterLH(-150.f, 150.f, -150.f, 150.f, near_z, far_z);
-//#endif
 
 
 		float cam_near_z = 0.1f;
@@ -468,12 +426,11 @@ void Renderer::render()
 		float clip_range = cam_far_z - cam_near_z;
 		
 		// Get splits
-		std::array<float, 4> cascade_splits;
+		std::array<float, NUM_CASCADES> cascade_splits;
 		for (int i = 0; i < cascade_splits.size(); ++i)
 		{
 			cascade_splits[i] = get_cascade_split(m_lambda, i + 1, cascade_splits.size(), cam_near_z, cam_far_z) / clip_range;
 		}
-	
 	
 		// Calculate orthographic projection matrix for each cascade
 		std::array<DirectX::SimpleMath::Matrix, cascade_splits.size()> matrices;
@@ -517,7 +474,6 @@ void Renderer::render()
 			for (uint32_t i = 0; i < 4; i++) 
 			{
 				auto dist = frustum_points[i + 4] - frustum_points[i];
-				//dist.Normalize();
 				frustum_points[i + 4] = frustum_points[i] + (dist * splitDist);
 				frustum_points[i] = frustum_points[i] + (dist * lastSplitDist);
 			}
@@ -542,82 +498,48 @@ void Renderer::render()
 			auto max_extents = DirectX::SimpleMath::Vector3(radius);
 			auto min_extents = -max_extents;
 
-			//auto light_view = DirectX::XMMatrixLookAtLH(frustum_center - light_direction * -min_extents.z, frustum_center, { 0.0f, 1.0f, 0.0f });
 			DirectX::SimpleMath::Matrix light_view = DirectX::XMMatrixLookAtLH(frustum_center - light_direction * -min_extents.z, frustum_center, { 0.0f, 1.0f, 0.0f });
-			
+
 #ifdef REVERSE_Z_DEPTH
-			DirectX::SimpleMath::Matrix ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(min_extents.x, max_extents.x, min_extents.y, max_extents.y, max_extents.z - min_extents.z, 0.f);
+			DirectX::SimpleMath::Matrix ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(
+				min_extents.x, max_extents.x, min_extents.y, max_extents.y, max_extents.z - min_extents.z, 0.f);
 #else
-			auto ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.f, max_extents.z - min_extents.z);
+			DirectX::SimpleMath::Matrix ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(
+				min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.f, max_extents.z - min_extents.z);
 #endif
 
 			// Avoid shadow shimmering
 			// https://johanmedestrom.wordpress.com/2016/03/18/opengl-cascaded-shadow-maps/
+			// Exactly how it does it, I'm not sure..
 			auto shadowMatrix = light_view * ortho_mat;
 			auto shadowOrigin = DirectX::SimpleMath::Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 			shadowOrigin = DirectX::SimpleMath::Vector4::Transform(shadowOrigin, shadowMatrix);
-			shadowOrigin = shadowOrigin * 1024 / 2.0f;
+			shadowOrigin = shadowOrigin * m_shadow_map_resolution / 2.0f;
 
 			auto roundedOrigin = DirectX::SimpleMath::Vector4(std::roundf(shadowOrigin.x), std::roundf(shadowOrigin.y), std::roundf(shadowOrigin.z), std::roundf(shadowOrigin.w));
 			auto roundOffset = roundedOrigin - shadowOrigin;
-			roundOffset = roundOffset * 2.0f / 1024;
+			roundOffset = roundOffset * 2.0f / m_shadow_map_resolution;
 			roundOffset.z = 0.0f;
 			roundOffset.w = 0.0f;
 
-			//glm::mat4 shadowProj = lightOrthoMatrix;
-			//shadowProj[3] += roundOffset;
-			//lightOrthoMatrix = shadowProj;
 			ortho_mat.m[3][0] += roundOffset.x;
 			ortho_mat.m[3][1] += roundOffset.y;
 			ortho_mat.m[3][2] += roundOffset.z;
 			ortho_mat.m[3][3] += roundOffset.w;
 
-
+			lastSplitDist = cascade_splits[i];
 
 			//// Store split distance and matrix in cascade
 			//cascades[i].splitDepth = (camera.getNearClip() + splitDist * clipRange) * -1.0f;
 
 			DirectX::SimpleMath::Matrix total = light_view * ortho_mat;
 			matrices[i] = total;
-
-			lastSplitDist = cascade_splits[i];
 		}
 		
 		auto total = matrices[m_cascade];
 		m_light_data.view_proj = total;
 		m_light_data.view_proj_inv = total.Invert();
-
-
-
-		//m_light_data.view_proj = viewproj;
-		//m_light_data.view_proj_inv = viewproj.Invert();
-
-		//Light::CalculateCropMatrix(Frustum splitFrustum) 
-		//{   
-		//	Matrix lightViewProjMatrix = viewMatrix * projMatrix;  
-		//	// Find boundaries in light's clip space   
-		//	BoundingBox cropBB = CreateAABB(splitFrustum.AABB, lightViewProjMatrix);  
-		//	// Use default near-plane value   
-		//	cropBB.min.z = 0.0f;   
-		//	// Create the crop matrix   
-		//	float scaleX, scaleY, scaleZ;   
-		//	float offsetX, offsetY, offsetZ;  
-		//	scaleX = 2.0f / (cropBB.max.x - cropBB.min.x);  
-		//	scaleY = 2.0f / (cropBB.max.y - cropBB.min.y);   
-		//	offsetX = -0.5f * (cropBB.max.x + cropBB.min.x) * scaleX;   
-		//	offsetY = -0.5f * (cropBB.max.y + cropBB.min.y) * scaleY;   
-		//	scaleZ = 1.0f / (cropBB.max.z - cropBB.min.z);   
-		//	offsetZ = -cropBB.min.z * scaleZ;   
-		//	return Matrix( 
-		//		scaleX, 0.0f, 0.0f, 0.0f,   
-		//		0.0f, scaleY, 0.0f,  0.0f,           
-		//		0.0f, 0.0f,   scaleZ,  0.0f,                 
-		//		offsetX,  offsetY,  offsetZ,  1.0f);
-		//}
-
-
-		
-		fmt::print("splits: {}, {}, {}\n", cascade_splits[0], cascade_splits[1], cascade_splits[2]);
+		m_light_data.light_direction = DirectX::SimpleMath::Vector4(light_direction);
 	}
 
 
@@ -645,7 +567,7 @@ void Renderer::render()
 	m_compute_bucket.flush();
 
 	// Bind per frame data (should be bound to like slot 14 as reserved space)
-	gfx::dev->bind_constant_buffer(PER_FRAME_CB_SLOT, ShaderStage::eVertex, m_cb_per_frame, 0);
+	gfx::dev->bind_constant_buffer(GLOBAL_PER_FRAME_CB_SLOT, ShaderStage::eVertex, m_cb_per_frame, 0);
 
 
 
@@ -738,27 +660,7 @@ void Renderer::declare_ui()
 	ImGui::Begin("Settings");
 	ImGui::Checkbox("Vsync", &m_vsync);
 	ImGui::SliderFloat("Lambda", &m_lambda, 0.0f, 1.f);
-	ImGui::SliderInt("Cascade", &m_cascade, 0, 3);
-
-	ImGui::End();
-
-
-	// Declare things to draw UI overlay
-	bool show_demo_window = true;
-	ImGui::ShowDemoWindow(&show_demo_window);
-
-	ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-	ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-	ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-	ImGui::Checkbox("Another Window", &show_demo_window);
-
-	//ImGui::Checkbox("Proto", &m_proto);
-
-
-	ImGui::SameLine();
-
-	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::SliderInt("Cascade", &m_cascade, 0, NUM_CASCADES - 1);
 	ImGui::End();
 
 	// Main menu
@@ -779,8 +681,9 @@ void Renderer::declare_ui()
 			ImGui::EndMenu();
 		}
 		ImGui::EndMainMenuBar();
-
 	}
+
+
 
 	ImGui::Begin("Settings");
 
@@ -873,7 +776,8 @@ void Renderer::declare_shader_reloader_ui()
 		const std::string path = "shaders";
 		for (const auto& entry : std::filesystem::directory_iterator(path))
 		{
-			if (std::filesystem::path(entry).extension() == ".hlsli")	// discard hlsli
+			// discard non .hlsl
+			if (std::filesystem::path(entry).extension() != ".hlsl")
 				continue;
 
 			shader_filenames.insert(std::filesystem::path(entry).stem().string());
@@ -884,9 +788,9 @@ void Renderer::declare_shader_reloader_ui()
 	}
 
 	ImGui::Begin("Shader Reloader");
-
+	
 	const char* combo_preview_value = selected_item;
-	if (ImGui::BeginCombo("Files", combo_preview_value))
+	if (ImGui::BeginCombo("Files", combo_preview_value, ImGuiComboFlags_HeightLarge))
 	{
 		for (const auto& filename : shader_filenames)
 		{
@@ -939,9 +843,9 @@ void Renderer::GBuffer::create_rp(GfxDevice* dev, TextureHandle depth)
 
 void Renderer::GBuffer::read_bind(GfxDevice* dev)
 {
-	dev->bind_resource(0, ShaderStage::ePixel, albedo);
-	dev->bind_resource(1, ShaderStage::ePixel, normal);
-	dev->bind_resource(2, ShaderStage::ePixel, world);
+	dev->bind_resource(GBUFFER_ALBEDO_TEXTURE_SLOT, ShaderStage::ePixel, albedo);
+	dev->bind_resource(GBUFFER_NORMAL_TEXTURE_SLOT, ShaderStage::ePixel, normal);
+	dev->bind_resource(GBUFFER_WORLD_TEXTURE_SLOT, ShaderStage::ePixel, world);
 }
 
 void Renderer::GBuffer::free(GfxDevice* dev)

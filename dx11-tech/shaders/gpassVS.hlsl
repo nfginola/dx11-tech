@@ -15,7 +15,7 @@ struct VertexOutput
     float3 normal : NORMAL;
 };
 
-CBUFFER(PerFrameCB, PER_FRAME_CB_SLOT)
+CBUFFER(PerFrameCB, GLOBAL_PER_FRAME_CB_SLOT)
 {
     PerFrameData g_per_frame;
 }
@@ -26,7 +26,6 @@ cbuffer PerDraw : register(b1)
 }
 
 VertexOutput main(VertexInput input)
-//VertexOutput main(uint v_ID : SV_VertexID)
 {
     VertexOutput output = (VertexOutput) 0;
     
@@ -35,10 +34,6 @@ VertexOutput main(VertexInput input)
     output.position = mul(g_per_frame.proj_mat, mul(g_per_frame.view_mat, world));
     output.uv = input.uv;
     output.normal = input.normal;
-    
-    //output.position = float4(VERTS[v_ID], 1.f);
-    //output.uv = 1.f.xx;
-    //output.normal = COLORS[v_ID];
     
     return output;
 }

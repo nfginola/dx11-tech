@@ -7,7 +7,7 @@ struct PixelInput
     float2 uv : UV;
 };
 
-CBUFFER(PerFrameCB, PER_FRAME_CB_SLOT)
+CBUFFER(PerFrameCB, GLOBAL_PER_FRAME_CB_SLOT)
 {
     PerFrameData g_per_frame;
 }
@@ -19,16 +19,17 @@ cbuffer PerLightData : register(b1)
     float4 g_light_direction;
 }
 
-Texture2D g_albedo : register(t0);
-Texture2D g_normal : register(t1);
-Texture2D g_world : register(t2);
 
-//StructuredBuffer<float> g_splits : register(t5);
+TEXTURE2D(g_albedo, GBUFFER_ALBEDO_TEXTURE_SLOT)
+TEXTURE2D(g_normal, GBUFFER_NORMAL_TEXTURE_SLOT)
+TEXTURE2D(g_world, GBUFFER_WORLD_TEXTURE_SLOT)
+
+
+
 Texture2D g_main_depth : register(t6);
 Texture2D g_directional_sm : register(t7);
 
 SamplerState lin_samp : register(s0);
-//SamplerState point_samp : register(s1);
 SamplerState sm_samp : register(s3);
 
 

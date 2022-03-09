@@ -1051,6 +1051,9 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 				v_desc.Format = DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
 			else if (v_desc.Format == DXGI_FORMAT_R24G8_TYPELESS)
 				v_desc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+			else if (v_desc.Format == DXGI_FORMAT_R16_TYPELESS)
+				v_desc.Format = DXGI_FORMAT_R16_UNORM;
+
 
 			break;
 		case TextureType::e3D:
@@ -1312,6 +1315,8 @@ void GfxDevice::create_texture(const TextureDesc& desc, GPUTexture* texture, std
 				v_desc.Format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
 			else if (v_desc.Format == DXGI_FORMAT_R24G8_TYPELESS)
 				v_desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+			else if (v_desc.Format == DXGI_FORMAT_R16_TYPELESS)
+				v_desc.Format = DXGI_FORMAT_D16_UNORM;
 
 			break;
 		case TextureType::e3D:

@@ -97,10 +97,9 @@ void FrameProfiler::frame_end()
 	// Fill CPU and GPU times
 	gather_data(cpu_frame_stats, gpu_frame_stats);
 
-	// Note that calculating the averages takes quite some time!
-	m_cpu->begin("Averaging Overhead");
+	//m_cpu->begin("Averaging Overhead");
 	calculate_averages();
-	m_cpu->end("Averaging Overhead");
+	//m_cpu->end("Averaging Overhead");
 
 	// Add full frame profile 
 	for (const auto& averages : m_avg_gpu_times.profiles)

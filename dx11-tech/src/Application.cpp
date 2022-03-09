@@ -163,8 +163,6 @@ Application::Application()
 
 	*/
 
-
-
 	// Window render area dimension
 	constexpr UINT WIN_WIDTH = 1920;
 	constexpr UINT WIN_HEIGHT = 1080;
@@ -177,7 +175,6 @@ Application::Application()
 	auto win_proc = [this](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT { return this->custom_win_proc(hwnd, uMsg, wParam, lParam); };
 	m_win = make_unique<Window>(GetModuleHandle(NULL), win_proc, WIN_WIDTH, WIN_HEIGHT);
 	m_input = make_unique<Input>(m_win->get_hwnd());
-
 
 	// Initialize systems
 	CPUProfiler::initialize();
@@ -202,10 +199,6 @@ Application::Application()
 
 	// Set main camera for rendering
 	gfx::rend->set_camera(m_camera_controller->get_active_camera());
-
-	/*
-		Declare UI for changing Scenes (Combo box)
-	*/
 	
 	// Renderer
 	m_model_renderer = new ModelRenderer(gfx::rend);
@@ -267,22 +260,8 @@ void Application::run()
 
 		m_model_renderer->submit(m_sponza, DirectX::SimpleMath::Matrix::CreateScale(0.07f));
 		for (int i = 0; i < 10; ++i)
-		{
-			// Try turning off shadows for certain submissions
-			if (i % 2 == 0)
-			{
-				ModelRenderSpec spec;
-				spec.casts_shadow = true;
-
-				m_model_renderer->submit(m_nanosuit, DirectX::SimpleMath::Matrix::CreateScale(1.0) *
-					DirectX::SimpleMath::Matrix::CreateTranslation(-45.f + i * 8.f, 0.f, 10.f), spec);
-				continue;
-			}
-
 			m_model_renderer->submit(m_nanosuit, DirectX::SimpleMath::Matrix::CreateScale(1.0) *
 				DirectX::SimpleMath::Matrix::CreateTranslation(-45.f + i * 8.f, 0.f, 10.f));
-		}
-
 
 		m_model_renderer->end();
 			

@@ -21,6 +21,7 @@ using uint = uint32_t;
 #endif
 
 #define CBUFFER(name, slot) cbuffer name : register(b##slot)
+#define TEXTURE2D(name, slot) Texture2D name : register(t##slot);
 
 
 #endif

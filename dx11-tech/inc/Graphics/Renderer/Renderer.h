@@ -137,17 +137,16 @@ private:
 	SamplerHandle m_shadow_sampler;
 
 	
-	// Light
+	// Directional light
 	struct PerLightData
 	{
 		DirectX::XMMATRIX view_proj;
 		DirectX::XMMATRIX view_proj_inv;
 		DirectX::XMFLOAT4 light_direction;
-	};
-	PerLightData m_light_data;
+	} m_light_data;
 	BufferHandle m_per_light_cb;
 
-
+	float m_shadow_map_resolution = 2048;
 	float m_lambda = 0.5f;
 	int m_cascade = 0;
 
