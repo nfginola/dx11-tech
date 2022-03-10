@@ -75,8 +75,36 @@ Renderer::Renderer()
 		*/
 		m_dir_d32 = gfx::dev->create_texture(TextureDesc::depth_stencil(
 			DepthFormat::eD32, (UINT)m_shadow_map_resolution, (UINT)m_shadow_map_resolution,
-			D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE));
+			D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE, NUM_CASCADES));
 		m_dir_rp = gfx::dev->create_renderpass(RenderPassDesc({}, m_dir_d32));
+
+		/*
+			Note that Lightpass draw call is turned off right now just to test the depth stencil with array (GS)
+
+
+
+			Setup cascade:
+				1. Make texture array
+
+				5. Setup Geometry Shader for CASCADES amount of instancing
+				6. Create StructuredBuffer for CASCADE information (matrices and splits)
+				7. ^^ Use SV_InstanceID in GS to select correct matrices from StructuredBuffer 
+				8. ^^ Pass SV_InstanceID to SV_RenderTargetArrayIndex output in GS to select correct subresource index to render depth to
+
+			*/
+
+
+		auto vs_depth = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "depthOnlyVS.hlsl");
+		auto gs_depth = gfx::dev->compile_and_create_shader(ShaderStage::eGeometry, "depthOnlyGS.hlsl");
+		auto ps_depth = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "depthOnlyPS.hlsl");
+		auto do_layout = InputLayoutDesc().append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0);
+
+		m_shared_resources.depth_only_pipe = gfx::dev->create_pipeline(PipelineDesc()
+			.set_shaders(VertexShader(vs_depth), PixelShader(ps_depth), GeometryShader(gs_depth))
+			.set_input_layout(do_layout)
+			.set_rasterizer(RasterizerDesc::no_backface_cull()));
+
+		m_cascades_info_buffer = gfx::dev->create_buffer(BufferDesc::structured(sizeof(CascadeInfo), { 0, NUM_CASCADES }, D3D11_BIND_SHADER_RESOURCE, true));
 	}
 
 	// setup light pass
@@ -154,18 +182,6 @@ Renderer::Renderer()
 
 
 
-
-	// depth only pipe
-	{
-		auto vs_depth = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "depthOnlyVS.hlsl");
-		auto ps_depth = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "depthOnlyPS.hlsl");
-		auto do_layout = InputLayoutDesc().append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0);
-
-		m_shared_resources.depth_only_pipe = gfx::dev->create_pipeline(PipelineDesc()
-			.set_shaders(VertexShader(vs_depth), PixelShader(ps_depth))
-			.set_input_layout(do_layout)
-			.set_rasterizer(RasterizerDesc::no_backface_cull()));
-	}
 
 	// deferred gpass pipe
 	{
@@ -436,7 +452,7 @@ void Renderer::render()
 	
 		// Calculate orthographic projection matrix for each cascade
 		std::array<DirectX::SimpleMath::Matrix, cascade_splits.size()> matrices;
-		float lastSplitDist = 0.0;
+		float lastSplitDist = cam_near_z / clip_range;
 		for (uint32_t i = 0; i < cascade_splits.size(); i++)
 		{
 			float splitDist = cascade_splits[i];
@@ -538,19 +554,59 @@ void Renderer::render()
 			ortho_mat.m[3][2] += roundOffset.z;
 			ortho_mat.m[3][3] += roundOffset.w;
 
-			lastSplitDist = cascade_splits[i];
 
 			//// Store split distance and matrix in cascade
 			//cascades[i].splitDepth = (camera.getNearClip() + splitDist * clipRange) * -1.0f;
 
 			DirectX::SimpleMath::Matrix total = light_view * ortho_mat;
 			matrices[i] = total;
+
+			//// main view pro
+			//auto view_proj = m_main_cam->get_view_mat() * m_main_cam->get_proj_mat();
+			//// transform near and far subfrusta split into ndc for shader comparison
+			//auto near_vec = DirectX::SimpleMath::Vector4(0.f, 0.f, lastSplitDist * clip_range, 1.f);
+			//auto far_vec = DirectX::SimpleMath::Vector4(0.f, 0.f, splitDist * clip_range, 1.f);
+			//near_vec = DirectX::SimpleMath::Vector4::Transform(near_vec, view_proj);
+			//far_vec = DirectX::SimpleMath::Vector4::Transform(far_vec, view_proj);
+			//// persp division
+			//near_vec /= near_vec.w;
+			//far_vec /= far_vec.w;
+	
+
+			//m_cascades_info[i].view_proj_mat = total;
+			//m_cascades_info[i].near_z = near_vec.z;
+			//m_cascades_info[i].far_z = far_vec.z;
+
+//#ifdef REVERSE_Z_DEPTH
+//			m_cascades_info[i].near_z = 1.f - lastSplitDist;
+//			m_cascades_info[i].far_z = 1.f - splitDist;
+//#else
+//			m_cascades_info[i].near_z = lastSplitDist;
+//			m_cascades_info[i].far_z = splitDist;
+//#endif
+
+
+			// set near/far in viewspace (independent of reverse z)
+			m_cascades_info[i].view_proj_mat = total;
+			m_cascades_info[i].near_z = lastSplitDist * clip_range;
+			m_cascades_info[i].far_z = splitDist * clip_range;
+
+			// Reset for next iteration
+			lastSplitDist = cascade_splits[i];
+
 		}
+
+		// Update cascades data
+		auto single_light_copy = m_copy_bucket.add_command<gfxcommand::CopyToBuffer>(0, 0);
+		single_light_copy->buffer = m_cascades_info_buffer;
+		single_light_copy->data = m_cascades_info.data();
+		single_light_copy->data_size = sizeof(m_cascades_info);
 		
 		auto total = matrices[m_cascade];
 		m_light_data.view_proj = total;
 		m_light_data.view_proj_inv = total.Invert();
 		m_light_data.light_direction = DirectX::SimpleMath::Vector4(light_direction);
+		
 	}
 
 
@@ -601,6 +657,7 @@ void Renderer::render()
 
 		gfx::dev->begin_pass(m_dir_rp);
 		gfx::dev->bind_viewports({ viewports[2] });
+		gfx::dev->bind_resource(0, ShaderStage::eGeometry, m_cascades_info_buffer);
 		gfx::dev->bind_constant_buffer(2, ShaderStage::eVertex, m_per_light_cb);
 
 		m_shadow_bucket.flush();
@@ -621,10 +678,12 @@ void Renderer::render()
 		// Directional light can be CB
 		// Pointlight and Spotlight should be structured buffers (we'll save for later, implement SDSM first for directional)
 		gfx::dev->bind_constant_buffer(1, ShaderStage::ePixel, m_per_light_cb);
+		gfx::dev->bind_constant_buffer(13, ShaderStage::ePixel, m_cb_per_frame);
 		
 		//gfx::dev->bind_resource(5, ShaderStage::ePixel, m_rw_splits);
 		gfx::dev->bind_resource(6, ShaderStage::ePixel, m_d_32);
 		gfx::dev->bind_resource(7, ShaderStage::ePixel, m_dir_d32);
+		gfx::dev->bind_resource(8, ShaderStage::ePixel, m_cascades_info_buffer);
 
 		gfx::dev->draw(6);
 		gfx::dev->end_pass();

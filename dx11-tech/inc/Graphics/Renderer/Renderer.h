@@ -146,6 +146,8 @@ private:
 	} m_light_data;
 	BufferHandle m_per_light_cb;
 
+	std::array<CascadeInfo, NUM_CASCADES> m_cascades_info;
+	BufferHandle m_cascades_info_buffer;
 	float m_shadow_map_resolution = 2048;
 	float m_lambda = 0.5f;
 	int m_cascade = 0;

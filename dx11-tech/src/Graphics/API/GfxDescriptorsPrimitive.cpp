@@ -74,7 +74,7 @@ BufferDesc BufferDesc::staging(size_t size_in_bytes)
 		BufferType::eStaging);
 }
 
-TextureDesc TextureDesc::depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT mip_levels, UINT sample_count, UINT sample_quality)
+TextureDesc TextureDesc::depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT array_size, UINT mip_levels, UINT sample_count, UINT sample_quality)
 {
 	// Depth stencil
 	/*
@@ -88,16 +88,16 @@ TextureDesc TextureDesc::depth_stencil(DepthFormat format, UINT width, UINT heig
 	*/
 
 	if (format == DepthFormat::eD32)
-		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R32_TYPELESS, width, height, 1, mip_levels, bind_flags, 
+		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R32_TYPELESS, width, height, array_size, mip_levels, bind_flags, 
 			D3D11_USAGE_DEFAULT, 0, sample_count, sample_quality, 0));
 	else if (format == DepthFormat::eD32_S8)
-		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R32G8X24_TYPELESS, width, height, 1, mip_levels, bind_flags, 
+		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R32G8X24_TYPELESS, width, height, array_size, mip_levels, bind_flags,
 			D3D11_USAGE_DEFAULT, 0, sample_count, sample_quality, 0));
 	else if (format == DepthFormat::eD24_S8)
-		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R24G8_TYPELESS, width, height, 1, mip_levels, bind_flags,
+		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R24G8_TYPELESS, width, height, array_size, mip_levels, bind_flags,
 			D3D11_USAGE_DEFAULT, 0, sample_count, sample_quality, 0));
 	else if (format == DepthFormat::eD16)
-		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R16_TYPELESS, width, height, 1, mip_levels, bind_flags,
+		return TextureDesc(CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R16_TYPELESS, width, height, array_size, mip_levels, bind_flags,
 			D3D11_USAGE_DEFAULT, 0, sample_count, sample_quality, 0));
 	else
 	{

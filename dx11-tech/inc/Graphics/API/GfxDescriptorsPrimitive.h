@@ -13,7 +13,7 @@ public:
 	static BufferDesc constant(size_t size_in_bytes, bool dynamic = true);
 	static BufferDesc index(size_t size_in_bytes, bool dynamic = false);
 	static BufferDesc vertex(size_t size_in_bytes, bool dynamic = false);
-	static BufferDesc structured(size_t size_per_element, const std::pair<UINT, UINT> element_range, UINT bind_flags, bool cpu_dynamic = false);
+	static BufferDesc structured(size_t size_per_element, const std::pair<UINT, UINT> start_and_count, UINT bind_flags, bool cpu_dynamic = false);
 	static BufferDesc staging(size_t size_in_bytes);
 	/*
 		make others..
@@ -37,7 +37,7 @@ public:
 	TextureDesc() = default;
 	TextureDesc(const D3D11_TEXTURE2D_DESC& desc) : m_desc(desc), m_type(TextureType::e2D), m_render_target_clear(RenderTextureClear::black()) {}
 	
-	static TextureDesc depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT mip_levels = 1, UINT sample_count = 1, UINT sample_quality = 0);
+	static TextureDesc depth_stencil(DepthFormat format, UINT width, UINT height, UINT bind_flags, UINT array_size = 1, UINT mip_levels = 1, UINT sample_count = 1, UINT sample_quality = 0);
 	
 	// Set mip_levels = 0 to generate mip level textures all the way to the bottom!
 	static TextureDesc make_2d(

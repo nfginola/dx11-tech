@@ -4,6 +4,13 @@
 
 // Cascaded Shadow Maps (Directional Light)
 #define NUM_CASCADES 4
+struct CascadeInfo
+{
+	float4x4 view_proj_mat;
+	float near_z;
+	float far_z;
+};
+
 
 // Deferred GBuffer Texture Slots
 #define GBUFFER_ALBEDO_TEXTURE_SLOT 0
@@ -14,10 +21,12 @@
 #define GLOBAL_PER_FRAME_CB_SLOT 13
 struct PerFrameData
 {
-	matrix view_mat;
-	matrix proj_mat;
-	matrix inv_proj_mat;
+	float4x4 view_mat;
+	float4x4 proj_mat;
+	float4x4 inv_proj_mat;
 };
+
+
 
 
 

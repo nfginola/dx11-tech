@@ -315,6 +315,7 @@
     <FxCompile Include="shaders\SDSM_ReduceTexToBuffer.hlsl" />
     <FxCompile Include="shaders\SDSM_FinalReduction.hlsl" />
     <FxCompile Include="shaders\SDSM_ComputeSplits.hlsl" />
+    <FxCompile Include="shaders\depthOnlyGS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\TonemappingAlgorithms.hlsli" />
