@@ -38,14 +38,14 @@ Features:
 	* ImGUI Docking
 	* Assimp Loader
   
-Gallery:  
+__Gallery__:  
 Scene  
 ![Alt text](gallery/ss.png?raw=true "Screenshot")  
 Exposed graphics primitives  
 ![Alt text](gallery/ss2.png?raw=true "Screenshot2")  
 Setting up depth-only pass example:  
 ![Alt text](gallery/ss3.png?raw=true "Screenshot3")  
-Scoped frame profiler (CPU and GPU) and API  
+Scoped frame profiler (CPU and GPU) and API usage 
 ![Alt text](gallery/ss4.png?raw=true "Screenshot4")  
 	 
 
