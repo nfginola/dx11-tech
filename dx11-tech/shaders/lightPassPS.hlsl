@@ -14,8 +14,6 @@ CBUFFER(PerFrameCB, GLOBAL_PER_FRAME_CB_SLOT)
 
 CBUFFER(PerLightCB, 1)
 {
-    matrix g_light_view_proj;
-    matrix g_light_view_proj_inv;
     float4 g_light_direction;
 }
 
@@ -40,8 +38,8 @@ float4 main(PixelInput input) : SV_TARGET0
     float3 ambient = col * 0.1f;
 
     float curr_pixel_view_z = mul(g_per_frame.view_mat, float4(world, 1.f)).z;
-    float4 curr_pixel_clip = mul(g_per_frame.proj_mat, mul(g_per_frame.view_mat, float4(world, 1.f)));
-    float curr_pixel_ndc_z = (curr_pixel_clip / curr_pixel_clip.w).z;
+    //float4 curr_pixel_clip = mul(g_per_frame.proj_mat, mul(g_per_frame.view_mat, float4(world, 1.f)));
+    //float curr_pixel_ndc_z = (curr_pixel_clip / curr_pixel_clip.w).z;
 
 
     float is_shadowed = 0.f;    // Lit
@@ -49,12 +47,12 @@ float4 main(PixelInput input) : SV_TARGET0
     [unroll]
     for (int cascade = 0; cascade < NUM_CASCADES; ++cascade)
     {   
-        float4 p = float4(0.f, 0.f, g_directional_cascades_info[cascade].far_z, 1.f);
-        p = mul(g_per_frame.proj_mat, p);
-        p /= p.w;
+        //float4 p = float4(0.f, 0.f, g_directional_cascades_info[cascade].far_z, 1.f);
+        //p = mul(g_per_frame.proj_mat, p);
+        //p /= p.w;
 
-        //if (curr_pixel_view_z < g_directional_cascades_info[cascade].far_z)
-        if (curr_pixel_ndc_z > p.z)
+        if (curr_pixel_view_z < g_directional_cascades_info[cascade].far_z)
+        //if (curr_pixel_ndc_z > p.z)
         {
             //if (cascade == 0)
             //    tint = float3(1.f, 0.f, 0.f) * 0.1f;
@@ -64,8 +62,6 @@ float4 main(PixelInput input) : SV_TARGET0
             //    tint = float3(0.f, 0.f, 1.f) * 0.1f;
             //else
             //    tint = float3(1.f, 0.f, 1.f) * 0.1f;
-
-            //is_shadowed = (float)i / NUM_CASCADES;
 
             float4 lspace_clip = mul(g_directional_cascades_info[cascade].view_proj_mat, float4(world, 1.f));
             float4 lspace_ndc = lspace_clip / lspace_clip.w; // persp dvision
@@ -92,57 +88,11 @@ float4 main(PixelInput input) : SV_TARGET0
         }
     }
 
-
-
-    //float4 lspace_clip = mul(g_light_view_proj, float4(world, 1.f));
-    //float4 lspace_ndc = lspace_clip / lspace_clip.w;     // persp dvision
-    
-    //// ndc has 0,0 mid and 1,1 top right --> need to convert to texture space: 0,0 top left, 1,1 bottom left
-    //float2 lspace_uv = float2(lspace_ndc.x * 0.5f + 0.5f, 1.f - (lspace_ndc.y * 0.5f + 0.5f));
-
-    //float ldepth = g_directional_cascades_sm.Sample(sm_samp, float3(lspace_uv, 0.f)).r; // Depth of this pixel from shadow persp.
-    //float real_depth = lspace_ndc.z;                                    // Depth of curr frag 
-
-    //float bias = max(0.005 * (1.0 - normalize(dot(nor, g_light_direction.xyz))), 0.0012);
-    ////float bias = max(0.0001 * (1.0 - normalize(dot(nor, g_light_direction.xyz))), 0.00001);
-
-
-    //float is_shadowed = 0.f;      // Lit
-
-    //#ifdef REVERSE_Z_DEPTH
-    //if (real_depth + bias < ldepth)
-    //#else
-    //if (real_depth - bias > ldepth)
-    //#endif
-    //{
-    //    is_shadowed = 1.f; // Not lit
-    //}
-
             
  
     float dir_light_contrib = max(dot(nor, -g_light_direction.xyz), 0.f) * 1.f; // intensity
     float3 diffuse = col * dir_light_contrib;       // if you want to add tint, multiplicative blend is the way (represent light factor absorbed per channel)
 
-
-    //float curr_view_depth = g_main_depth.Sample(sm_samp, input.uv).r;
-    //float3 tint;
-    //float tint_strength = 0.05;
-    //if (curr_view_depth > g_splits[0])
-    //{
-    //    tint = float3(1.f, 0.f, 0.f) * tint_strength;
-    //}
-    //else if (curr_view_depth > g_splits[1])
-    //{
-    //    tint = float3(0.f, 1.f, 0.f) * tint_strength;
-    //}
-    //else if (curr_view_depth > g_splits[2])
-    //{
-    //    tint = float3(0.f, 0.f, 1.f) * tint_strength;
-    //}
-    //else
-    //{
-    //    tint = float3(0.0f, 1.f, 1.f) * tint_strength;
-    //}
 
     float3 final_color = ambient + diffuse * (1.f - is_shadowed);
     final_color += tint;

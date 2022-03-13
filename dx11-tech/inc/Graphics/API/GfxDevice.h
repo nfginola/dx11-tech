@@ -22,15 +22,6 @@ struct ComputePipeline;
 struct Shader;
 struct Sampler;
 
-/*	
-	This API is D3D11 ONLY and is meant for:
-		- Exploration (exposing the learning "surface area" in a controlled manner)
-		- Techniques (using the new learned tools for practical purposes)
-
-	This API leverages the old slot-binding model for simplicity and aims to be as stateless as possible.
-	Although, states which make practical sense such as persistent samplers will be utilized.
-
-*/
 class GfxDevice
 {
 	friend class ImGuiDevice;
@@ -50,19 +41,6 @@ public:
 	void set_name(TextureHandle res, const std::string& name);
 	void set_name(SamplerHandle res, const std::string& name);
 
-	/*
-		This should eventually be placed inside but in another class, e.g PipelineManager.
-		We can:
-			- Store map<shaderName, std::vector<PipelineHandle>>
-				- Use a std::multimap instead https://www.fluentcpp.com/2018/04/10/maps-vectors-multimap/
-			- Have access to the implementation loaded Pipelines
-
-		For a shader name:
-			For a pipeline associated with that shader name:
-				Get internal pipeline data (e.g filepaths)
-				Recompile Pipeline
-	
-	*/
 	void recompile_pipeline_shaders_by_name(const std::string& name);
 
 	// Resource creation
@@ -91,7 +69,7 @@ public:
 	void end_pass();
 
 	// https://developer.nvidia.com/content/constant-buffers-without-constant-pain-0
-	// Use the giant constant buffer thingy for per draw data! (not instancing, thats a different buffer which is passed through VB)
+	// Use the giant constant buffer for per draw data! (not instancing, thats a different buffer which is passed through VB)
 	// We have 256 bytes per draw (16 floats!) 
 	void bind_constant_buffer(UINT slot, ShaderStage stage, BufferHandle buffer, UINT offset256s = 0, UINT range256s = 1);
 	void bind_vertex_buffers(UINT start_slot, const std::vector<std::tuple<BufferHandle, UINT, UINT>>& buffers_strides_offsets);
@@ -121,28 +99,22 @@ public:
 	void present(bool vsync = true);
 
 	void copy_resource_region(BufferHandle dst, const CopyRegionDst& dst_dsc, BufferHandle src, const CopyRegionSrc& src_desc);
+
+	// Temporary reader (playing with readback with WIP SDSM)
 	void map_read_temp(BufferHandle buf);
 
 	/*
+	
+	to do...
 
-	Priority implement:
+		just expose new things when needed
+
+
 		DrawIndexedInstanced
-
-	Second prio:
-		Begin
-		End
-		GetData
-		SetPredication
-		GetPredication
-		Dispatch
-
-	Back Burner:
 		void clear_readwrite_resource(const GPUResource* resource, ReadWriteClear clear);
 	
-		
 		https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
-		Docs say that the type of resource of SRC and DST have to be the SAME, meaning it perfectly fits with our 
-		Buffer/Texture strongly typed interface.
+		Docs say that the type of resource of SRC and DST have to be the same, meaning it fits with our  Buffer/Texture strongly typed interface.
 
 		void copy_resource_full(BufferHandle dst, BufferHandle src);
 		void copy_resource_full(TextureHandle dst, TextureHandle src);
@@ -151,7 +123,6 @@ public:
 		void copy_resource_region(TextureCopyRegionDest dst, TextureCopyRegionSrc src);
 		void copy_resource_region(BufferCopyRegionDest dst, BufferCopyRegionSrc src);
 
-		
 		
 		ID3D11DeviceContext::CopySubresourceRegion
 

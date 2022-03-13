@@ -24,115 +24,6 @@ Application::Application()
 {
 	/*
 
-		To-do:
-			- Add raster UAVs for OMSetRenderTargetsAndUAV			DONE
-			- Add VB/IB binding to API								DONE
-			- Draw triangle with VB/IB								DONE (Non-interleaved data too!)
-			- Add HDR rendering and tone mapping					DONE (ACES tonemapping added)
-			- Enable multisampling									DONE
-			- Add Set Resource Naming								DONE
-			- Add Set/End EventMarker? 11.3 (What is that)			DONE
-				- We used the ID3DUserDefinedAnnotation!			DONE
-			- Add GPU Queries for Timestamp and Pipeline Stats		DONE
-				- Add a GetData() to retrieve useful data			DONE
-				- Add time averaging for timestamp and CPU			DONE
-					- Over 500 frames?
-
-			- Add shader hot reloading!								DONE
-				- Do this through pipeline hot reloading
-				- Check comment below by the input code
-
-			- Encapsulate Profiler									DONE
-				- Averaging takes time, what to do?					NEGLIGIBLE, CHECK TIMER IN FrameProfiler
-
-			- Use fmt for printing									DONE (linked as a VS Project dependency)
-				- https://github.com/fmtlib/fmt
-
-			- Add Map and UpdateSubresource							DONE
-
-			- Add Perspective Camera (normal depth, no reversed)	DONE
-
-			- Add moving and looking around							DONE
-
-			- Refactor camera using a FP Controller					DONE
-
-			- Add ImGUI docking branch								DONE
-				- https://github.com/ocornut/imgui/wiki/Docking
-
-			- Set Backbuffer to a Dockable Render Target?			DONE
-
-			- Refactor the way we submit ImGUI code					DONE
-				- Add to global callback list
-				  which is all run before UI draw
-
-			- Use ImGUI bar to show Frame Statistics				DONE
-				X Bars for Full Frame
-				X Numbers in ms on the side for parts
-				+ We just print numbers instead to keep it simple
-
-			- Add shader reloader GUI								DONE
-				- Directory auto scanning
-				- Filters out .hlsli
-
-			- Add Assimp Loader										DONE
-
-			- Refactor dependencies									DONE
-				- Lib linking and minimal files
-
-			- Add TextureManager									DONE
-				- Read notes in load_assets()
-
-			- Load Sponza Textures									DONE
-
-			- Fix auto-gen mipmaps									DONE
-				- Using UpdateSubresource to do
-				  staging copy
-
-			- Add a Model class										DONE
-				- Simply has Meshes and Materials (1:1 mapping)
-				- Later down the line, we want to reformat for
-					instancing.
-				- Make a naive version for now
-
-			- Add Material repository								DONE
-
-			- Add model repository									DONE
-				- Ignore MT contention problems
-
-			- Add Pipeline cache									DONE
-				- Check prev_pipeline
-				- Also, use prev_ps to determine whether or not to
-				  bind the new VS AND Input Layout!
-				  They are connected!
-					- Even though we duplicate Input Layouts
-					  We can avoid binding the same ones
-					  at least.
-
-			- Create a Pipeline Manager								TO-DO
-				- Create Pipeline (naming too)
-				- Retrieve Pipeline
-
-			- Add a Simple Entity which holds a World Matrix		TO-DO
-				- Holds a pointer to an existing Model (Flyweight)
-
-			- Implement rotation using Quaternion					TO-DO
-
-			- Add instancing by default								TO-DO
-				- Renderer.SubmitOpaque(model, world_mat, FLAGS)
-
-			FLAGS |= visible
-
-			for each unique model submitted,
-			we allocate an array for world matrices PER MODEL
-				--> serves as instance buffer
-
-			we submit DrawData:
-				{ mesh*, material*, vbs*, strides*, ib*, InstanceData { void*, size } }
-			--> sort DrawData by Material first and Index Buffer second
-
-
-
-
 			- Add AABBs to Entities									TO-DO
 				- Models have local AABB
 				- Entities receive a copy that is
@@ -140,26 +31,6 @@ Application::Application()
 
 			- Frustum Culling										TO-DO
 				-	AABBs
-
-			- Octtree?												TO-DO
-
-			- Try recreating view-space positions from only depth!	TO-DO
-
-			- Bind Persistent Samplers (on the last slots stages)	TO-DO
-				- Check MJP samples and DXTK for Common Samplers
-				- Remember that shadows use diff. samplers
-
-			- Create Swap chain class?								TO-DO
-				- Refactoring work
-
-			- Grab Pipeline Query									TO-DO
-				- Refactoring work
-
-			- Check out JSON format and see if it is useful			TO-DO
-				- Check out nlohmanns JSON parser
-
-	
-
 
 	*/
 
@@ -258,10 +129,22 @@ void Application::run()
 		*/
 		m_model_renderer->begin();
 
+		// Submit sponza
 		m_model_renderer->submit(m_sponza, DirectX::SimpleMath::Matrix::CreateScale(0.07f));
+
+		// Submit nanosuit
 		for (int i = 0; i < 10; ++i)
+		{
+			ModelRenderSpec spec{};
+			if (i % 2 == 0)
+				spec.casts_shadow = false;
+			else
+				spec.casts_shadow = true;
+
 			m_model_renderer->submit(m_nanosuit, DirectX::SimpleMath::Matrix::CreateScale(1.0) *
-				DirectX::SimpleMath::Matrix::CreateTranslation(-45.f + i * 8.f, 0.f, 10.f));
+				DirectX::SimpleMath::Matrix::CreateTranslation(-45.f + i * 8.f, 0.f, 0.f), spec);
+		}
+		
 
 		m_model_renderer->end();
 			

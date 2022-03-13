@@ -63,35 +63,14 @@ Renderer::Renderer()
 	};
 
 	// setup geometry pass 
-	// Should take in some RendererInitDesc to initialize settings (e.g vsync and other misc.)
 	create_resolution_dependent_resources(sc_dim.first, sc_dim.second);
 
 	// setup depth only pass
 	{
-		// Using 16-bit because we are using Orthographic (linearly distributed values, so 16 bit is enough)
-		/*
-			https://gamedev.net/forums/topic/692064-shadow-mapping/5355978/
-			eD16 if need performance
-		*/
 		m_dir_d32 = gfx::dev->create_texture(TextureDesc::depth_stencil(
 			DepthFormat::eD32, (UINT)m_shadow_map_resolution, (UINT)m_shadow_map_resolution,
 			D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE, NUM_CASCADES));
 		m_dir_rp = gfx::dev->create_renderpass(RenderPassDesc({}, m_dir_d32));
-
-		/*
-			Note that Lightpass draw call is turned off right now just to test the depth stencil with array (GS)
-
-
-
-			Setup cascade:
-				1. Make texture array
-
-				5. Setup Geometry Shader for CASCADES amount of instancing
-				6. Create StructuredBuffer for CASCADE information (matrices and splits)
-				7. ^^ Use SV_InstanceID in GS to select correct matrices from StructuredBuffer 
-				8. ^^ Pass SV_InstanceID to SV_RenderTargetArrayIndex output in GS to select correct subresource index to render depth to
-
-			*/
 
 
 		auto vs_depth = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "depthOnlyVS.hlsl");
@@ -432,8 +411,6 @@ void Renderer::render()
 
 	// Get cascade splits
 	{
-		// Hardcoded directional light for now
-		//auto light_direction = DirectX::SimpleMath::Vector3{ 0.2f, -0.8f, 0.2f };
 		auto light_direction = m_sun_direction;
 		light_direction.Normalize();
 
@@ -452,10 +429,10 @@ void Renderer::render()
 	
 		// Calculate orthographic projection matrix for each cascade
 		std::array<DirectX::SimpleMath::Matrix, cascade_splits.size()> matrices;
-		float lastSplitDist = cam_near_z / clip_range;
+		float last_split_dist = cam_near_z / clip_range;
 		for (uint32_t i = 0; i < cascade_splits.size(); i++)
 		{
-			float splitDist = cascade_splits[i];
+			float split_dist = cascade_splits[i];
 		
 			// Setup NDC frustum points
 			std::array<DirectX::SimpleMath::Vector3, 8> frustum_points =
@@ -473,19 +450,18 @@ void Renderer::render()
 				DirectX::SimpleMath::Vector3(-1.0f, -1.0f, 1.f)		// Bottom left
 			};
 			
-			// Transform frustum points to world space
+			// Transform frustum points to camera space
 			for (auto& p : frustum_points)
 			{
 #ifdef REVERSE_Z_DEPTH
 				p.z = 1.f - p.z;
 #endif	
-				// .. and transform into world space ..
-				auto clip_to_world = (m_main_cam->get_view_mat() * m_main_cam->get_proj_mat()).Invert();
+				auto clip_to_cam = (m_main_cam->get_view_mat() * m_main_cam->get_proj_mat()).Invert();
 				auto p_v4 = DirectX::SimpleMath::Vector4(p);
 				p_v4.w = 1.f;
 
-				auto p_v4_ws  = DirectX::SimpleMath::Vector4::Transform(p_v4, clip_to_world);
-				// Homogenous to cartesian (reverse perspective division)
+				auto p_v4_ws  = DirectX::SimpleMath::Vector4::Transform(p_v4, clip_to_cam);
+				// Homogenous to cartesian
 				p_v4_ws /= p_v4_ws.w;
 
 				p = DirectX::SimpleMath::Vector3(p_v4_ws);
@@ -495,11 +471,11 @@ void Renderer::render()
 			for (uint32_t i = 0; i < 4; i++) 
 			{
 				auto dist = frustum_points[i + 4] - frustum_points[i];
-				frustum_points[i + 4] = frustum_points[i] + (dist * splitDist);
-				frustum_points[i] = frustum_points[i] + (dist * lastSplitDist);
+				frustum_points[i + 4] = frustum_points[i] + (dist * split_dist);
+				frustum_points[i] = frustum_points[i] + (dist * last_split_dist);
 			}
 
-			// Get frustum center
+			// Get subfrustum center
 			// Sum contribution of all points, and find average to find the center of the frustum
 			auto frustum_center = DirectX::SimpleMath::Vector3(0.f);
 			for (const auto& p : frustum_points)
@@ -507,8 +483,7 @@ void Renderer::render()
 			frustum_center /= (float)frustum_points.size();
 			
 			// Get max spherical radius for the frustum
-			// Notice that our new space (origin) is at frustum center.
-			// Thus, we find the min/max relative to the frustum center (sphere space)
+			// Notice that our new space (origin) is at frustum center
 			float radius = 0.f;
 			for (const auto& p : frustum_points)
 			{
@@ -517,15 +492,23 @@ void Renderer::render()
 			}
 			radius = std::ceilf(radius * 16.f) / 16.f;		// ??
 
-
+			// Superimpose our projection (sphere --> AABB which encloses the sphere)
 			auto max_extents = DirectX::SimpleMath::Vector3(radius);
 			auto min_extents = -max_extents;
 
 			DirectX::SimpleMath::Matrix light_view = DirectX::XMMatrixLookAtLH(frustum_center - light_direction * -min_extents.z, frustum_center, { 0.0f, 1.0f, 0.0f });
 
 #ifdef REVERSE_Z_DEPTH
+			/*
+				Realize that in in-doors scenario, the start can be inside a geometry, meaning we have to arbitrarily increase the depth away from 
+				our frustum center. There is no particular downside of this since orthographic projection does not suffer from the 
+				depth buffer precision problem which is present on perspective projections. Depth is linearly distributed with orthographic projection.
+				We will simply use z-values further away from the lights perspective.
+
+				If we had scene-dependent cascades then this problem would be solved
+			*/
 			DirectX::SimpleMath::Matrix ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(
-				min_extents.x, max_extents.x, min_extents.y, max_extents.y, max_extents.z - min_extents.z, 0.f);
+				min_extents.x, max_extents.x, min_extents.y, max_extents.y, max_extents.z - min_extents.z, -350.f);
 #else
 			DirectX::SimpleMath::Matrix ortho_mat = DirectX::XMMatrixOrthographicOffCenterLH(
 				min_extents.x, max_extents.x, min_extents.y, max_extents.y, 0.f, max_extents.z - min_extents.z);
@@ -533,89 +516,56 @@ void Renderer::render()
 
 			// Avoid shadow shimmering
 			// https://johanmedestrom.wordpress.com/2016/03/18/opengl-cascaded-shadow-maps/
-			// Exactly how it does it, I'm not sure..
-			auto shadowMatrix = light_view * ortho_mat;
-			auto shadowOrigin = DirectX::SimpleMath::Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-			shadowOrigin = DirectX::SimpleMath::Vector4::Transform(shadowOrigin, shadowMatrix);
-			shadowOrigin = shadowOrigin * m_shadow_map_resolution / 2.0f;
+			// Rounding matrix to move in texel sized increments.
+			auto shadow_mat = light_view * ortho_mat;
+			auto shadow_origin = DirectX::SimpleMath::Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+			shadow_origin = DirectX::SimpleMath::Vector4::Transform(shadow_origin, shadow_mat);
+			shadow_origin = shadow_origin * m_shadow_map_resolution / 2.0f;
 
 			auto roundedOrigin = DirectX::SimpleMath::Vector4(
-				std::roundf(shadowOrigin.x), 
-				std::roundf(shadowOrigin.y), 
-				std::roundf(shadowOrigin.z), 
-				std::roundf(shadowOrigin.w));
-			auto roundOffset = roundedOrigin - shadowOrigin;
-			roundOffset = roundOffset * 2.0f / m_shadow_map_resolution;
-			roundOffset.z = 0.0f;
-			roundOffset.w = 0.0f;
+				std::roundf(shadow_origin.x),
+				std::roundf(shadow_origin.y),
+				std::roundf(shadow_origin.z),
+				std::roundf(shadow_origin.w));
+			auto round_offset = roundedOrigin - shadow_origin;
+			round_offset = round_offset * 2.0f / m_shadow_map_resolution;
+			round_offset.z = 0.0f;
+			round_offset.w = 0.0f;
 
-			ortho_mat.m[3][0] += roundOffset.x;
-			ortho_mat.m[3][1] += roundOffset.y;
-			ortho_mat.m[3][2] += roundOffset.z;
-			ortho_mat.m[3][3] += roundOffset.w;
-
-
-			//// Store split distance and matrix in cascade
-			//cascades[i].splitDepth = (camera.getNearClip() + splitDist * clipRange) * -1.0f;
+			// Add round offset to always snap to texels
+			ortho_mat.m[3][0] += round_offset.x;
+			ortho_mat.m[3][1] += round_offset.y;
+			ortho_mat.m[3][2] += round_offset.z;
+			ortho_mat.m[3][3] += round_offset.w;
 
 			DirectX::SimpleMath::Matrix total = light_view * ortho_mat;
 			matrices[i] = total;
 
-			//// main view pro
-			//auto view_proj = m_main_cam->get_view_mat() * m_main_cam->get_proj_mat();
-			//// transform near and far subfrusta split into ndc for shader comparison
-			//auto near_vec = DirectX::SimpleMath::Vector4(0.f, 0.f, lastSplitDist * clip_range, 1.f);
-			//auto far_vec = DirectX::SimpleMath::Vector4(0.f, 0.f, splitDist * clip_range, 1.f);
-			//near_vec = DirectX::SimpleMath::Vector4::Transform(near_vec, view_proj);
-			//far_vec = DirectX::SimpleMath::Vector4::Transform(far_vec, view_proj);
-			//// persp division
-			//near_vec /= near_vec.w;
-			//far_vec /= far_vec.w;
-	
-
-			//m_cascades_info[i].view_proj_mat = total;
-			//m_cascades_info[i].near_z = near_vec.z;
-			//m_cascades_info[i].far_z = far_vec.z;
-
-//#ifdef REVERSE_Z_DEPTH
-//			m_cascades_info[i].near_z = 1.f - lastSplitDist;
-//			m_cascades_info[i].far_z = 1.f - splitDist;
-//#else
-//			m_cascades_info[i].near_z = lastSplitDist;
-//			m_cascades_info[i].far_z = splitDist;
-//#endif
-
-
 			// set near/far in viewspace (independent of reverse z)
 			m_cascades_info[i].view_proj_mat = total;
-			m_cascades_info[i].near_z = lastSplitDist * clip_range;
-			m_cascades_info[i].far_z = splitDist * clip_range;
+			m_cascades_info[i].near_z = last_split_dist * clip_range;
+			m_cascades_info[i].far_z = split_dist * clip_range;
 
 			// Reset for next iteration
-			lastSplitDist = cascade_splits[i];
+			last_split_dist = cascade_splits[i];
 
 		}
 
 		// Update cascades data
-		auto single_light_copy = m_copy_bucket.add_command<gfxcommand::CopyToBuffer>(0, 0);
-		single_light_copy->buffer = m_cascades_info_buffer;
-		single_light_copy->data = m_cascades_info.data();
-		single_light_copy->data_size = sizeof(m_cascades_info);
+		auto update_cascades = m_copy_bucket.add_command<gfxcommand::CopyToBuffer>(0, 0);
+		update_cascades->buffer = m_cascades_info_buffer;
+		update_cascades->data = m_cascades_info.data();
+		update_cascades->data_size = sizeof(m_cascades_info);
 		
-		auto total = matrices[m_cascade];
-		m_light_data.view_proj = total;
-		m_light_data.view_proj_inv = total.Invert();
+		// Update directional light data
 		m_light_data.light_direction = DirectX::SimpleMath::Vector4(light_direction);
-		
+		auto single_light_copy = m_copy_bucket.add_command<gfxcommand::CopyToBuffer>(0, 0);
+		single_light_copy->buffer = m_per_light_cb;
+		single_light_copy->data = &m_light_data;
+		single_light_copy->data_size = sizeof(PerLightData);
 	}
 
 
-
-	// Update light data
-	auto single_light_copy = m_copy_bucket.add_command<gfxcommand::CopyToBuffer>(0, 0);
-	single_light_copy->buffer = m_per_light_cb;
-	single_light_copy->data = &m_light_data;
-	single_light_copy->data_size = sizeof(PerLightData);
 
 	// Sort buckets
 	{
@@ -730,7 +680,6 @@ void Renderer::declare_ui()
 	ImGui::Begin("Settings");
 	ImGui::Checkbox("Vsync", &m_vsync);
 	ImGui::SliderFloat("Lambda", &m_lambda, 0.0f, 1.f);
-	ImGui::SliderInt("Cascade", &m_cascade, 0, NUM_CASCADES - 1);
 	ImGui::SliderFloat3("Sun Direction", &m_sun_direction.x, -1.f, 1.f);	// y and z lives right after x (check XMFLOAT3)
 	ImGui::End();
 

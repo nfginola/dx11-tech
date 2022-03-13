@@ -140,8 +140,6 @@ private:
 	// Directional light
 	struct PerLightData
 	{
-		DirectX::XMMATRIX view_proj;
-		DirectX::XMMATRIX view_proj_inv;
 		DirectX::XMFLOAT4 light_direction;
 	} m_light_data;
 	BufferHandle m_per_light_cb;
@@ -150,7 +148,6 @@ private:
 	BufferHandle m_cascades_info_buffer;
 	float m_shadow_map_resolution = 2048;
 	float m_lambda = 0.5f;
-	int m_cascade = 0;
 	DirectX::SimpleMath::Vector3 m_sun_direction = { 0.2f, -0.8f, 0.2f };
 
 
