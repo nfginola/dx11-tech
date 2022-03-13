@@ -25,6 +25,7 @@ Features:
 	* Reverse Z-depth
 
 * __Techniques (so far)__:
+	* Deferred Rendering
 	* Diffuse light ( no specular.. :< )
 	* Parallel Split Shadow Maps (PSSM)
 		* Utilizing geometry shader instancing
