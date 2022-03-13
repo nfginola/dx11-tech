@@ -1,5 +1,5 @@
 # dx11-tech
-DX11 project which had the aim of implementing graphics techniques but turned into an architectural playground :)  
+DX11 project which had the aim of implementing graphics techniques but turned into an architectural playground -_-
 This project will likely be a base for any other DX11 related projects I have in the future.
  
 There are likely bugs or corner cases not handled, which will be fixed if they ever cause an issue later.
