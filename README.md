@@ -20,6 +20,7 @@ Features:
 
 * __Graphics API__:
 	* Render Queue
+		* (Header + Payload) based for dynamically sized commands
 		* Bucket-based with int keys
 		* Allows for sorting graphics commands in any order (e.g per material, etc.)
 	* Reverse Z-depth
