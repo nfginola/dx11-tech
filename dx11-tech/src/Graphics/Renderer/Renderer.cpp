@@ -65,24 +65,26 @@ Renderer::Renderer()
 	// setup geometry pass 
 	create_resolution_dependent_resources(sc_dim.first, sc_dim.second);
 
-	// setup depth only pass
+	// setup depth only pass for shadow
 	{
 		m_dir_d32 = gfx::dev->create_texture(TextureDesc::depth_stencil(
 			DepthFormat::eD32, (UINT)m_shadow_map_resolution, (UINT)m_shadow_map_resolution,
-			D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE, NUM_CASCADES));
+			D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE, NUM_CASCADES));	// texture array with NUM_CASCADES textures
+
+		// depth only pass (no render targets)
 		m_dir_rp = gfx::dev->create_renderpass(RenderPassDesc({}, m_dir_d32));
 
-
 		auto vs_depth = gfx::dev->compile_and_create_shader(ShaderStage::eVertex, "depthOnlyVS.hlsl");
-		auto gs_depth = gfx::dev->compile_and_create_shader(ShaderStage::eGeometry, "depthOnlyGS.hlsl");
+		auto gs_depth = gfx::dev->compile_and_create_shader(ShaderStage::eGeometry, "depthOnlyGS.hlsl");	// PSSM instancing
 		auto ps_depth = gfx::dev->compile_and_create_shader(ShaderStage::ePixel, "depthOnlyPS.hlsl");
-		auto do_layout = InputLayoutDesc().append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0);
+		auto do_layout = InputLayoutDesc().append("POSITION", DXGI_FORMAT_R32G32B32_FLOAT, 0);			// position only
 
 		m_shared_resources.depth_only_pipe = gfx::dev->create_pipeline(PipelineDesc()
 			.set_shaders(VertexShader(vs_depth), PixelShader(ps_depth), GeometryShader(gs_depth))
 			.set_input_layout(do_layout)
 			.set_rasterizer(RasterizerDesc::no_backface_cull()));
 
+		// structured buffer with NUM_CASCADE amount of CascadeInfo
 		m_cascades_info_buffer = gfx::dev->create_buffer(BufferDesc::structured(sizeof(CascadeInfo), { 0, NUM_CASCADES }, D3D11_BIND_SHADER_RESOURCE, true));
 	}
 
@@ -639,7 +641,7 @@ void Renderer::render()
 		gfx::dev->end_pass();
 	}
 
-	// Write to backbuffer for final post-proc (tone mapping and gamma correction)
+	// Write to backbuffer for final post-proc
 	{
 		auto _ = FrameProfiler::Scoped("Final Fullscreen Pass");
 		gfx::dev->begin_pass(m_backbuffer_out_rp);

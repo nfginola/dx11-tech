@@ -9,7 +9,7 @@ There are also things which need to be refactored, but have been ignored since t
 Features:
 * __Graphics Device API__:
 	* Simplified API which mimics Vulkan/DX12
-	* Safe strongly typed uint64_t handle-based resources using generational counters
+	* Safe strongly typed uin64_t handle-based resources using generational counters
 	* Automated
 		* View creation
 		* Elimination of redundant re-binds
@@ -20,7 +20,6 @@ Features:
 
 * __Graphics API__:
 	* Render Queue
-		* (Header + Payload) based for dynamically sized commands
 		* Bucket-based with int keys
 		* Allows for sorting graphics commands in any order (e.g per material, etc.)
 	* Reverse Z-depth
@@ -40,7 +39,14 @@ Features:
 	* Assimp Loader
   
 Gallery:  
-![Alt text](gallery/ss.png?raw=true "Screenshot")
+Scene  
+![Alt text](gallery/ss.png?raw=true "Screenshot")  
+Exposed graphics primitives  
+![Alt text](gallery/ss2.png?raw=true "Screenshot2")  
+Setting up depth-only pass example:  
+![Alt text](gallery/ss3.png?raw=true "Screenshot3")  
+Scoped frame profiler (CPU and GPU) and API  
+![Alt text](gallery/ss4.png?raw=true "Screenshot4")  
 	 
 
 
