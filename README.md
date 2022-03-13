@@ -27,6 +27,7 @@ Features:
 * __Techniques (so far)__:
 	* Diffuse light ( no specular.. :< )
 	* Parallel Split Shadow Maps (PSSM)
+		* Utilizing geometry shader instancing
 	* (paused) Sample Distribution Shadow Maps (SDSM)
 
 * __Miscellaneous__:
