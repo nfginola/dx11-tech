@@ -8,8 +8,8 @@ There are also things which need to be refactored, but have been ignored since t
   
 Features:
 * __Graphics Device API__:
-	* Simplified API which mimics Vulkan/DX12
-	* Safe strongly typed uin64_t handle-based resources using generational counters
+	* Simplified API which mimics Vulkan/DX12 (but still utilizes the slot-binding model)
+	* Safe strongly typed uint64_t handle-based resources using generational counters
 	* Automated
 		* View creation
 		* Elimination of redundant re-binds
