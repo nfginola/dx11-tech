@@ -1,6 +1,13 @@
 #include "pch.h"
 #include "Graphics/API/DXDevice.h"
 
+// https://docs.nvidia.com/gameworks/content/technologies/desktop/optimus.htm
+// https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
+extern "C" 
+{
+	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
+
 // Lets us print some debug messages sent to the queue
 // Currently responsible for printing WARNING debug messages to cout
 ComPtr<ID3D11InfoQueue> s_info_queue;
