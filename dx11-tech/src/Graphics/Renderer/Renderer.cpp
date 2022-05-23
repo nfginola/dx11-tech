@@ -404,7 +404,7 @@ float get_cascade_split(float lambda, UINT current_partition, UINT number_of_par
 }
 
 
-bool SDSM_on = false;
+bool SDSM_on = true;
 void Renderer::render()
 {
 	// Update persistent per frame camera data
@@ -413,6 +413,7 @@ void Renderer::render()
 	m_cb_dat.inv_proj_mat = m_main_cam->get_proj_mat().Invert();
 
 	// Get cascade splits
+	// Reads from parallel reduced depth buffer from N frames behind (N-buffered) --> Limitation for moving objects
 	{
 		auto light_direction = m_sun_direction;
 		light_direction.Normalize();
@@ -420,41 +421,38 @@ void Renderer::render()
 
 		float cam_near_z = 0.1f;
 		float cam_far_z = 1000.f;
-
 		float clip_range = cam_far_z - cam_near_z;
-		
-		////// Use SDSM (temp hack solution)
-		////// 1. Grab clip space ranges
-		////// 2. Convert to viewspace (inverse main proj mat)
-		const auto to_view = (m_main_cam->get_proj_mat()).Invert();
 
-		auto [cs_near, cs_far] = gfx::dev->map_read_temp(m_staging[m_curr_frame % 3]);
-
-		ImGui::Text("Clip Near Z: %f\n", cs_near);
-		ImGui::Text("Clip Far Z: %f\n", cs_far);
-
-		auto vs_near = DirectX::SimpleMath::Vector4::Transform({ 0, 0, cs_near, 1.f }, to_view);
-		auto vs_far = DirectX::SimpleMath::Vector4::Transform({ 0, 0, cs_far, 1.f }, to_view);
-		vs_near /= vs_near.w;
-		vs_far /= vs_far.w;
-
-		// SDSM
-		float new_cam_near_z = vs_near.z;
-		float new_cam_far_z = vs_far.z + 0.00001 * vs_near.z;
-		float new_clip_range = cam_far_z - cam_near_z;
-
-		ImGui::Checkbox("SDSM Splits", &SDSM_on);
-		if (SDSM_on)
+		// SDSM min/max replacement (from x frames behind)
 		{
-			cam_near_z = new_cam_near_z;
-			cam_far_z = new_cam_far_z;
-			clip_range = new_clip_range;
+			const auto to_view = (m_main_cam->get_proj_mat()).Invert();
+			auto [cs_near, cs_far] = gfx::dev->map_read_temp(m_staging[m_curr_frame % 3]);
+
+			ImGui::Text("Clip Near Z: %f\n", cs_near);
+			ImGui::Text("Clip Far Z: %f\n", cs_far);
+
+			auto vs_near = DirectX::SimpleMath::Vector4::Transform({ 0, 0, cs_near, 1.f }, to_view);
+			auto vs_far = DirectX::SimpleMath::Vector4::Transform({ 0, 0, cs_far, 1.f }, to_view);
+			vs_near /= vs_near.w;
+			vs_far /= vs_far.w;
+
+			// SDSM
+			float new_cam_near_z = vs_near.z;
+			float new_cam_far_z = vs_far.z + 0.00001 * vs_near.z;
+			float new_clip_range = cam_far_z - cam_near_z;
+
+			ImGui::Checkbox("SDSM Splits", &SDSM_on);
+			if (SDSM_on)
+			{
+				cam_near_z = new_cam_near_z;
+				cam_far_z = new_cam_far_z;
+				clip_range = new_clip_range;
+			}
+
+			ImGui::Text("Cam Near Z: %f\n", new_cam_near_z);
+			ImGui::Text("Cam Far Z: %f\n", new_cam_far_z);
 		}
 
-
-
-		ImGui::Text("Cam Near Z: %f\n", new_cam_near_z);
-		ImGui::Text("Cam Far Z: %f\n", new_cam_far_z);
 
 
 		// Get splits
@@ -651,6 +649,9 @@ void Renderer::render()
 		gfx::dev->end_pass();
 	}
 
+	// parallel reduction on depth
+	compute_SDSM();
+
 	// Shadow Pass
 	{
 		auto _ = FrameProfiler::Scoped("Shadow Pass");
@@ -705,7 +706,6 @@ void Renderer::render()
 	}
 
 
-	compute_SDSM();
 }
 
 
