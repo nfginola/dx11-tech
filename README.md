@@ -24,12 +24,14 @@ Features:
 		* Allows for sorting graphics commands in any order (e.g per material, etc.)
 	* Reverse Z-depth
 
-* __Techniques (so far)__:
+* __Techniques__:
 	* Deferred Rendering
-	* Diffuse light ( no specular.. :< )
 	* Parallel Split Shadow Maps (PSSM)
 		* Utilizing geometry shader instancing
-	* (paused) Sample Distribution Shadow Maps (SDSM)
+	* Sample Distribution Shadow Maps (SDSM)
+		* Parallel Depth Reduction on Compute Shader
+		* Depth min/max CPU read-back for frustum subdivision
+		* Normal CSM workflow afterwards
 
 * __Miscellaneous__:
 	* CPU Profiler (Frame-based and Scoped)
@@ -38,6 +40,10 @@ Features:
 	* ImGUI Docking
 	* Assimp Loader
   
+* __References__:
+	* [PSSM (NVIDIA)](https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-10-parallel-split-shadow-maps-programmable-gpus/)
+	* [SDSM (Intel)](https://www.intel.com/content/www/us/en/developer/articles/technical/sample-distribution-shadow-maps.html)
+
 __Gallery__:  
 Scene  
 ![Alt text](gallery/ss.png?raw=true "Screenshot")  
@@ -47,6 +53,10 @@ Setting up depth-only pass example:
 ![Alt text](gallery/ss3.png?raw=true "Screenshot3")  
 Scoped frame profiler (CPU and GPU) and API usage 
 ![Alt text](gallery/ss4.png?raw=true "Screenshot4")  
+PSSM (Uniform + Logarithmic Split Scheme with Lambda = 0.5)
+![Alt text](gallery/PSSM.jpg?raw=true "Screenshot4")  
+SDSM (Logarithmic Split Scheme)
+![Alt text](gallery/SDSM.jpg?raw=true "Screenshot4")  
 	 
 
 
