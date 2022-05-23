@@ -188,141 +188,141 @@ Renderer::Renderer()
 
 
 
-	//setup_SDSM();
+	setup_SDSM();
 }
 
 void Renderer::setup_SDSM()
 {
-	//// Parallel min/max reduction
-	//{
-	//	// Texture to block reduction
-	//	ShaderHandle cs = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "SDSM_ReduceTexToBuffer.hlsl");
-	//	m_compute_pipe = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs)));
+	// Parallel min/max reduction
+	{
+		// Texture to block reduction
+		ShaderHandle cs = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "SDSM_ReduceTexToBuffer.hlsl");
+		m_compute_pipe = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs)));
 
-	//	// Block to block reduction
-	//	ShaderHandle cs2 = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "SDSM_FinalReduction.hlsl");
-	//	m_compute_pipe2 = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs2)));
+		// Block to block reduction
+		ShaderHandle cs2 = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "SDSM_FinalReduction.hlsl");
+		m_compute_pipe2 = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs2)));
 
-	//	// Compute splits
-	//	ShaderHandle cs3 = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "SDSM_ComputeSplits.hlsl");
-	//	m_compute_pipe3 = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs3)));
-
-
-	//	// 60 x 34 is the amount of blocks from Compute Test
-	//	/*
-	//		We can derive these numbers by
-	//			ceil(RESOLUTION_WIDTH / 32)			Assumed to use 32x32x1 threads per block
-	//			ceil(RESOLUTION_HEIGHT / 32)
-
-	//		Further passes use the prev numbers multiplied and divide them by 1024
-	//			e.g
-
-	//			60 x 34 = 2040
-	//			ceil(2040/1024) = 2
-
-	//		keep doing until that number = 1 and then call it one last time.
+		// Compute splits
+		ShaderHandle cs3 = gfx::dev->compile_and_create_shader(ShaderStage::eCompute, "SDSM_ComputeSplits.hlsl");
+		m_compute_pipe3 = gfx::dev->create_compute_pipeline(ComputePipelineDesc(ComputeShader(cs3)));
 
 
+		// 60 x 34 is the amount of blocks from Compute Test
+		/*
+			We can derive these numbers by
+				ceil(RESOLUTION_WIDTH / 32)			Assumed to use 32x32x1 threads per block
+				ceil(RESOLUTION_HEIGHT / 32)
 
-	//	*/
-	//	float* null_data = new float[60 * 34];
+			Further passes use the prev numbers multiplied and divide them by 1024
+				e.g
 
-	//	// Reset maxes to 0
-	//	std::memset(null_data, 0, 60 * 34 * sizeof(float));
-	//	m_rw_buf = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 60 * 34 }, D3D11_BIND_UNORDERED_ACCESS),
-	//		SubresourceData(null_data, 60 * 34 * sizeof(float)));
+				60 x 34 = 2040
+				ceil(2040/1024) = 2
 
-	//	// Reset mins to 1
-	//	std::memset(null_data, 1, 60 * 34 * sizeof(float));
-	//	m_rw_buf2 = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 60 * 34 }, D3D11_BIND_UNORDERED_ACCESS),
-	//		SubresourceData(null_data, 60 * 34 * sizeof(float)));
-
-	//	delete[] null_data;
-
-	//	// Compute splits (4) from CS and use in light pass
-	//	m_rw_splits = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 4 }, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE));
+			keep doing until that number = 1 and then call it one last time.
 
 
-	//	m_staging[0] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
-	//	m_staging[1] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
-	//	m_staging[2] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
-	//}
+
+		*/
+		float* null_data = new float[60 * 34];
+
+		// Reset maxes to 0
+		std::memset(null_data, 0, 60 * 34 * sizeof(float));
+		m_rw_buf = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 60 * 34 }, D3D11_BIND_UNORDERED_ACCESS),
+			SubresourceData(null_data, 60 * 34 * sizeof(float)));
+
+		// Reset mins to 1
+		std::memset(null_data, 1, 60 * 34 * sizeof(float));
+		m_rw_buf2 = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 60 * 34 }, D3D11_BIND_UNORDERED_ACCESS),
+			SubresourceData(null_data, 60 * 34 * sizeof(float)));
+
+		delete[] null_data;
+
+		// Compute splits (4) from CS and use in light pass
+		m_rw_splits = gfx::dev->create_buffer(BufferDesc::structured(sizeof(float), { 0, 4 }, D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE));
+
+
+		m_staging[0] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
+		m_staging[1] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
+		m_staging[2] = gfx::dev->create_buffer(BufferDesc::staging(2 * sizeof(float)));	// min/max
+	}
 
 
 }
 
 void Renderer::compute_SDSM()
 {
-	//// Parallel min/max reduction
-	//{
-	//	// Reduce to 60 x 34 (Texture to buffer)
-	//	auto x_blocks = std::ceilf(m_curr_resolution.first / 32.f);
-	//	const auto y_blocks = std::ceilf(m_curr_resolution.second / 32.f);
-	//	{
-	//		auto _ = FrameProfiler::Scoped("Reduction 1");
-	//		gfx::dev->bind_resource(0, ShaderStage::eCompute, m_d_32);
-	//		gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
-	//		gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);
-	//		gfx::dev->bind_compute_pipeline(m_compute_pipe);
-	//		//gfx::dev->dispatch(60, 34, 1);
+	// Parallel min/max reduction
+	{
+		// Reduce to 60 x 34 (Texture to buffer)
+		auto x_blocks = std::ceilf(m_curr_resolution.first / 32.f);
+		const auto y_blocks = std::ceilf(m_curr_resolution.second / 32.f);
+		{
+			auto _ = FrameProfiler::Scoped("Reduction 1");
+			gfx::dev->bind_resource(0, ShaderStage::eCompute, m_d_32);
+			gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
+			gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);
+			gfx::dev->bind_compute_pipeline(m_compute_pipe);
+			//gfx::dev->dispatch(60, 34, 1);
 
-	//		gfx::dev->dispatch(x_blocks, y_blocks, 1);
-	//	}
+			gfx::dev->dispatch(x_blocks, y_blocks, 1);
+		}
 
 
-	//	// (Buffer to buffer)
-	//	// Reduce to 2 (note that 60 x 34 = 2040, we cant do it in one block)
-	//	{
-	//		auto _ = FrameProfiler::Scoped("Reduction 2");
-	//		gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
-	//		gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);
-	//		gfx::dev->bind_constant_buffer(GLOBAL_PER_FRAME_CB_SLOT, ShaderStage::eCompute, m_cb_per_frame);
-	//		gfx::dev->bind_compute_pipeline(m_compute_pipe2);
+		// (Buffer to buffer)
+		// Reduce to 2 (note that 60 x 34 = 2040, we cant do it in one block)
+		{
+			auto _ = FrameProfiler::Scoped("Reduction 2");
+			gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
+			gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);
+			gfx::dev->bind_constant_buffer(GLOBAL_PER_FRAME_CB_SLOT, ShaderStage::eCompute, m_cb_per_frame);
+			gfx::dev->bind_compute_pipeline(m_compute_pipe2);
 
-	//		x_blocks = std::ceilf((x_blocks * y_blocks) / 1024.f);
-	//		gfx::dev->dispatch(x_blocks, 1, 1);
-	//	}
+			x_blocks = std::ceilf((x_blocks * y_blocks) / 1024.f);
+			gfx::dev->dispatch(x_blocks, 1, 1);
+		}
 
-	//	// Reduce to 1
-	//	{
-	//		auto _ = FrameProfiler::Scoped("Reduction 3");
-	//		gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
-	//		gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);
-	//		gfx::dev->bind_compute_pipeline(m_compute_pipe2);
+		// Reduce to 1
+		{
+			auto _ = FrameProfiler::Scoped("Reduction 3");
+			gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf);
+			gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf2);
+			gfx::dev->bind_compute_pipeline(m_compute_pipe2);
 
-	//		x_blocks = std::ceilf(x_blocks / 1024.f);
-	//		gfx::dev->dispatch(x_blocks, 1, 1);
-	//	}
+			x_blocks = std::ceilf(x_blocks / 1024.f);
+			gfx::dev->dispatch(x_blocks, 1, 1);
+		}
 
-	//	{
-	//		auto _ = FrameProfiler::Scoped("Compute Split");
-	//		gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf2);		// Note these are swapped (0 --> mins, 1 --> maxes)
-	//		gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf);
-	//		gfx::dev->bind_resource_rw(2, ShaderStage::eCompute, m_rw_splits);
-	//		gfx::dev->bind_compute_pipeline(m_compute_pipe3);
+		{
+			auto _ = FrameProfiler::Scoped("Compute Split");
+			gfx::dev->bind_resource_rw(0, ShaderStage::eCompute, m_rw_buf2);		// Note these are swapped (0 --> mins, 1 --> maxes)
+			gfx::dev->bind_resource_rw(1, ShaderStage::eCompute, m_rw_buf);
+			gfx::dev->bind_resource_rw(2, ShaderStage::eCompute, m_rw_splits);
+			gfx::dev->bind_compute_pipeline(m_compute_pipe3);
 
-	//		gfx::dev->dispatch(1, 1, 1);
-	//	}
+			gfx::dev->dispatch(1, 1, 1);
+		}
 
-	//	// Delayed CPU read (buffered)
-	//	{
-	//		// Triple buffered to minimize sync stalls
-	//		// Map will wait for the Copy to finish
-	//		// https://stackoverflow.com/questions/40808759/id3d11devicecontextmap-slow-performance
-	//		{
-	//			auto _ = FrameProfiler::Scoped("Min/Max Copy");
-	//			// fill 0 - sizeof(float) with first sizeof(float) in src
-	//			gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, 0), m_rw_buf, CopyRegionSrc(0, { 0, 0, 0, sizeof(float), 1, 1 }));
+		// Delayed CPU read (buffered)
+		{
+			// Triple buffered to minimize sync stalls
+			// Map will wait for the Copy to finish
+			// https://stackoverflow.com/questions/40808759/id3d11devicecontextmap-slow-performance
+			{
+				auto _ = FrameProfiler::Scoped("Min/Max Copy");
+				// fill 0 - sizeof(float) with first sizeof(float) in src
+				gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, 0), m_rw_buf, CopyRegionSrc(0, { 0, 0, 0, sizeof(float), 1, 1 }));
 
-	//			// fill sizeof(float) -> sizeof(float) * 2 with first sizeof(float) in src
-	//			gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, sizeof(float)), m_rw_buf2, CopyRegionSrc(0, { 0, 0, 0, sizeof(float), 1, 1 }));
-	//		}
-	//		{
-	//			auto _ = FrameProfiler::Scoped("Min/Max Read");
-	//			gfx::dev->map_read_temp(m_staging[m_curr_frame % 3]);
-	//		}
-	//	}
-	//}
+				// fill sizeof(float) -> sizeof(float) * 2 with first sizeof(float) in src
+				gfx::dev->copy_resource_region(m_staging[(m_curr_frame + 2) % 3], CopyRegionDst(0, sizeof(float)), m_rw_buf2, CopyRegionSrc(0, { 0, 0, 0, sizeof(float), 1, 1 }));
+			}
+			{
+				auto _ = FrameProfiler::Scoped("Min/Max Read");
+				gfx::dev->map_read_temp(m_staging[m_curr_frame % 3]);
+			}
+		}
+	}
 
 }
 
@@ -404,6 +404,7 @@ float get_cascade_split(float lambda, UINT current_partition, UINT number_of_par
 }
 
 
+bool SDSM_on = false;
 void Renderer::render()
 {
 	// Update persistent per frame camera data
@@ -422,13 +423,60 @@ void Renderer::render()
 
 		float clip_range = cam_far_z - cam_near_z;
 		
+		////// Use SDSM (temp hack solution)
+		////// 1. Grab clip space ranges
+		////// 2. Convert to viewspace (inverse main proj mat)
+		const auto to_view = (m_main_cam->get_proj_mat()).Invert();
+
+		auto [cs_near, cs_far] = gfx::dev->map_read_temp(m_staging[m_curr_frame % 3]);
+
+		ImGui::Text("Clip Near Z: %f\n", cs_near);
+		ImGui::Text("Clip Far Z: %f\n", cs_far);
+
+		auto vs_near = DirectX::SimpleMath::Vector4::Transform({ 0, 0, cs_near, 1.f }, to_view);
+		auto vs_far = DirectX::SimpleMath::Vector4::Transform({ 0, 0, cs_far, 1.f }, to_view);
+		vs_near /= vs_near.w;
+		vs_far /= vs_far.w;
+
+		// SDSM
+		float new_cam_near_z = vs_near.z;
+		float new_cam_far_z = vs_far.z + 0.00001 * vs_near.z;
+		float new_clip_range = cam_far_z - cam_near_z;
+
+		ImGui::Checkbox("SDSM Splits", &SDSM_on);
+		if (SDSM_on)
+		{
+			cam_near_z = new_cam_near_z;
+			cam_far_z = new_cam_far_z;
+			clip_range = new_clip_range;
+		}
+
+
+
+		ImGui::Text("Cam Near Z: %f\n", new_cam_near_z);
+		ImGui::Text("Cam Far Z: %f\n", new_cam_far_z);
+
+
 		// Get splits
 		std::array<float, NUM_CASCADES> cascade_splits;
 		for (int i = 0; i < cascade_splits.size(); ++i)
 		{
 			cascade_splits[i] = get_cascade_split(m_lambda, i + 1, (UINT)cascade_splits.size(), cam_near_z, cam_far_z) / clip_range;
 		}
-	
+
+		//if (SDSM_on)
+		//{
+		//	for (int i = 0; i < cascade_splits.size(); ++i)
+		//	{
+		//		/// near is 1, far is 0 max in NDC
+		//		//cascade_splits[i] = near * pow(abs(far / near), (float)i / NUM_CASCADES);
+		//		cascade_splits[i] = cam_near_z * pow(abs(cam_far_z / cam_near_z), (float)i / NUM_CASCADES);
+		//	}
+		//}
+
+
+
+
 		// Calculate orthographic projection matrix for each cascade
 		std::array<DirectX::SimpleMath::Matrix, cascade_splits.size()> matrices;
 		float last_split_dist = cam_near_z / clip_range;
@@ -473,8 +521,8 @@ void Renderer::render()
 			for (uint32_t i = 0; i < 4; i++) 
 			{
 				auto dist = frustum_points[i + 4] - frustum_points[i];
-				frustum_points[i + 4] = frustum_points[i] + (dist * split_dist);
 				frustum_points[i] = frustum_points[i] + (dist * last_split_dist);
+				frustum_points[i + 4] = frustum_points[i] + (dist * split_dist);
 			}
 
 			// Get subfrustum center
@@ -492,7 +540,7 @@ void Renderer::render()
 				float distance = (p - frustum_center).Length();
 				radius = std::max(radius, distance);
 			}
-			radius = std::ceilf(radius * 16.f) / 16.f;		// ??
+			//radius = std::ceilf(radius * 16.f) / 16.f;		// ??
 
 			// Superimpose our projection (sphere --> AABB which encloses the sphere)
 			auto max_extents = DirectX::SimpleMath::Vector3(radius);

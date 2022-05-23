@@ -809,7 +809,7 @@ void GfxDevice::copy_resource_region(BufferHandle dst, const CopyRegionDst& dst_
 		src_b, src_desc.m_subres, &src_desc.m_box, src_desc.m_copy_flags);
 }
 
-void GfxDevice::map_read_temp(BufferHandle buf)
+std::pair<float, float> GfxDevice::map_read_temp(BufferHandle buf)
 {
 	auto res = (ID3D11Resource*)m_buffers.look_up(buf.hdl)->m_internal_resource.Get();
 	D3D11_MAPPED_SUBRESOURCE subr;
@@ -825,6 +825,8 @@ void GfxDevice::map_read_temp(BufferHandle buf)
 
 
 	m_dev->get_context()->Unmap(res, 0);
+
+	return { minmax[0], minmax[1] };
 }
 
 

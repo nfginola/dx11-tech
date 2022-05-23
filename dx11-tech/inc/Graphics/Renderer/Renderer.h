@@ -194,15 +194,15 @@ private:
 
 	// SDSM variables (WIP)
 	// Main camera depth min/max parallel reduction
-	//ComputePipelineHandle m_compute_pipe;		// Texture to Buffer reduction
-	//ComputePipelineHandle m_compute_pipe2;		// Buffer to buffer reduction
-	//ComputePipelineHandle m_compute_pipe3;		// Buffer to buffer reduction
+	ComputePipelineHandle m_compute_pipe;		// Texture to Buffer reduction
+	ComputePipelineHandle m_compute_pipe2;		// Buffer to buffer reduction
+	ComputePipelineHandle m_compute_pipe3;		// Buffer to buffer reduction
 
-	//BufferHandle m_rw_buf;			// Max buffer
-	//BufferHandle m_rw_buf2;			// Min buffer
-	//BufferHandle m_rw_splits;		// Split buffer
+	BufferHandle m_rw_buf;			// Max buffer
+	BufferHandle m_rw_buf2;			// Min buffer
+	BufferHandle m_rw_splits;		// Split buffer
 
-	//BufferHandle m_staging[3];
+	BufferHandle m_staging[3];
 
 
 };

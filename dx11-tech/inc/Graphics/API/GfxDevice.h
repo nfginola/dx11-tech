@@ -101,7 +101,7 @@ public:
 	void copy_resource_region(BufferHandle dst, const CopyRegionDst& dst_dsc, BufferHandle src, const CopyRegionSrc& src_desc);
 
 	// Temporary reader (playing with readback with WIP SDSM)
-	void map_read_temp(BufferHandle buf);
+	std::pair<float, float> map_read_temp(BufferHandle buf);
 
 	/*
 	
