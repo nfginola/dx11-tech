@@ -22,34 +22,13 @@ CBUFFER(PerFrameCB, GLOBAL_PER_FRAME_CB_SLOT)
 groupshared float z_values[BLOCK_DIM];
 groupshared float z_mins[BLOCK_DIM];
 
-
-// https://mynameismjp.wordpress.com/2009/03/10/reconstructing-position-from-depth/
-float3 view_space_pos(uint2 pixel, float depth)
-{
-    float2 uv = float2(pixel.x / 1920.f, pixel.y / 1080.f);
-
-    uv = saturate(uv);
-
-    float x = uv.x * 2.f - 1.f;
-    float y = (1.f - uv.y) * 2.f - 1.f;
-    float4 ndc = float4(x, y, depth, 1.f);
-
-    // Unproject
-    float4 vs_pos = mul(g_per_frame.inv_proj_mat, ndc);
-    return (vs_pos.xyz / vs_pos.w).xyz;
-
-}
-
 [numthreads(BLOCK_DIM_X, BLOCK_DIM_Y, 1)]
 void main( uint3 DTid : SV_DispatchThreadID, uint Tidx : SV_GroupIndex, uint3 Gid : SV_GroupID)
 {
-    // Place into shared memory first
-    //float val = g_test_texture[DTid.xy];
+;
     float val = g_depth[DTid.xy];
-    //float val = view_space_pos(DTid.xy, g_depth[DTid.xy]).z;
-    //if (DTid.x > 1920 || DTid.y > 1080)
-    //    val = 1.f;
 
+    // Place into shared memory first
     z_values[Tidx] = val;
 
     // Make sure to not accidentally grab 0s for min
@@ -58,6 +37,11 @@ void main( uint3 DTid : SV_DispatchThreadID, uint Tidx : SV_GroupIndex, uint3 Gi
     else
         z_mins[Tidx] = val;
 
+    AllMemoryBarrierWithGroupSync();
+    
+    if (z_mins[Tidx] < 0.00001f)
+        z_mins[Tidx] = 1.f;
+    
     AllMemoryBarrierWithGroupSync();
     
     // Do step-wise halving to find min/max

@@ -28,7 +28,6 @@ void main(uint3 DTid : SV_DispatchThreadID, uint Tidx : SV_GroupIndex, uint3 Gid
 
             if ((Tidx + s) < BLOCK_DIM)
                 z_mins[Tidx] = min(z_mins[Tidx], z_mins[Tidx + s]);
-            
         }
         AllMemoryBarrierWithGroupSync();
     }

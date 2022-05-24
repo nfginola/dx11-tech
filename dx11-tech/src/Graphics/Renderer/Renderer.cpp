@@ -417,10 +417,10 @@ void Renderer::render()
 	{
 		auto light_direction = m_sun_direction;
 		light_direction.Normalize();
-
-
+	
+		// hardcoded near and far for now for PSSM
 		float cam_near_z = 0.1f;
-		float cam_far_z = 1000.f;
+		float cam_far_z = 600.f;
 		float clip_range = cam_far_z - cam_near_z;
 
 		// SDSM min/max replacement (from x frames behind)
@@ -460,6 +460,9 @@ void Renderer::render()
 		for (int i = 0; i < cascade_splits.size(); ++i)
 		{
 			cascade_splits[i] = get_cascade_split(m_lambda, i + 1, (UINT)cascade_splits.size(), cam_near_z, cam_far_z) / clip_range;
+			if (SDSM_on)	
+				cascade_splits[i] = get_cascade_split(1.f, i + 1, (UINT)cascade_splits.size(), cam_near_z, cam_far_z) / clip_range;		// lambda 1 ==> LogPSM
+
 		}
 
 		//if (SDSM_on)

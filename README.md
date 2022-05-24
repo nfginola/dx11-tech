@@ -33,6 +33,12 @@ Features:
 		* Depth min/max CPU read-back for frustum subdivision
 		* Normal CSM workflow afterwards
 
+	* To-add:
+		* Percentage Closer Filtering
+		* Normal maps
+		* SSAO
+		* PBR
+
 * __Miscellaneous__:
 	* CPU Profiler (Frame-based and Scoped)
 	* GPU Profiler (Frame-based and Scoped)
