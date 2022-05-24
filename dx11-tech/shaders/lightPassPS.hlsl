@@ -54,14 +54,14 @@ float4 main(PixelInput input) : SV_TARGET0
         if (curr_pixel_view_z < g_directional_cascades_info[cascade].far_z)
         //if (curr_pixel_ndc_z > p.z)
         {
-            if (cascade == 0)
-                tint = float3(1.f, 0.f, 0.f) * 0.1f;
-            else if (cascade == 1)
-                tint = float3(0.f, 1.f, 0.f) * 0.1f;
-            else if (cascade == 2)
-                tint = float3(0.f, 0.f, 1.f) * 0.1f;
-            else
-                tint = float3(1.f, 0.f, 1.f) * 0.1f;
+            //if (cascade == 0)
+            //    tint = float3(1.f, 0.f, 0.f) * 0.1f;
+            //else if (cascade == 1)
+            //    tint = float3(0.f, 1.f, 0.f) * 0.1f;
+            //else if (cascade == 2)
+            //    tint = float3(0.f, 0.f, 1.f) * 0.1f;
+            //else
+            //    tint = float3(1.f, 0.f, 1.f) * 0.1f;
 
             float4 lspace_clip = mul(g_directional_cascades_info[cascade].view_proj_mat, float4(world, 1.f));
             float4 lspace_ndc = lspace_clip / lspace_clip.w; // persp dvision
